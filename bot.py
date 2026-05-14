@@ -1,5 +1,8 @@
 import os
+import json
+import time
 import telebot
+
 from telebot import types
 from datetime import datetime, timedelta
 
@@ -7,21 +10,24 @@ from parser import parse_schedule, format_schedule
 
 
 # =========================
-# 🔐 TOKEN
+# 🔐 CONFIG
 # =========================
 TOKEN = os.getenv("TOKEN")
 
 if not TOKEN:
     raise Exception("TOKEN is not set")
 
-bot = telebot.TeleBot(TOKEN)
-import json
-import time
-
 ADMIN_ID = 439819918
 USERS_FILE = "users.json"
 
+bot = telebot.TeleBot(TOKEN)
+
 ERROR_LOGS = []
+
+
+# =========================
+# 👥 USERS
+# =========================
 def load_users():
     try:
         with open(USERS_FILE, "r") as f:
@@ -41,13 +47,12 @@ def save_user(user_id):
 
 
 # =========================
-# 📌 ПОСТОЯННАЯ КЛАВИАТУРА (BOTTOM MENU)
+# 📌 KEYBOARD
 # =========================
 def main_menu():
     markup = types.ReplyKeyboardMarkup(
         resize_keyboard=True,
-        one_time_keyboard=False,   # 🔥 ключевой момент: НЕ исчезает
-        input_field_placeholder="Выбери действие"
+        one_time_keyboard=False
     )
 
     markup.row("📅 Сегодня", "⏭ Завтра")
@@ -57,22 +62,19 @@ def main_menu():
 
 
 # =========================
-# 🛡 SAFE SEND (Telegram limit)
+# 🛡 SAFE SEND
 # =========================
 def send_safe(chat_id, text):
     MAX = 3800
-
-    if not text:
-        text = "Пусто"
 
     if len(text) <= MAX:
         bot.send_message(chat_id, text, reply_markup=main_menu())
         return
 
-    parts = [text[i:i+MAX] for i in range(0, len(text), MAX)]
+    parts = [text[i:i + MAX] for i in range(0, len(text), MAX)]
 
-    for p in parts:
-        bot.send_message(chat_id, p, reply_markup=main_menu())
+    for part in parts:
+        bot.send_message(chat_id, part, reply_markup=main_menu())
 
 
 # =========================
@@ -80,78 +82,75 @@ def send_safe(chat_id, text):
 # =========================
 @bot.message_handler(commands=["start"])
 def start(message):
-
     save_user(message.chat.id)
 
     bot.send_message(
         message.chat.id,
-        "ЕГОР КРИД ВСЕГДА ПРАВ",
+        "📚 Бот запущен",
         reply_markup=main_menu()
     )
+
+
 # =========================
-# 📩 HANDLE BUTTONS
+# 📚 BUTTONS
 # =========================
 @bot.message_handler(func=lambda message: True)
 def handle(message):
+
     text = message.text
     chat_id = message.chat.id
 
     try:
         schedule = parse_schedule()
 
-        # ================= TODAY =================
         if text == "📅 Сегодня":
+
             today = datetime.now().strftime("%d.%m.%Y")
 
             lessons = schedule.get(today)
+
             if not lessons:
                 return send_safe(chat_id, "Сегодня пар нет 😎")
 
-            return send_safe(chat_id, format_schedule({today: lessons}))
+            return send_safe(
+                chat_id,
+                format_schedule({today: lessons})
+            )
 
-
-        # ================= TOMORROW =================
         elif text == "⏭ Завтра":
-            tomorrow = (datetime.now() + timedelta(days=1)).strftime("%d.%m.%Y")
+
+            tomorrow = (
+                datetime.now() + timedelta(days=1)
+            ).strftime("%d.%m.%Y")
 
             lessons = schedule.get(tomorrow)
+
             if not lessons:
                 return send_safe(chat_id, "Завтра пар нет 😎")
 
-            return send_safe(chat_id, format_schedule({tomorrow: lessons}))
+            return send_safe(
+                chat_id,
+                format_schedule({tomorrow: lessons})
+            )
 
-
-        # ================= WEEK =================
         elif text == "📆 Неделя":
-            if not schedule:
-                return send_safe(chat_id, "Нет данных")
 
-            # отправляем по дням (без MESSAGE_TOO_LONG)
             for date, lessons in schedule.items():
-                send_safe(chat_id, format_schedule({date: lessons}))
+                send_safe(
+                    chat_id,
+                    format_schedule({date: lessons})
+                )
 
             return
 
-
-        # ================= UNKNOWN =================
-        else:
-            return send_safe(chat_id, "Выбери кнопку снизу 👇")
-
-
     except Exception as e:
-        return send_safe(chat_id, f"Ошибка: {e}")
+        ERROR_LOGS.append(str(e))
+        send_safe(chat_id, f"Ошибка: {e}")
 
 
 # =========================
-# ▶️ START POLLING (RAILWAY SAFE)
+# 👑 ADMIN PANEL
 # =========================
-print("Bot started...")
-
-bot.infinity_polling(
-    timeout=10,
-    long_polling_timeout=5,
-    skip_pending=True
-)
 @bot.message_handler(commands=["admin"])
 def admin_panel(message):
 
@@ -163,13 +162,17 @@ def admin_panel(message):
         "/stats - статистика\n"
         "/users - пользователи\n"
         "/broadcast текст - рассылка\n"
-        "/ping - проверка бота\n"
-        "/logs - ошибки\n"
-        "/helpadmin - помощь"
+        "/ping - проверка\n"
+        "/logs - ошибки"
     )
-    
+
     bot.send_message(message.chat.id, text)
-    @bot.message_handler(commands=["stats"])
+
+
+# =========================
+# 📊 STATS
+# =========================
+@bot.message_handler(commands=["stats"])
 def stats(message):
 
     if message.chat.id != ADMIN_ID:
@@ -177,13 +180,16 @@ def stats(message):
 
     users = load_users()
 
-    text = (
-        f"📊 Статистика\n\n"
-        f"👥 Пользователей: {len(users)}\n"
-        f"🤖 Бот работает нормально"
+    bot.send_message(
+        message.chat.id,
+        f"👥 Пользователей: {len(users)}"
     )
 
-    bot.send_message(message.chat.@bot.message_handler(commands=["users"])
+
+# =========================
+# 👥 USERS
+# =========================
+@bot.message_handler(commands=["users"])
 def users_cmd(message):
 
     if message.chat.id != ADMIN_ID:
@@ -194,8 +200,13 @@ def users_cmd(message):
     bot.send_message(
         message.chat.id,
         f"👥 Всего пользователей: {len(users)}"
-    )id, text)
-    @bot.message_handler(commands=["broadcast"])
+    )
+
+
+# =========================
+# 📢 BROADCAST
+# =========================
+@bot.message_handler(commands=["broadcast"])
 def broadcast(message):
 
     if message.chat.id != ADMIN_ID:
@@ -234,7 +245,12 @@ def broadcast(message):
         message.chat.id,
         f"✅ Отправлено: {success}\n❌ Ошибок: {failed}"
     )
-    @bot.message_handler(commands=["ping"])
+
+
+# =========================
+# 🟢 PING
+# =========================
+@bot.message_handler(commands=["ping"])
 def ping(message):
 
     if message.chat.id != ADMIN_ID:
@@ -244,7 +260,12 @@ def ping(message):
         message.chat.id,
         "🟢 Бот работает"
     )
-    @bot.message_handler(commands=["logs"])
+
+
+# =========================
+# 📄 LOGS
+# =========================
+@bot.message_handler(commands=["logs"])
 def logs(message):
 
     if message.chat.id != ADMIN_ID:
@@ -258,23 +279,25 @@ def logs(message):
 
     text = "\n".join(ERROR_LOGS[-10:])
 
-    bot.send_message(
+    send_safe(
         message.chat.id,
         f"📄 Последние ошибки:\n\n{text}"
     )
-    @bot.message_handler(commands=["helpadmin"])
-def help_admin(message):
 
-    if message.chat.id != ADMIN_ID:
-        return
 
-    text = (
-        "/admin\n"
-        "/stats\n"
-        "/users\n"
-        "/broadcast текст\n"
-        "/ping\n"
-        "/logs"
-    )
+# =========================
+# ▶️ START POLLING
+# =========================
+print("Bot started...")
 
-    bot.send_message(message.chat.id, text)
+while True:
+    try:
+        bot.infinity_polling(
+            timeout=10,
+            long_polling_timeout=5,
+            skip_pending=True
+        )
+
+    except Exception as e:
+        print("Polling error:", e)
+        time.sleep(5)
