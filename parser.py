@@ -1,111 +1,121 @@
 import requests
 import re
+import time
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 
 URL = "https://guide.herzen.spb.ru/schedule/23316/by-dates"
 
 # =========================
-# КЭШ (чтобы не дергать сайт 3 раза)
+# CACHE
 # =========================
 _cached_schedule = None
-_cached_time = None
+_cached_time = 0
+CACHE_TTL = 300  # 5 минут
 
 
 # =========================
-# 1. ЗАГРУЗКА HTML
+# SAFE REQUEST (с retry)
 # =========================
 def fetch_html():
     headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X)"
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X)",
+        "Accept": "text/html,application/xhtml+xml"
     }
 
-    try:
-        r = requests.get(URL, headers=headers, timeout=10)
-        r.encoding = "utf-8"
-        return r.text
-    except Exception as e:
-        print("ERROR fetching:", e)
-        return ""
+    for attempt in range(3):
+        try:
+            r = requests.get(URL, headers=headers, timeout=10)
+
+            if r.status_code == 200 and len(r.text) > 1000:
+                r.encoding = "utf-8"
+                return r.text
+
+            print(f"[fetch_html] Bad response: {r.status_code}, attempt {attempt+1}")
+
+        except Exception as e:
+            print(f"[fetch_html] Error attempt {attempt+1}: {e}")
+
+        time.sleep(2)
+
+    return None
 
 
 # =========================
-# 2. ОСНОВНОЙ ПАРСЕР
+# PARSE SCHEDULE
 # =========================
 def parse_schedule():
     global _cached_schedule, _cached_time
 
-    # обновляем раз в 5 минут
-    if _cached_schedule and _cached_time:
-        if (datetime.now() - _cached_time).seconds < 300:
-            return _cached_schedule
+    # 🔥 cache check
+    if _cached_schedule and (time.time() - _cached_time < CACHE_TTL):
+        return _cached_schedule
 
     html = fetch_html()
+
+    # 🔴 если сайт упал — возвращаем кеш или пусто
     if not html:
-        return {}
+        print("[parse_schedule] No HTML received")
+        return _cached_schedule or {}
 
-    soup = BeautifulSoup(html, "html.parser")
-    text = soup.get_text("\n", strip=True)
+    try:
+        soup = BeautifulSoup(html, "html.parser")
+        text = soup.get_text("\n", strip=True)
 
-    # 📌 ищем даты формата 14.05.2026
-    date_pattern = r"\d{2}\.\d{2}\.\d{4}"
-    parts = re.split(f"({date_pattern})", text)
+        date_pattern = r"\d{2}\.\d{2}\.\d{4}"
+        parts = re.split(f"({date_pattern})", text)
 
-    schedule = {}
-    current_date = None
+        schedule = {}
+        current_date = None
 
-    for part in parts:
-        part = part.strip()
-        if not part:
-            continue
+        for part in parts:
+            part = part.strip()
+            if not part:
+                continue
 
-        # если это дата
-        if re.fullmatch(date_pattern, part):
-            current_date = part
-            schedule[current_date] = []
-            continue
+            if re.fullmatch(date_pattern, part):
+                current_date = part
+                schedule[current_date] = []
+                continue
 
-        # иначе это блок пар
-        if current_date:
-            lessons = parse_lessons(part)
-            if lessons:
-                schedule[current_date].extend(lessons)
+            if current_date:
+                lessons = parse_lessons(part)
+                if lessons:
+                    schedule[current_date].extend(lessons)
 
-    _cached_schedule = schedule
-    _cached_time = datetime.now()
+        # update cache
+        _cached_schedule = schedule
+        _cached_time = time.time()
 
-    return schedule
+        return schedule
+
+    except Exception as e:
+        print("[parse_schedule] Parse error:", e)
+        return _cached_schedule or {}
 
 
 # =========================
-# 3. ПАРС ПАР
+# PARSE LESSONS
 # =========================
 def parse_lessons(text):
     lessons = []
 
-    # разбиваем по типичным разделителям
     blocks = re.split(r"\n{2,}|•|—{2,}", text)
 
     for b in blocks:
         b = b.strip()
-        if not b:
-            continue
-
-        # ищем время
-        time_match = re.search(r"\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}", b)
-        time = time_match.group(0) if time_match else "—"
-
-        # фильтр мусора
         if len(b) < 10:
             continue
 
-        subject = clean_subject(b)
+        time_match = re.search(r"\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}", b)
+        time_str = time_match.group(0) if time_match else "—"
 
+        subject = clean_subject(b)
         room = extract_room(b)
         teacher = extract_teacher(b)
 
         lessons.append({
-            "time": time,
+            "time": time_str,
             "subject": subject,
             "room": room,
             "teacher": teacher
@@ -115,7 +125,7 @@ def parse_lessons(text):
 
 
 # =========================
-# 4. ОЧИСТКА ДАННЫХ
+# CLEANERS
 # =========================
 def clean_subject(text):
     text = re.sub(r"\d{1,2}:\d{2}.*?-\s*\d{1,2}:\d{2}", "", text)
@@ -134,12 +144,11 @@ def extract_teacher(text):
 
 
 # =========================
-# 5. ФОРМАТ ВЫВОДА
+# FORMAT OUTPUT
 # =========================
-
 def format_schedule(schedule):
-    if not isinstance(schedule, dict):
-        return "Ошибка формата расписания"
+    if not schedule:
+        return "📚 Расписание временно недоступно"
 
     result = "📚 Расписание\n"
 
@@ -156,27 +165,27 @@ def format_schedule(schedule):
             )
 
     return result
-# =========================
-# 6. API ДЛЯ БОТА
-# =========================
 
+
+# =========================
+# API HELPERS
+# =========================
 def get_today():
     schedule = parse_schedule()
     today = datetime.now().strftime("%d.%m.%Y")
 
     lessons = schedule.get(today)
-
     if not lessons:
         return "Сегодня пар нет 😎"
 
     return format_schedule({today: lessons})
+
 
 def get_tomorrow():
     schedule = parse_schedule()
     tomorrow = (datetime.now() + timedelta(days=1)).strftime("%d.%m.%Y")
 
     lessons = schedule.get(tomorrow)
-
     if not lessons:
         return "Завтра пар нет 😎"
 
