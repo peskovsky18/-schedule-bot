@@ -4,22 +4,18 @@ from datetime import datetime, timedelta
 
 URL = "https://guide.herzen.spb.ru/schedule/23316/by-dates"
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
-}
 def fetch_html():
+    headers = {
+        "User-Agent": "Mozilla/5.0 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
+    }
+
     try:
-        r = requests.get(URL, headers=HEADERS, timeout=15)
-        r.raise_for_status()
+        r = requests.get(URL, headers=headers, timeout=10)
         r.encoding = "utf-8"
         return r.text
     except Exception as e:
-        print("Fetch error:", e)
+        print("ERROR:", e)
         return ""
-    def parse_schedule():
-    html = fetch_html()
-    if not html:
-        return {}
 
     soup = BeautifulSoup(html, "lxml")
 
