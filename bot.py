@@ -15,7 +15,23 @@ if not TOKEN:
 
 bot = telebot.TeleBot(TOKEN)
 
+def send_long_message(chat_id, text):
+    max_length = 4000
 
+    while len(text) > max_length:
+        part = text[:max_length]
+        last_newline = part.rfind("\n")
+
+        if last_newline != -1:
+            part = text[:last_newline]
+            text = text[last_newline:]
+        else:
+            text = text[max_length:]
+
+        bot.send_message(chat_id, part)
+
+    if text:
+        bot.send_message(chat_id, text)
 # =========================
 # 🎛 MENU
 # =========================
@@ -39,7 +55,7 @@ def main_menu():
 def start(message):
     bot.send_message(
         message.chat.id,
-        "📚 Привет! Выбери расписание:",
+        " Привет от Куриги:",
         reply_markup=main_menu()
     )
 
