@@ -4,9 +4,16 @@ from datetime import datetime, timedelta
 
 URL = "https://guide.herzen.spb.ru/schedule/23316/by-dates"
 
+
+# =========================
+# 1. ЗАГРУЗКА HTML
+# =========================
 def fetch_html():
     headers = {
-        "User-Agent": "Mozilla/5.0 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
+        )
     }
 
     try:
@@ -14,15 +21,23 @@ def fetch_html():
         r.encoding = "utf-8"
         return r.text
     except Exception as e:
-        print("ERROR:", e)
+        print("ERROR fetching page:", e)
         return ""
+
+
+# =========================
+# 2. ПАРСИНГ РАСПИСАНИЯ
+# =========================
+def parse_schedule():
+    html = fetch_html()
+    if not html:
+        return {}
 
     soup = BeautifulSoup(html, "lxml")
 
     schedule = {}
     current_date = None
 
-    # 📌 берем весь контент, но не как текст, а как элементы
     elements = soup.find_all(True)
 
     for el in elements:
@@ -31,13 +46,13 @@ def fetch_html():
         if not text:
             continue
 
-        # 📅 дата (обычно короткая строка с точками)
+        # дата
         if is_date(text):
             current_date = text
             schedule[current_date] = []
             continue
 
-        # ⏰ пара (ищем время)
+        # пара
         if is_lesson_block(text):
             lesson = extract_lesson(text)
 
@@ -45,6 +60,11 @@ def fetch_html():
                 schedule[current_date].append(lesson)
 
     return schedule
+
+
+# =========================
+# 3. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# =========================
 def is_date(text: str) -> bool:
     return (
         len(text) < 25
@@ -55,6 +75,8 @@ def is_date(text: str) -> bool:
 
 def is_lesson_block(text: str) -> bool:
     return ":" in text and "-" in text
+
+
 def extract_lesson(text: str):
     parts = text.split()
 
@@ -72,7 +94,6 @@ def extract_lesson(text: str):
 
     subject = " ".join(subject_parts).strip()
 
-    # 📌 эвристики под твой вуз
     if "ауд" in text.lower():
         room = extract_after_keyword(text, "ауд")
 
@@ -85,10 +106,12 @@ def extract_lesson(text: str):
         "room": room,
         "teacher": teacher
     }
+
+
 def extract_after_keyword(text, keyword):
     try:
         idx = text.lower().index(keyword)
-        return text[idx:idx+20]
+        return text[idx:idx + 20]
     except:
         return "—"
 
@@ -97,8 +120,13 @@ def extract_teacher(text):
     words = text.split()
     for i, w in enumerate(words):
         if "преп" in w.lower() or "доцент" in w.lower():
-            return " ".join(words[i:i+3])
+            return " ".join(words[i:i + 3])
     return "—"
+
+
+# =========================
+# 4. ФОРМАТИРОВАНИЕ
+# =========================
 def format_schedule(schedule):
     result = "📚 Расписание\n"
 
@@ -114,7 +142,13 @@ def format_schedule(schedule):
                 f"-----------------\n"
             )
 
-    return resultdef get_today():
+    return result
+
+
+# =========================
+# 5. ПУБЛИЧНЫЕ ФУНКЦИИ БОТА
+# =========================
+def get_today():
     schedule = parse_schedule()
     today = datetime.now().strftime("%d.%m.%Y")
 
