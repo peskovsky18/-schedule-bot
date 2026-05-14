@@ -1,6 +1,7 @@
+import os
 import telebot
-from parser import get_tomorrow, get_week
 
+from parser import get_tomorrow, get_week
 
 TOKEN = os.getenv("TOKEN")
 

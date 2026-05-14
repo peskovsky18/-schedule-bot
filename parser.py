@@ -5,11 +5,26 @@ from bs4 import BeautifulSoup
 URL = "https://guide.herzen.spb.ru/schedule/23316/by-dates"
 
 
-def parse_schedule():
-    r = requests.get(URL)
-    r.encoding = "utf-8"
+def fetch_page():
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
+    }
 
-    soup = BeautifulSoup(r.text, "html.parser")
+    try:
+        r = requests.get(URL, headers=headers, timeout=10)
+        r.encoding = "utf-8"
+        return r.text
+    except Exception as e:
+        print("REQUEST ERROR:", e)
+        return ""
+
+
+def parse_schedule():
+    html = fetch_page()
+    if not html:
+        return {}
+
+    soup = BeautifulSoup(html, "html.parser")
     text = soup.get_text("\n")
 
     lines = [x.strip() for x in text.split("\n") if x.strip()]
