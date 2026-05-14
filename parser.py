@@ -44,7 +44,7 @@ def parse_schedule():
     if not html:
         return {}
 
-    soup = BeautifulSoup(html, "lxml")
+    soup = BeautifulSoup(html, "html.parser")
     text = soup.get_text("\n", strip=True)
 
     # 📌 ищем даты формата 14.05.2026
