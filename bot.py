@@ -1,51 +1,55 @@
 import os
-import time
 import telebot
 from telebot import types
+from datetime import datetime, timedelta
 
-from parser import get_today, get_tomorrow, get_week
+from parser import parse_schedule, format_schedule
+
 
 # =========================
-# 🔐 TOKEN (Railway env)
+# 🔐 TOKEN
 # =========================
 TOKEN = os.getenv("TOKEN")
 
 if not TOKEN:
-    raise Exception("TOKEN is not set in environment variables")
+    raise Exception("TOKEN is not set")
 
 bot = telebot.TeleBot(TOKEN)
 
-def send_long_message(chat_id, text):
-    max_length = 4000
 
-    while len(text) > max_length:
-        part = text[:max_length]
-        last_newline = part.rfind("\n")
-
-        if last_newline != -1:
-            part = text[:last_newline]
-            text = text[last_newline:]
-        else:
-            text = text[max_length:]
-
-        bot.send_message(chat_id, part)
-
-    if text:
-        bot.send_message(chat_id, text)
 # =========================
-# 🎛 MENU
+# 📌 ПОСТОЯННАЯ КЛАВИАТУРА (BOTTOM MENU)
 # =========================
 def main_menu():
-    markup = types.InlineKeyboardMarkup()
+    markup = types.ReplyKeyboardMarkup(
+        resize_keyboard=True,
+        one_time_keyboard=False,   # 🔥 ключевой момент: НЕ исчезает
+        input_field_placeholder="Выбери действие"
+    )
 
-    btn_today = types.InlineKeyboardButton("📅 Сегодня", callback_data="today")
-    btn_tomorrow = types.InlineKeyboardButton("⏭ Завтра", callback_data="tomorrow")
-    btn_week = types.InlineKeyboardButton("📆 Неделя", callback_data="week")
-
-    markup.add(btn_today, btn_tomorrow)
-    markup.add(btn_week)
+    markup.row("📅 Сегодня", "⏭ Завтра")
+    markup.row("📆 Неделя")
 
     return markup
+
+
+# =========================
+# 🛡 SAFE SEND (Telegram limit)
+# =========================
+def send_safe(chat_id, text):
+    MAX = 3800
+
+    if not text:
+        text = "Пусто"
+
+    if len(text) <= MAX:
+        bot.send_message(chat_id, text, reply_markup=main_menu())
+        return
+
+    parts = [text[i:i+MAX] for i in range(0, len(text), MAX)]
+
+    for p in parts:
+        bot.send_message(chat_id, p, reply_markup=main_menu())
 
 
 # =========================
@@ -55,56 +59,72 @@ def main_menu():
 def start(message):
     bot.send_message(
         message.chat.id,
-        " Привет от Куриги:",
+        "📚 Привет! Кнопки всегда снизу 👇",
         reply_markup=main_menu()
     )
 
 
 # =========================
-# 🔘 CALLBACK
+# 📩 HANDLE BUTTONS
 # =========================
-@bot.callback_query_handler(func=lambda call: True)
-def callback(call):
+@bot.message_handler(func=lambda message: True)
+def handle(message):
+    text = message.text
+    chat_id = message.chat.id
+
     try:
-        bot.answer_callback_query(call.id)
+        schedule = parse_schedule()
 
-        if call.data == "today":
-            text = get_today()
+        # ================= TODAY =================
+        if text == "📅 Сегодня":
+            today = datetime.now().strftime("%d.%m.%Y")
 
-        elif call.data == "tomorrow":
-            text = get_tomorrow()
+            lessons = schedule.get(today)
+            if not lessons:
+                return send_safe(chat_id, "Сегодня пар нет 😎")
 
-        elif call.data == "week":
-            text = get_week()
+            return send_safe(chat_id, format_schedule({today: lessons}))
 
+
+        # ================= TOMORROW =================
+        elif text == "⏭ Завтра":
+            tomorrow = (datetime.now() + timedelta(days=1)).strftime("%d.%m.%Y")
+
+            lessons = schedule.get(tomorrow)
+            if not lessons:
+                return send_safe(chat_id, "Завтра пар нет 😎")
+
+            return send_safe(chat_id, format_schedule({tomorrow: lessons}))
+
+
+        # ================= WEEK =================
+        elif text == "📆 Неделя":
+            if not schedule:
+                return send_safe(chat_id, "Нет данных")
+
+            # отправляем по дням (без MESSAGE_TOO_LONG)
+            for date, lessons in schedule.items():
+                send_safe(chat_id, format_schedule({date: lessons}))
+
+            return
+
+
+        # ================= UNKNOWN =================
         else:
-            text = "Неизвестная команда"
+            return send_safe(chat_id, "Выбери кнопку снизу 👇")
 
-        bot.edit_message_text(
-            text,
-            call.message.chat.id,
-            call.message.message_id,
-            reply_markup=main_menu()
-        )
 
     except Exception as e:
-        bot.send_message(call.message.chat.id, f"Ошибка: {e}")
+        return send_safe(chat_id, f"Ошибка: {e}")
 
 
 # =========================
-# ▶️ STABLE START (Railway-safe)
+# ▶️ START POLLING (RAILWAY SAFE)
 # =========================
-if __name__ == "__main__":
-    while True:
-        try:
-            print("🤖 Bot started...")
+print("Bot started...")
 
-            bot.infinity_polling(
-                timeout=10,
-                long_polling_timeout=5,
-                skip_pending=True
-            )
-
-        except Exception as e:
-            print("💥 Bot crashed:", e)
-            time.sleep(5)
+bot.infinity_polling(
+    timeout=10,
+    long_polling_timeout=5,
+    skip_pending=True
+)
