@@ -6,7 +6,7 @@ from telebot import types
 from parser import get_today, get_tomorrow, get_week
 
 # 🔐 TOKEN из Railway Variables
-TOKEN = os.getenv("TOKEN")
+TOKEN = os.getenv (TOKEN)
 
 if not TOKEN:
     raise Exception("TOKEN is not set in environment variables")
