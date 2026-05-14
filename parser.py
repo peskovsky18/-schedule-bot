@@ -1,8 +1,15 @@
 import requests
+import re
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 
 URL = "https://guide.herzen.spb.ru/schedule/23316/by-dates"
+
+# =========================
+# КЭШ (чтобы не дергать сайт 3 раза)
+# =========================
+_cached_schedule = None
+_cached_time = None
 
 
 # =========================
@@ -10,10 +17,7 @@ URL = "https://guide.herzen.spb.ru/schedule/23316/by-dates"
 # =========================
 def fetch_html():
     headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
-        )
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X)"
     }
 
     try:
@@ -21,111 +25,116 @@ def fetch_html():
         r.encoding = "utf-8"
         return r.text
     except Exception as e:
-        print("ERROR fetching page:", e)
+        print("ERROR fetching:", e)
         return ""
 
 
 # =========================
-# 2. ПАРСИНГ РАСПИСАНИЯ
+# 2. ОСНОВНОЙ ПАРСЕР
 # =========================
 def parse_schedule():
+    global _cached_schedule, _cached_time
+
+    # обновляем раз в 5 минут
+    if _cached_schedule and _cached_time:
+        if (datetime.now() - _cached_time).seconds < 300:
+            return _cached_schedule
+
     html = fetch_html()
     if not html:
         return {}
 
     soup = BeautifulSoup(html, "lxml")
+    text = soup.get_text("\n", strip=True)
+
+    # 📌 ищем даты формата 14.05.2026
+    date_pattern = r"\d{2}\.\d{2}\.\d{4}"
+    parts = re.split(f"({date_pattern})", text)
 
     schedule = {}
     current_date = None
 
-    elements = soup.find_all(True)
-
-    for el in elements:
-        text = el.get_text(" ", strip=True)
-
-        if not text:
+    for part in parts:
+        part = part.strip()
+        if not part:
             continue
 
-        # дата
-        if is_date(text):
-            current_date = text
+        # если это дата
+        if re.fullmatch(date_pattern, part):
+            current_date = part
             schedule[current_date] = []
             continue
 
-        # пара
-        if is_lesson_block(text):
-            lesson = extract_lesson(text)
+        # иначе это блок пар
+        if current_date:
+            lessons = parse_lessons(part)
+            if lessons:
+                schedule[current_date].extend(lessons)
 
-            if lesson and current_date:
-                schedule[current_date].append(lesson)
+    _cached_schedule = schedule
+    _cached_time = datetime.now()
 
     return schedule
 
 
 # =========================
-# 3. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# 3. ПАРС ПАР
 # =========================
-def is_date(text: str) -> bool:
-    return (
-        len(text) < 25
-        and "." in text
-        and any(char.isdigit() for char in text)
-    )
+def parse_lessons(text):
+    lessons = []
+
+    # разбиваем по типичным разделителям
+    blocks = re.split(r"\n{2,}|•|—{2,}", text)
+
+    for b in blocks:
+        b = b.strip()
+        if not b:
+            continue
+
+        # ищем время
+        time_match = re.search(r"\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}", b)
+        time = time_match.group(0) if time_match else "—"
+
+        # фильтр мусора
+        if len(b) < 10:
+            continue
+
+        subject = clean_subject(b)
+
+        room = extract_room(b)
+        teacher = extract_teacher(b)
+
+        lessons.append({
+            "time": time,
+            "subject": subject,
+            "room": room,
+            "teacher": teacher
+        })
+
+    return lessons
 
 
-def is_lesson_block(text: str) -> bool:
-    return ":" in text and "-" in text
+# =========================
+# 4. ОЧИСТКА ДАННЫХ
+# =========================
+def clean_subject(text):
+    text = re.sub(r"\d{1,2}:\d{2}.*?-\s*\d{1,2}:\d{2}", "", text)
+    text = re.sub(r"ауд\.?|преп\.?|доцент", "", text, flags=re.I)
+    return text.strip() or "—"
 
 
-def extract_lesson(text: str):
-    parts = text.split()
-
-    time = None
-    subject_parts = []
-
-    room = "—"
-    teacher = "—"
-
-    for p in parts:
-        if "-" in p and ":" in p:
-            time = p
-        else:
-            subject_parts.append(p)
-
-    subject = " ".join(subject_parts).strip()
-
-    if "ауд" in text.lower():
-        room = extract_after_keyword(text, "ауд")
-
-    if "преп" in text.lower() or "доцент" in text.lower():
-        teacher = extract_teacher(text)
-
-    return {
-        "time": time or "—",
-        "subject": subject or "—",
-        "room": room,
-        "teacher": teacher
-    }
-
-
-def extract_after_keyword(text, keyword):
-    try:
-        idx = text.lower().index(keyword)
-        return text[idx:idx + 20]
-    except:
-        return "—"
+def extract_room(text):
+    m = re.search(r"ауд\.?\s*\S+", text, re.I)
+    return m.group(0) if m else "—"
 
 
 def extract_teacher(text):
-    words = text.split()
-    for i, w in enumerate(words):
-        if "преп" in w.lower() or "доцент" in w.lower():
-            return " ".join(words[i:i + 3])
-    return "—"
+    m = re.search(r"(доцент|преподаватель)\s+[A-Яа-яA-Za-z\s]+", text)
+    return m.group(0) if m else "—"
 
 
 # =========================
-# 4. ФОРМАТИРОВАНИЕ
+# 5. ФОРМАТ ВЫВОДА
 # =========================
 def format_schedule(schedule):
     result = "📚 Расписание\n"
@@ -146,28 +155,20 @@ def format_schedule(schedule):
 
 
 # =========================
-# 5. ПУБЛИЧНЫЕ ФУНКЦИИ БОТА
+# 6. API ДЛЯ БОТА
 # =========================
 def get_today():
     schedule = parse_schedule()
     today = datetime.now().strftime("%d.%m.%Y")
 
-    for date in schedule:
-        if today in date:
-            return format_schedule({date: schedule[date]})
-
-    return "Сегодня пар нет 😎"
+    return format_schedule(schedule.get(today, {})) or "Сегодня пар нет 😎"
 
 
 def get_tomorrow():
     schedule = parse_schedule()
     tomorrow = (datetime.now() + timedelta(days=1)).strftime("%d.%m.%Y")
 
-    for date in schedule:
-        if tomorrow in date:
-            return format_schedule({date: schedule[date]})
-
-    return "Завтра пар нет 😎"
+    return format_schedule(schedule.get(tomorrow, {})) or "Завтра пар нет 😎"
 
 
 def get_week():
