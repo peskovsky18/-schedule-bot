@@ -136,7 +136,11 @@ def extract_teacher(text):
 # =========================
 # 5. ФОРМАТ ВЫВОДА
 # =========================
+
 def format_schedule(schedule):
+    if not isinstance(schedule, dict):
+        return "Ошибка формата расписания"
+
     result = "📚 Расписание\n"
 
     for date, lessons in schedule.items():
@@ -152,23 +156,31 @@ def format_schedule(schedule):
             )
 
     return result
-
-
 # =========================
 # 6. API ДЛЯ БОТА
 # =========================
+
 def get_today():
     schedule = parse_schedule()
     today = datetime.now().strftime("%d.%m.%Y")
 
-    return format_schedule(schedule.get(today, {})) or "Сегодня пар нет 😎"
+    lessons = schedule.get(today)
 
+    if not lessons:
+        return "Сегодня пар нет 😎"
+
+    return format_schedule({today: lessons})
 
 def get_tomorrow():
     schedule = parse_schedule()
     tomorrow = (datetime.now() + timedelta(days=1)).strftime("%d.%m.%Y")
 
-    return format_schedule(schedule.get(tomorrow, {})) or "Завтра пар нет 😎"
+    lessons = schedule.get(tomorrow)
+
+    if not lessons:
+        return "Завтра пар нет 😎"
+
+    return format_schedule({tomorrow: lessons})
 
 
 def get_week():
