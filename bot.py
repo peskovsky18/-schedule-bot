@@ -59,7 +59,7 @@ def send_safe(chat_id, text):
 def start(message):
     bot.send_message(
         message.chat.id,
-        "📚 Привет! Кнопки всегда снизу 👇",
+        "ПРИВЕТ от КУРАГИ",
         reply_markup=main_menu()
     )
 
