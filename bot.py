@@ -12,12 +12,11 @@ from parser import parse_schedule, format_schedule
 # CONFIG
 # =========================
 TOKEN = os.getenv("TOKEN")
+ADMIN_ID = 439819918
+USERS_FILE = "users.json"
 
 if not TOKEN:
     raise Exception("TOKEN is not set")
-
-ADMIN_ID = 439819918
-USERS_FILE = "users.json"
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -52,41 +51,29 @@ def main_menu():
     return markup
 
 # =========================
-# SAFE SEND (FIXED)
+# SAFE SEND
 # =========================
 def send_safe(chat_id, text):
     MAX = 3800
     parts = [text[i:i + MAX] for i in range(0, len(text), MAX)]
 
-    for i, part in enumerate(parts):
-        bot.send_message(
-            chat_id,
-            part,
-            reply_markup=main_menu() if i == len(parts) - 1 else None
-        )
+    for part in parts:
+        bot.send_message(chat_id, part, reply_markup=main_menu())
 
 # =========================
-# WEBHOOK (FIXED SAFE)
+# WEBHOOK
 # =========================
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     try:
-        json_str = request.get_data().decode("utf-8")
-
-        if not json_str:
-            return "OK", 200
-
-        update = telebot.types.Update.de_json(json_str)
+        update = telebot.types.Update.de_json(
+            request.get_data().decode("utf-8")
+        )
         bot.process_new_updates([update])
-
     except Exception as e:
         print("WEBHOOK ERROR:", e)
 
     return "OK", 200
-@bot.message_handler(commands=["admin"])
-def admin_panel(message):
-    print("🔥 ADMIN TRIGGERED")
-    bot.send_message(message.chat.id, "ADMIN OK")
 
 # =========================
 # START
@@ -94,16 +81,10 @@ def admin_panel(message):
 @bot.message_handler(commands=["start"])
 def start(message):
     save_user(message.chat.id)
-    broadcast_mode.clear()
-
-    bot.send_message(
-        message.chat.id,
-        "📚 Бот запущен",
-        reply_markup=main_menu()
-    )
+    bot.send_message(message.chat.id, "📚 Бот запущен", reply_markup=main_menu())
 
 # =========================
-# ADMIN PANEL
+# ADMIN (ONLY ONE!)
 # =========================
 @bot.message_handler(commands=["admin"])
 def admin_panel(message):
@@ -159,7 +140,7 @@ def callbacks(call):
         bot.send_message(chat_id, "📢 Введите текст рассылки")
 
 # =========================
-# MAIN HANDLER (FIXED)
+# TEXT HANDLER (SINGLE!)
 # =========================
 @bot.message_handler(content_types=["text"])
 def handle(message):
@@ -167,57 +148,43 @@ def handle(message):
     chat_id = message.chat.id
     text = message.text or ""
 
-    # игнор команд
     if text.startswith("/"):
         return
 
-    global broadcast_mode
-
-    # =========================
-    # BROADCAST MODE
-    # =========================
+    # BROADCAST
     if chat_id == ADMIN_ID and broadcast_mode.get("admin"):
         broadcast_mode["admin"] = False
 
         users = load_users()
-        success, failed = 0, 0
+        ok, fail = 0, 0
 
         for u in users:
             try:
                 bot.send_message(u, f"📢 {text}")
-                success += 1
+                ok += 1
             except:
-                failed += 1
+                fail += 1
 
-        bot.send_message(chat_id, f"✔ Sent: {success} | ❌ Failed: {failed}")
+        bot.send_message(chat_id, f"✔ Sent: {ok} | ❌ Failed: {fail}")
         return
 
-    # =========================
     # SCHEDULE
-    # =========================
     try:
         schedule = parse_schedule()
 
         if not schedule:
-            send_safe(chat_id, "Нет данных 😎")
+            send_safe(chat_id, "Нет  😎")
             return
 
-        # FIX: правильный порядок дат
         keys = sorted(schedule.keys(), key=lambda x: datetime.strptime(x, "%d.%m.%Y"))
 
         if text == "📅 Сегодня":
-            if not keys:
-                send_safe(chat_id, "Нет расписания")
-                return
-
-            send_safe(chat_id, format_schedule({keys[0]: schedule[keys[0]]}))
+            if keys:
+                send_safe(chat_id, format_schedule({keys[0]: schedule[keys[0]]}))
 
         elif text == "⏭ Завтра":
-            if len(keys) < 2:
-                send_safe(chat_id, "Завтра нет данных 😎")
-                return
-
-            send_safe(chat_id, format_schedule({keys[1]: schedule[keys[1]]}))
+            if len(keys) > 1:
+                send_safe(chat_id, format_schedule({keys[1]: schedule[keys[1]]}))
 
         elif text == "📆 Неделя":
             send_safe(chat_id, format_schedule(schedule))
