@@ -100,11 +100,17 @@ def send_safe(chat_id, text):
 def start(message):
     save_user(message.chat.id)
 
-    bot.send_message(
-        message.chat.id,
-        "📚 Бот запущен",
-        reply_markup=main_menu()
-    )
+   bot.send_message(
+    message.chat.id,
+    "♻️ Обновление меню",
+    reply_markup=types.ReplyKeyboardRemove()
+)
+
+bot.send_message(
+    message.chat.id,
+    "📚 Бот запущен",
+    reply_markup=main_menu()
+)
 
 
 # =========================
