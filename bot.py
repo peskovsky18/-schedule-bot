@@ -1,12 +1,13 @@
 import os
 import json
+import re
 import telebot
 
 from flask import Flask, request
 from datetime import datetime
 from telebot import types
 
-from parser import parse_schedule, format_schedule
+from parser import parse_schedule
 
 # =========================
 # CONFIG
@@ -22,11 +23,11 @@ bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
 ERROR_LOGS = []
-broadcast_mode = False   # 🔥 FIX: было set(), теперь boolean
+broadcast_mode = False
 
 
 # =========================
-# AUTO WEBHOOK
+# WEBHOOK AUTO SET
 # =========================
 def set_webhook():
     domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
@@ -35,7 +36,6 @@ def set_webhook():
         return
 
     url = f"https://{domain}/"
-
     try:
         bot.remove_webhook()
         bot.set_webhook(url=url)
@@ -63,7 +63,7 @@ def save_user(user_id):
 
 
 # =========================
-# UI (FIX: admin button ONLY for admin)
+# KEYBOARD (FIXED)
 # =========================
 def main_menu(user_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -78,7 +78,7 @@ def main_menu(user_id):
 
 
 # =========================
-# SAFE SEND
+# SAFE SEND (HTML + stable)
 # =========================
 def send_safe(chat_id, text):
     if not text:
@@ -88,7 +88,40 @@ def send_safe(chat_id, text):
     parts = [text[i:i + MAX] for i in range(0, len(text), MAX)]
 
     for part in parts:
-        bot.send_message(chat_id, part, reply_markup=main_menu(chat_id))
+        bot.send_message(
+            chat_id,
+            part,
+            parse_mode="HTML",
+            reply_markup=main_menu(chat_id)
+        )
+
+
+# =========================
+# CLEAN FORMAT (AUTO BEAUTY)
+# =========================
+def format_schedule(schedule):
+    if not isinstance(schedule, dict):
+        return "Ошибка формата"
+
+    result = "📚 <b>Расписание</b>\n"
+
+    for date, lessons in schedule.items():
+        result += f"\n📅 <b>{date}</b>\n"
+
+        if not lessons:
+            result += "   Нет пар 😎\n"
+            continue
+
+        for l in lessons:
+            result += (
+                f"\n📖 <b>{l.get('time','—')}</b>\n"
+                f"   {l.get('subject','—')}\n"
+                f"   {l.get('type','—')}\n"
+                f"   👤 {l.get('teacher','—')}\n"
+                f"   🏫 {l.get('room','—')}\n"
+            )
+
+    return result
 
 
 # =========================
@@ -124,10 +157,10 @@ def start(message):
 
 
 # =========================
-# ADMIN PANEL (FIX: ONLY BUTTON FOR ADMIN)
+# ADMIN PANEL (FIXED)
 # =========================
 @bot.message_handler(func=lambda m: m.text == "⚙️ Admin")
-def admin_button(message):
+def admin(message):
 
     if message.from_user.id != ADMIN_ID:
         return
@@ -148,7 +181,7 @@ def admin_button(message):
         types.InlineKeyboardButton("🟢 Ping", callback_data="ping")
     )
 
-    bot.send_message(message.chat.id, "👑 PRO ADMIN PANEL", reply_markup=markup)
+    bot.send_message(message.chat.id, "👑 ADMIN PANEL", reply_markup=markup)
 
 
 # =========================
@@ -156,6 +189,8 @@ def admin_button(message):
 # =========================
 @bot.callback_query_handler(func=lambda call: True)
 def callbacks(call):
+
+    global broadcast_mode
 
     if call.from_user.id != ADMIN_ID:
         return
@@ -173,11 +208,9 @@ def callbacks(call):
         bot.send_message(chat_id, "🟢 OK")
 
     elif call.data == "logs":
-        logs = "\n".join(ERROR_LOGS[-10:]) or "No errors"
-        bot.send_message(chat_id, logs)
+        bot.send_message(chat_id, "\n".join(ERROR_LOGS[-10:]) or "No errors")
 
     elif call.data == "broadcast":
-        global broadcast_mode
         broadcast_mode = True
         bot.send_message(chat_id, "📢 Отправь текст рассылки")
 
@@ -193,12 +226,11 @@ def handle(message):
     chat_id = message.chat.id
     text = (message.text or "").strip()
 
-    print("TEXT:", chat_id, text)
-
     if text.startswith("/"):
         return
 
     try:
+
         # ================= BROADCAST =================
         if chat_id == ADMIN_ID and broadcast_mode:
             broadcast_mode = False
@@ -240,7 +272,7 @@ def handle(message):
             send_safe(chat_id, format_schedule(schedule))
 
     except Exception as e:
-        print("HANDLE ERROR:", e)
+        print("ERROR:", e)
         ERROR_LOGS.append(str(e))
         send_safe(chat_id, f"Ошибка: {e}")
 
@@ -250,7 +282,6 @@ def handle(message):
 # =========================
 if __name__ == "__main__":
     print("BOT STARTED")
-
     set_webhook()
 
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
