@@ -128,40 +128,78 @@ def parse_schedule():
 # =========================
 # FORMAT (КРАСИВЫЙ ВЫВОД)
 # =========================
-def format_schedule(schedule):
-
+def format_schedule(schedule, compact=False):
     if not schedule:
         return "📚 Расписание временно недоступно"
 
-    result = "📚 Расписание\n"
+    result = "📚 <b>Расписание</b>\n"
 
     for date, lessons in schedule.items():
 
-        result += f"\n📅 {date}\n"
+        result += f"\n\n📅 <b>{date}</b>\n"
 
         if not lessons:
-            result += "\nНет пар 😎\n"
+            result += "   😎 Нет пар\n"
             continue
 
         for l in lessons:
 
+            time = l.get("time", "—")
+            subject = l.get("subject", "—")
+            lesson_type = l.get("type", "")
+            teacher = l.get("teacher", "")
+            room = l.get("room", "")
+
+            # =========================
+            # COMPACT MODE
+            # =========================
+            if compact:
+                result += (
+                    f"\n• <b>{time}</b> — {subject}"
+                )
+
+                if lesson_type:
+                    result += f" ({lesson_type})"
+
+                if teacher != "—":
+                    result += f" • {teacher}"
+
+                if room != "—":
+                    result += f" • {room}"
+
+                continue
+
+            # =========================
+            # FULL MODE (NOTION STYLE)
+            # =========================
             result += (
-                f"\n📖 {l['time']}\n"
-                f"    {l['subject']}\n"
-                f"    {l['type']}\n"
-                f"    👤 {l['teacher']}\n"
-                f"    🏫 {l['room']}\n"
-                f"──────────────────\n"
+                f"\n┌─ 📖 <b>{time}</b>\n"
+                f"│  {subject}\n"
+                f"│  🏷 {lesson_type}\n"
+                f"│  👤 {teacher}\n"
+                f"│  🏫 {room}\n"
+                f"└────────────────────\n"
             )
 
     return result
-
-
 # =========================
 # HELPERS
 # =========================
+from datetime import datetime, timedelta
+
+
 def get_week():
-    return format_schedule(parse_schedule())
+    schedule = parse_schedule()
+
+    # сортировка дат
+    sorted_schedule = dict(
+        sorted(
+            schedule.items(),
+            key=lambda x: datetime.strptime(x[0], "%d.%m.%Y")
+        )
+    )
+
+    return format_schedule(sorted_schedule)
 
 
 def get_today():
@@ -169,7 +207,7 @@ def get_today():
     today = datetime.now().strftime("%d.%m.%Y")
 
     for d in schedule:
-        if today in d:
+        if today == d:
             return format_schedule({d: schedule[d]})
 
     return "Сегодня пар нет 😎"
@@ -177,11 +215,10 @@ def get_today():
 
 def get_tomorrow():
     schedule = parse_schedule()
-    tomorrow = (datetime.now()).strftime("%d.%m.%Y")
+    tomorrow = (datetime.now() + timedelta(days=1)).strftime("%d.%m.%Y")
 
-    keys = list(schedule.keys())
-
-    if len(keys) > 1:
-        return format_schedule({keys[1]: schedule[keys[1]]})
+    for d in schedule:
+        if tomorrow == d:
+            return format_schedule({d: schedule[d]})
 
     return "Завтра пар нет 😎"
