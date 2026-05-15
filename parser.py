@@ -128,15 +128,14 @@ def parse_schedule():
 # FORMAT (Notion style + compact)
 # =========================
 def format_schedule(schedule, compact=False):
-
     if not schedule:
         return "📚 Расписание временно недоступно"
 
-    result = "📚 <b>Расписание</b>\n"
+    result = "📚 Расписание\n"
 
     for date, lessons in schedule.items():
 
-        result += f"\n\n📅 <b>{date}</b>\n"
+        result += f"\n\n📅 {date}\n"
 
         if not lessons:
             result += "   😎 Нет пар\n"
@@ -151,14 +150,16 @@ def format_schedule(schedule, compact=False):
             room = l["room"]
 
             if compact:
-                result += f"\n• <b>{time}</b> — {subject}"
+                result += f"\n• {time} — {subject}"
+
                 if teacher != "—":
                     result += f" • {teacher}"
                 if room != "—":
                     result += f" • {room}"
+
             else:
                 result += (
-                    f"\n┌─ 📖 <b>{time}</b>\n"
+                    f"\n┌─ 📖 {time}\n"
                     f"│ {subject}\n"
                     f"│ 🏷 {ttype}\n"
                     f"│ 👤 {teacher}\n"
