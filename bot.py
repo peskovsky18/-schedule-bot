@@ -5,7 +5,7 @@ import telebot
 from flask import Flask, request
 from telebot import types
 
-from parser import parse_schedule, format_schedule
+from parser import parse_schedule, format_schedule, get_today, get_tomorrow
 
 # =========================
 # CONFIG
@@ -65,7 +65,7 @@ def save_user(user_id):
 
 
 # =========================
-# KEYBOARD (NO ADMIN BUTTON)
+# KEYBOARD
 # =========================
 def main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -101,7 +101,7 @@ def start(message):
 
 
 # =========================
-# ADMIN ONLY COMMAND
+# ADMIN PANEL
 # =========================
 @bot.message_handler(commands=["admin"])
 def admin(message):
@@ -165,13 +165,13 @@ def callbacks(call):
 def handle(message):
 
     chat_id = message.chat.id
-    text = message.text.strip()
+    text = (message.text or "").strip()
 
     if text.startswith("/"):
         return
 
     try:
-        # BROADCAST
+        # ================= BROADCAST =================
         if chat_id == ADMIN_ID and chat_id in broadcast_mode:
             broadcast_mode.remove(chat_id)
 
@@ -188,17 +188,21 @@ def handle(message):
             bot.send_message(chat_id, f"✔ Sent: {ok} | ❌ Failed: {fail}")
             return
 
-        # SCHEDULE
-       schedule = parse_schedule()
+        # ================= SCHEDULE =================
+        schedule = parse_schedule()
 
-if text == "📅 Сегодня":
-    send_safe(chat_id, format_schedule(schedule, compact=False))
+        if not schedule:
+            send_safe(chat_id, "Нет данных 😎")
+            return
 
-elif text == "⏭ Завтра":
-    send_safe(chat_id, format_schedule(schedule, compact=True))
+        if text == "📅 Сегодня":
+            send_safe(chat_id, format_schedule(get_today(), compact=False))
 
-elif text == "📆 Неделя":
-    send_safe(chat_id, format_schedule(schedule, compact=False))
+        elif text == "⏭ Завтра":
+            send_safe(chat_id, format_schedule(get_tomorrow(), compact=True))
+
+        elif text == "📆 Неделя":
+            send_safe(chat_id, format_schedule(schedule, compact=False))
 
     except Exception as e:
         ERROR_LOGS.append(str(e))

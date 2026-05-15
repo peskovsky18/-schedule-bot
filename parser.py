@@ -4,7 +4,7 @@ import time
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 
-URL = "https://old-guide.herzen.spb.ru/static/schedule_dates.php?id_group=23316"
+URL = "https://guide.herzen.spb.ru/schedule/23316/by-dates"
 
 # =========================
 # CACHE
@@ -15,7 +15,7 @@ CACHE_TTL = 300
 
 
 # =========================
-# FETCH (с нормальной проверкой)
+# FETCH
 # =========================
 def fetch_html():
     try:
@@ -26,14 +26,10 @@ def fetch_html():
         r = requests.get(URL, headers=headers, timeout=10)
         r.encoding = "utf-8"
 
-        html = r.text
+        if len(r.text) < 2000:
+            print("[FETCH] HTML too small → possible empty page")
 
-        # защита от пустого ответа
-        if len(html) < 2000:
-            print("[FETCH WARNING] HTML too small — likely empty schedule page")
-            return None
-
-        return html
+        return r.text
 
     except Exception as e:
         print("[FETCH ERROR]", e)
@@ -41,12 +37,11 @@ def fetch_html():
 
 
 # =========================
-# PARSE
+# PARSER
 # =========================
 def parse_schedule():
     global _cached_schedule, _cached_time
 
-    # cache
     if _cached_schedule and (time.time() - _cached_time < CACHE_TTL):
         return _cached_schedule
 
@@ -55,8 +50,6 @@ def parse_schedule():
         return _cached_schedule or {}
 
     soup = BeautifulSoup(html, "html.parser")
-
-    # убираем лишние теги
     text = soup.get_text("\n", strip=True)
 
     date_pattern = r"\d{2}\.\d{2}\.\d{4}"
@@ -72,7 +65,7 @@ def parse_schedule():
         if not part:
             continue
 
-        # дата
+        # DATE
         if re.fullmatch(date_pattern, part):
             current_date = part
             schedule[current_date] = []
@@ -109,7 +102,7 @@ def parse_schedule():
                         lesson_type = "практика"
                     elif "лаб" in low:
                         lesson_type = "лабораторная"
-                    elif "ауд" in low or "корпус" in low:
+                    elif "ауд" in low or "корпус" in low or "мойка" in low:
                         room = line
                     elif any(x in low for x in ["доц", "проф", "преп", "зав"]):
                         teacher = line
@@ -123,7 +116,7 @@ def parse_schedule():
                 })
 
             except Exception as e:
-                print("[LESSON ERROR]", e)
+                print("[PARSE ERROR]", e)
 
     _cached_schedule = schedule
     _cached_time = time.time()
@@ -135,12 +128,14 @@ def parse_schedule():
 # FORMAT (Notion style + compact)
 # =========================
 def format_schedule(schedule, compact=False):
+
     if not schedule:
         return "📚 Расписание временно недоступно"
 
     result = "📚 <b>Расписание</b>\n"
 
     for date, lessons in schedule.items():
+
         result += f"\n\n📅 <b>{date}</b>\n"
 
         if not lessons:
@@ -148,6 +143,7 @@ def format_schedule(schedule, compact=False):
             continue
 
         for l in lessons:
+
             time = l["time"]
             subject = l["subject"]
             ttype = l["type"]
@@ -177,18 +173,18 @@ def format_schedule(schedule, compact=False):
 # HELPERS
 # =========================
 def get_week():
-    return format_schedule(parse_schedule())
+    return parse_schedule()
 
 
 def get_today():
     schedule = parse_schedule()
     today = datetime.now().strftime("%d.%m.%Y")
 
-    return format_schedule({k: v for k, v in schedule.items() if today in k})
+    return {k: v for k, v in schedule.items() if today in k}
 
 
 def get_tomorrow():
     schedule = parse_schedule()
     tomorrow = (datetime.now() + timedelta(days=1)).strftime("%d.%m.%Y")
 
-    return format_schedule({k: v for k, v in schedule.items() if tomorrow in k})
+    return {k: v for k, v in schedule.items() if tomorrow in k}
