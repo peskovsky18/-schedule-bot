@@ -22,19 +22,27 @@ bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
 ERROR_LOGS = []
-broadcast_mode = set()
+broadcast_mode = False   # 🔥 FIX: было set(), теперь boolean
+
 
 # =========================
-# AUTO SET WEBHOOK (IMPORTANT)
+# AUTO WEBHOOK
 # =========================
 def set_webhook():
-    url = f"https://{os.getenv('RAILWAY_PUBLIC_DOMAIN')}/"
+    domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+    if not domain:
+        print("No RAILWAY_PUBLIC_DOMAIN")
+        return
+
+    url = f"https://{domain}/"
+
     try:
         bot.remove_webhook()
         bot.set_webhook(url=url)
         print("Webhook set:", url)
     except Exception as e:
         print("Webhook error:", e)
+
 
 # =========================
 # USERS
@@ -53,15 +61,21 @@ def save_user(user_id):
         with open(USERS_FILE, "w") as f:
             json.dump(users, f)
 
+
 # =========================
-# UI
+# UI (FIX: admin button ONLY for admin)
 # =========================
-def main_menu():
+def main_menu(user_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
     markup.row("📅 Сегодня", "⏭ Завтра")
     markup.row("📆 Неделя")
-    markup.row("/admin")
+
+    if user_id == ADMIN_ID:
+        markup.row("⚙️ Admin")
+
     return markup
+
 
 # =========================
 # SAFE SEND
@@ -74,10 +88,11 @@ def send_safe(chat_id, text):
     parts = [text[i:i + MAX] for i in range(0, len(text), MAX)]
 
     for part in parts:
-        bot.send_message(chat_id, part, reply_markup=main_menu())
+        bot.send_message(chat_id, part, reply_markup=main_menu(chat_id))
+
 
 # =========================
-# WEBHOOK ROUTE (ONLY ONE!)
+# WEBHOOK
 # =========================
 @app.route("/", methods=["POST"])
 def webhook():
@@ -93,31 +108,28 @@ def webhook():
 
     return "OK", 200
 
+
 # =========================
 # START
 # =========================
 @bot.message_handler(commands=["start"])
 def start(message):
-    print("START:", message.from_user.id)
-
     save_user(message.chat.id)
 
     bot.send_message(
         message.chat.id,
         "📚 Бот запущен",
-        reply_markup=main_menu()
+        reply_markup=main_menu(message.chat.id)
     )
 
-# =========================
-# ADMIN PANEL
-# =========================
-@bot.message_handler(commands=["admin"])
-def admin(message):
 
-    print("ADMIN HIT:", message.from_user.id)
+# =========================
+# ADMIN PANEL (FIX: ONLY BUTTON FOR ADMIN)
+# =========================
+@bot.message_handler(func=lambda m: m.text == "⚙️ Admin")
+def admin_button(message):
 
     if message.from_user.id != ADMIN_ID:
-        bot.send_message(message.chat.id, "⛔ Нет доступа")
         return
 
     markup = types.InlineKeyboardMarkup()
@@ -137,6 +149,7 @@ def admin(message):
     )
 
     bot.send_message(message.chat.id, "👑 PRO ADMIN PANEL", reply_markup=markup)
+
 
 # =========================
 # CALLBACKS
@@ -164,8 +177,10 @@ def callbacks(call):
         bot.send_message(chat_id, logs)
 
     elif call.data == "broadcast":
-        broadcast_mode.add(chat_id)
+        global broadcast_mode
+        broadcast_mode = True
         bot.send_message(chat_id, "📢 Отправь текст рассылки")
+
 
 # =========================
 # MAIN HANDLER
@@ -173,19 +188,20 @@ def callbacks(call):
 @bot.message_handler(content_types=["text"])
 def handle(message):
 
+    global broadcast_mode
+
     chat_id = message.chat.id
     text = (message.text or "").strip()
 
     print("TEXT:", chat_id, text)
 
-    # ignore commands
     if text.startswith("/"):
         return
 
     try:
         # ================= BROADCAST =================
-        if chat_id in broadcast_mode and chat_id == ADMIN_ID:
-            broadcast_mode.remove(chat_id)
+        if chat_id == ADMIN_ID and broadcast_mode:
+            broadcast_mode = False
 
             users = load_users()
             ok, fail = 0, 0
@@ -228,12 +244,13 @@ def handle(message):
         ERROR_LOGS.append(str(e))
         send_safe(chat_id, f"Ошибка: {e}")
 
+
 # =========================
 # START SERVER
 # =========================
 if __name__ == "__main__":
     print("BOT STARTED")
 
-    set_webhook()   # 🔥 AUTO FIX WEBHOOK
+    set_webhook()
 
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
