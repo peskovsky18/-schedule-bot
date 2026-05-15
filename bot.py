@@ -189,23 +189,16 @@ def handle(message):
             return
 
         # SCHEDULE
-        schedule = parse_schedule()
+       schedule = parse_schedule()
 
-        if not schedule:
-            send_safe(chat_id, "Нет данных 😎")
-            return
+if text == "📅 Сегодня":
+    send_safe(chat_id, format_schedule(schedule, compact=False))
 
-        keys = sorted(schedule.keys())
+elif text == "⏭ Завтра":
+    send_safe(chat_id, format_schedule(schedule, compact=True))
 
-        if text == "📅 Сегодня":
-            send_safe(chat_id, format_schedule({keys[0]: schedule[keys[0]]}))
-
-        elif text == "⏭ Завтра":
-            if len(keys) > 1:
-                send_safe(chat_id, format_schedule({keys[1]: schedule[keys[1]]}))
-
-        elif text == "📆 Неделя":
-            send_safe(chat_id, format_schedule(schedule))
+elif text == "📆 Неделя":
+    send_safe(chat_id, format_schedule(schedule, compact=False))
 
     except Exception as e:
         ERROR_LOGS.append(str(e))
