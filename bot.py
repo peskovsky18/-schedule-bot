@@ -83,6 +83,10 @@ def webhook():
         print("WEBHOOK ERROR:", e)
 
     return "OK", 200
+@bot.message_handler(commands=["admin"])
+def admin_panel(message):
+    print("🔥 ADMIN TRIGGERED")
+    bot.send_message(message.chat.id, "ADMIN OK")
 
 # =========================
 # START
