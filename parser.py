@@ -2,41 +2,42 @@ import requests
 import re
 import time
 from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
+from datetime import datetime
 
-URL = "https://guide.herzen.spb.ru/schedule/23316/by-dates"
+URL = "https://old-guide.herzen.spb.ru/static/schedule_dates.php?id_group=23316"
 
+# =========================
+# CACHE
+# =========================
 _cached_schedule = None
 _cached_time = 0
 CACHE_TTL = 300
 
 
+# =========================
+# FETCH
+# =========================
 def fetch_html():
-
-    headers = {"User-Agent": "Mozilla/5.0"}
-
     try:
-        r = requests.get(URL, headers=headers, timeout=15)
-
-        if r.status_code == 200:
-            r.encoding = "utf-8"
-            return r.text
-
+        r = requests.get(URL, timeout=10)
+        r.encoding = "utf-8"
+        return r.text
     except Exception as e:
-        print("FETCH ERROR:", e)
+        print("[FETCH ERROR]", e)
+        return None
 
-    return None
 
-
+# =========================
+# MAIN PARSER
+# =========================
 def parse_schedule():
-
     global _cached_schedule, _cached_time
 
+    # cache
     if _cached_schedule and (time.time() - _cached_time < CACHE_TTL):
         return _cached_schedule
 
     html = fetch_html()
-
     if not html:
         return _cached_schedule or {}
 
@@ -57,6 +58,7 @@ def parse_schedule():
         if not part:
             continue
 
+        # DATE
         if re.fullmatch(date_pattern, part):
             current_date = part
             schedule[current_date] = []
@@ -65,13 +67,16 @@ def parse_schedule():
         if not current_date:
             continue
 
+        # LESSON BLOCKS
         matches = re.split(f"({time_pattern})", part)
 
         for i in range(1, len(matches), 2):
 
             try:
-                lesson_time = matches[i].replace(" ", "").replace("-", "–")
+                time_raw = matches[i]
                 block = matches[i + 1]
+
+                time_str = time_raw.replace(" ", "").replace("-", "–")
 
                 lines = [x.strip() for x in block.split("\n") if x.strip()]
 
@@ -79,26 +84,32 @@ def parse_schedule():
                     continue
 
                 subject = lines[0]
+
                 lesson_type = "занятие"
                 teacher = "—"
                 room = "—"
 
                 for line in lines:
-                    l = line.lower()
+                    low = line.lower()
 
-                    if "лекц" in l:
+                    if "лекц" in low:
                         lesson_type = "лекция"
-                    elif "практ" in l:
+                    elif "практ" in low:
                         lesson_type = "практика"
-                    elif "лаб" in l:
+                    elif "лаб" in low:
                         lesson_type = "лабораторная"
-                    elif "ауд" in l or "корпус" in l:
+                    elif "ауд" in low or "корпус" in low:
                         room = line
-                    elif any(x in l for x in ["доц", "проф", "преп", "зав"]):
+                    elif any(x in low for x in ["доц", "проф", "преп", "зав"]):
                         teacher = line
 
+                # очистка мусора
+                subject = re.sub(r"\s{2,}", " ", subject)
+                teacher = re.sub(r"\s{2,}", " ", teacher)
+                room = re.sub(r"\s{2,}", " ", room)
+
                 schedule[current_date].append({
-                    "time": lesson_time,
+                    "time": time_str,
                     "subject": subject,
                     "type": lesson_type,
                     "teacher": teacher,
@@ -106,7 +117,7 @@ def parse_schedule():
                 })
 
             except Exception as e:
-                print("LESSON ERROR:", e)
+                print("[LESSON ERROR]", e)
 
     _cached_schedule = schedule
     _cached_time = time.time()
@@ -114,16 +125,23 @@ def parse_schedule():
     return schedule
 
 
+# =========================
+# FORMAT (КРАСИВЫЙ ВЫВОД)
+# =========================
 def format_schedule(schedule):
 
     if not schedule:
-        return "📚 Расписание недоступно"
+        return "📚 Расписание временно недоступно"
 
     result = "📚 Расписание\n"
 
     for date, lessons in schedule.items():
 
         result += f"\n📅 {date}\n"
+
+        if not lessons:
+            result += "\nНет пар 😎\n"
+            continue
 
         for l in lessons:
 
@@ -133,9 +151,17 @@ def format_schedule(schedule):
                 f"    {l['type']}\n"
                 f"    👤 {l['teacher']}\n"
                 f"    🏫 {l['room']}\n"
+                f"──────────────────\n"
             )
 
     return result
+
+
+# =========================
+# HELPERS
+# =========================
+def get_week():
+    return format_schedule(parse_schedule())
 
 
 def get_today():
@@ -151,14 +177,11 @@ def get_today():
 
 def get_tomorrow():
     schedule = parse_schedule()
-    tomorrow = (datetime.now() + timedelta(days=1)).strftime("%d.%m.%Y")
+    tomorrow = (datetime.now()).strftime("%d.%m.%Y")
 
-    for d in schedule:
-        if tomorrow in d:
-            return format_schedule({d: schedule[d]})
+    keys = list(schedule.keys())
+
+    if len(keys) > 1:
+        return format_schedule({keys[1]: schedule[keys[1]]})
 
     return "Завтра пар нет 😎"
-
-
-def get_week():
-    return format_schedule(parse_schedule())
