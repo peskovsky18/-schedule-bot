@@ -22,7 +22,19 @@ bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
 ERROR_LOGS = []
-broadcast_mode = set()  # safer than dict
+broadcast_mode = set()
+
+# =========================
+# AUTO SET WEBHOOK (IMPORTANT)
+# =========================
+def set_webhook():
+    url = f"https://{os.getenv('RAILWAY_PUBLIC_DOMAIN')}/"
+    try:
+        bot.remove_webhook()
+        bot.set_webhook(url=url)
+        print("Webhook set:", url)
+    except Exception as e:
+        print("Webhook error:", e)
 
 # =========================
 # USERS
@@ -42,7 +54,7 @@ def save_user(user_id):
             json.dump(users, f)
 
 # =========================
-# KEYBOARD
+# UI
 # =========================
 def main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -65,13 +77,14 @@ def send_safe(chat_id, text):
         bot.send_message(chat_id, part, reply_markup=main_menu())
 
 # =========================
-# WEBHOOK
+# WEBHOOK ROUTE (ONLY ONE!)
 # =========================
 @app.route("/", methods=["POST"])
 def webhook():
     try:
-        json_str = request.get_data().decode("utf-8")
-        update = telebot.types.Update.de_json(json_str)
+        update = telebot.types.Update.de_json(
+            request.get_data().decode("utf-8")
+        )
         bot.process_new_updates([update])
 
     except Exception as e:
@@ -99,7 +112,7 @@ def start(message):
 # ADMIN PANEL
 # =========================
 @bot.message_handler(commands=["admin"])
-def admin_panel(message):
+def admin(message):
 
     print("ADMIN HIT:", message.from_user.id)
 
@@ -131,36 +144,31 @@ def admin_panel(message):
 @bot.callback_query_handler(func=lambda call: True)
 def callbacks(call):
 
-    try:
-        if call.from_user.id != ADMIN_ID:
-            return
+    if call.from_user.id != ADMIN_ID:
+        return
 
-        chat_id = call.message.chat.id
-        bot.answer_callback_query(call.id)
+    chat_id = call.message.chat.id
+    bot.answer_callback_query(call.id)
 
-        if call.data == "stats":
-            bot.send_message(chat_id, f"👥 Users: {len(load_users())}")
+    if call.data == "stats":
+        bot.send_message(chat_id, f"👥 Users: {len(load_users())}")
 
-        elif call.data == "users":
-            bot.send_message(chat_id, f"👥 Total: {len(load_users())}")
+    elif call.data == "users":
+        bot.send_message(chat_id, f"👥 Total: {len(load_users())}")
 
-        elif call.data == "ping":
-            bot.send_message(chat_id, "🟢 OK")
+    elif call.data == "ping":
+        bot.send_message(chat_id, "🟢 OK")
 
-        elif call.data == "logs":
-            logs = "\n".join(ERROR_LOGS[-10:]) or "No errors"
-            bot.send_message(chat_id, logs)
+    elif call.data == "logs":
+        logs = "\n".join(ERROR_LOGS[-10:]) or "No errors"
+        bot.send_message(chat_id, logs)
 
-        elif call.data == "broadcast":
-            broadcast_mode.add(chat_id)
-            bot.send_message(chat_id, "📢 Отправь текст рассылки")
-
-    except Exception as e:
-        print("CALLBACK ERROR:", e)
-        ERROR_LOGS.append(str(e))
+    elif call.data == "broadcast":
+        broadcast_mode.add(chat_id)
+        bot.send_message(chat_id, "📢 Отправь текст рассылки")
 
 # =========================
-# TEXT HANDLER (MAIN ROUTER)
+# MAIN HANDLER
 # =========================
 @bot.message_handler(content_types=["text"])
 def handle(message):
@@ -170,14 +178,12 @@ def handle(message):
 
     print("TEXT:", chat_id, text)
 
-    # ❗ IGNORE COMMANDS HERE
+    # ignore commands
     if text.startswith("/"):
         return
 
     try:
-        # =========================
-        # BROADCAST MODE
-        # =========================
+        # ================= BROADCAST =================
         if chat_id in broadcast_mode and chat_id == ADMIN_ID:
             broadcast_mode.remove(chat_id)
 
@@ -194,9 +200,7 @@ def handle(message):
             bot.send_message(chat_id, f"✔ Sent: {ok} | ❌ Failed: {fail}")
             return
 
-        # =========================
-        # SCHEDULE
-        # =========================
+        # ================= SCHEDULE =================
         schedule = parse_schedule()
 
         if not schedule:
@@ -215,8 +219,6 @@ def handle(message):
         elif text == "⏭ Завтра":
             if len(keys) > 1:
                 send_safe(chat_id, format_schedule({keys[1]: schedule[keys[1]]}))
-            else:
-                send_safe(chat_id, "Завтра нет данных 😎")
 
         elif text == "📆 Неделя":
             send_safe(chat_id, format_schedule(schedule))
@@ -231,4 +233,7 @@ def handle(message):
 # =========================
 if __name__ == "__main__":
     print("BOT STARTED")
+
+    set_webhook()   # 🔥 AUTO FIX WEBHOOK
+
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
