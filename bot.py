@@ -1,13 +1,11 @@
 import os
 import json
-import re
 import telebot
 
 from flask import Flask, request
-from datetime import datetime
 from telebot import types
 
-from parser import parse_schedule
+from parser import parse_schedule, format_schedule
 
 # =========================
 # CONFIG
@@ -23,105 +21,7 @@ bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
 ERROR_LOGS = []
-broadcast_mode = False
-
-
-# =========================
-# WEBHOOK AUTO SET
-# =========================
-def set_webhook():
-    domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
-    if not domain:
-        print("No RAILWAY_PUBLIC_DOMAIN")
-        return
-
-    url = f"https://{domain}/"
-    try:
-        bot.remove_webhook()
-        bot.set_webhook(url=url)
-        print("Webhook set:", url)
-    except Exception as e:
-        print("Webhook error:", e)
-
-
-# =========================
-# USERS
-# =========================
-def load_users():
-    try:
-        with open(USERS_FILE, "r") as f:
-            return json.load(f)
-    except:
-        return []
-
-def save_user(user_id):
-    users = load_users()
-    if user_id not in users:
-        users.append(user_id)
-        with open(USERS_FILE, "w") as f:
-            json.dump(users, f)
-
-
-# =========================
-# KEYBOARD (FIXED)
-# =========================
-def main_menu(user_id):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-
-    markup.row("📅 Сегодня", "⏭ Завтра")
-    markup.row("📆 Неделя")
-
-    if user_id == ADMIN_ID:
-        markup.row("⚙️ Admin")
-
-    return markup
-
-
-# =========================
-# SAFE SEND (HTML + stable)
-# =========================
-def send_safe(chat_id, text):
-    if not text:
-        text = "Пусто"
-
-    MAX = 3800
-    parts = [text[i:i + MAX] for i in range(0, len(text), MAX)]
-
-    for part in parts:
-        bot.send_message(
-            chat_id,
-            part,
-            parse_mode="HTML",
-            reply_markup=main_menu(chat_id)
-        )
-
-
-# =========================
-# CLEAN FORMAT (AUTO BEAUTY)
-# =========================
-def format_schedule(schedule):
-    if not isinstance(schedule, dict):
-        return "Ошибка формата"
-
-    result = "📚 <b>Расписание</b>\n"
-
-    for date, lessons in schedule.items():
-        result += f"\n📅 <b>{date}</b>\n"
-
-        if not lessons:
-            result += "   Нет пар 😎\n"
-            continue
-
-        for l in lessons:
-            result += (
-                f"\n📖 <b>{l.get('time','—')}</b>\n"
-                f"   {l.get('subject','—')}\n"
-                f"   {l.get('type','—')}\n"
-                f"   👤 {l.get('teacher','—')}\n"
-                f"   🏫 {l.get('room','—')}\n"
-            )
-
-    return result
+broadcast_mode = set()
 
 
 # =========================
@@ -134,7 +34,6 @@ def webhook():
             request.get_data().decode("utf-8")
         )
         bot.process_new_updates([update])
-
     except Exception as e:
         print("WEBHOOK ERROR:", e)
         ERROR_LOGS.append(str(e))
@@ -143,26 +42,77 @@ def webhook():
 
 
 # =========================
+# USERS
+# =========================
+def load_users():
+    try:
+        with open(USERS_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return []
+
+
+def save_user(user_id):
+    users = load_users()
+    if user_id not in users:
+        users.append(user_id)
+        with open(USERS_FILE, "w") as f:
+            json.dump(users, f)
+
+
+# =========================
+# KEYBOARD
+# =========================
+def main_menu(user_id=None):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
+    markup.row("📅 Сегодня", "⏭ Завтра")
+    markup.row("📆 Неделя")
+
+    # только для админа
+    if user_id == ADMIN_ID:
+        markup.row("👑 Админ панель")
+
+    return markup
+
+
+# =========================
+# SAFE SEND
+# =========================
+def send_safe(chat_id, text):
+    if not text:
+        text = "Пусто"
+
+    MAX = 3800
+    parts = [text[i:i + MAX] for i in range(0, len(text), MAX)]
+
+    for part in parts:
+        bot.send_message(chat_id, part, reply_markup=main_menu(chat_id))
+
+
+# =========================
 # START
 # =========================
 @bot.message_handler(commands=["start"])
 def start(message):
+
     save_user(message.chat.id)
 
     bot.send_message(
         message.chat.id,
         "📚 Бот запущен",
-        reply_markup=main_menu(message.chat.id)
+        reply_markup=main_menu(message.from_user.id)
     )
 
 
 # =========================
-# ADMIN PANEL (FIXED)
+# ADMIN PANEL
 # =========================
-@bot.message_handler(func=lambda m: m.text == "⚙️ Admin")
+@bot.message_handler(commands=["admin"])
 def admin(message):
 
     if message.from_user.id != ADMIN_ID:
+        bot.send_message(message.chat.id, "⛔ Нет доступа")
         return
 
     markup = types.InlineKeyboardMarkup()
@@ -190,8 +140,6 @@ def admin(message):
 @bot.callback_query_handler(func=lambda call: True)
 def callbacks(call):
 
-    global broadcast_mode
-
     if call.from_user.id != ADMIN_ID:
         return
 
@@ -208,32 +156,35 @@ def callbacks(call):
         bot.send_message(chat_id, "🟢 OK")
 
     elif call.data == "logs":
-        bot.send_message(chat_id, "\n".join(ERROR_LOGS[-10:]) or "No errors")
+        bot.send_message(
+            chat_id,
+            "\n".join(ERROR_LOGS[-10:]) or "No errors"
+        )
 
     elif call.data == "broadcast":
-        broadcast_mode = True
+        broadcast_mode.add(chat_id)
         bot.send_message(chat_id, "📢 Отправь текст рассылки")
 
 
 # =========================
-# MAIN HANDLER
+# TEXT HANDLER
 # =========================
 @bot.message_handler(content_types=["text"])
 def handle(message):
 
-    global broadcast_mode
-
     chat_id = message.chat.id
     text = (message.text or "").strip()
 
+    # игнор команд
     if text.startswith("/"):
         return
 
     try:
-
-        # ================= BROADCAST =================
-        if chat_id == ADMIN_ID and broadcast_mode:
-            broadcast_mode = False
+        # =========================
+        # ADMIN BROADCAST
+        # =========================
+        if chat_id == ADMIN_ID and chat_id in broadcast_mode:
+            broadcast_mode.remove(chat_id)
 
             users = load_users()
             ok, fail = 0, 0
@@ -248,17 +199,16 @@ def handle(message):
             bot.send_message(chat_id, f"✔ Sent: {ok} | ❌ Failed: {fail}")
             return
 
-        # ================= SCHEDULE =================
+        # =========================
+        # SCHEDULE
+        # =========================
         schedule = parse_schedule()
 
         if not schedule:
             send_safe(chat_id, "Нет данных 😎")
             return
 
-        keys = sorted(
-            schedule.keys(),
-            key=lambda x: datetime.strptime(x, "%d.%m.%Y")
-        )
+        keys = sorted(schedule.keys())
 
         if text == "📅 Сегодня":
             if keys:
@@ -271,8 +221,11 @@ def handle(message):
         elif text == "📆 Неделя":
             send_safe(chat_id, format_schedule(schedule))
 
+        elif text == "👑 Админ sasha swag 6767":
+            if chat_id == ADMIN_ID:
+                admin(message)
+
     except Exception as e:
-        print("ERROR:", e)
         ERROR_LOGS.append(str(e))
         send_safe(chat_id, f"Ошибка: {e}")
 
@@ -282,6 +235,5 @@ def handle(message):
 # =========================
 if __name__ == "__main__":
     print("BOT STARTED")
-    set_webhook()
 
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
