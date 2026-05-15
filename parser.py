@@ -2,13 +2,10 @@ import requests
 import re
 import time
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timedelta
 
 URL = "https://old-guide.herzen.spb.ru/static/schedule_dates.php?id_group=23316"
 
-# =========================
-# CACHE
-# =========================
 _cached_schedule = None
 _cached_time = 0
 CACHE_TTL = 300
@@ -28,12 +25,11 @@ def fetch_html():
 
 
 # =========================
-# MAIN PARSER
+# PARSE
 # =========================
 def parse_schedule():
     global _cached_schedule, _cached_time
 
-    # cache
     if _cached_schedule and (time.time() - _cached_time < CACHE_TTL):
         return _cached_schedule
 
@@ -53,12 +49,10 @@ def parse_schedule():
     current_date = None
 
     for part in parts:
-
         part = part.strip()
         if not part:
             continue
 
-        # DATE
         if re.fullmatch(date_pattern, part):
             current_date = part
             schedule[current_date] = []
@@ -67,23 +61,20 @@ def parse_schedule():
         if not current_date:
             continue
 
-        # LESSON BLOCKS
         matches = re.split(f"({time_pattern})", part)
 
         for i in range(1, len(matches), 2):
-
             try:
                 time_raw = matches[i]
                 block = matches[i + 1]
 
-                time_str = time_raw.replace(" ", "").replace("-", "–")
+                time_str = re.sub(r"\s*-\s*", "–", time_raw)
 
                 lines = [x.strip() for x in block.split("\n") if x.strip()]
-
                 if not lines:
                     continue
 
-                subject = lines[0]
+                subject = next((l for l in lines if not re.search(r"\d{1,2}:\d{2}", l)), "—")
 
                 lesson_type = "занятие"
                 teacher = "—"
@@ -98,15 +89,12 @@ def parse_schedule():
                         lesson_type = "практика"
                     elif "лаб" in low:
                         lesson_type = "лабораторная"
-                    elif "ауд" in low or "корпус" in low:
+
+                    elif "ауд" in low or "корпус" in low or "мойка" in low:
                         room = line
+
                     elif any(x in low for x in ["доц", "проф", "преп", "зав"]):
                         teacher = line
-
-                # очистка мусора
-                subject = re.sub(r"\s{2,}", " ", subject)
-                teacher = re.sub(r"\s{2,}", " ", teacher)
-                room = re.sub(r"\s{2,}", " ", room)
 
                 schedule[current_date].append({
                     "time": time_str,
@@ -126,11 +114,11 @@ def parse_schedule():
 
 
 # =========================
-# FORMAT (КРАСИВЫЙ ВЫВОД)
+# FORMAT (NOTION STYLE)
 # =========================
 def format_schedule(schedule, compact=False):
     if not schedule:
-        return "📚 Расписание временно недоступно"
+        return "📚 Расписание недоступно"
 
     result = "📚 <b>Расписание</b>\n"
 
@@ -143,82 +131,50 @@ def format_schedule(schedule, compact=False):
             continue
 
         for l in lessons:
+            time = l["time"]
+            subject = l["subject"]
+            ttype = l["type"]
+            teacher = l["teacher"]
+            room = l["room"]
 
-            time = l.get("time", "—")
-            subject = l.get("subject", "—")
-            lesson_type = l.get("type", "")
-            teacher = l.get("teacher", "")
-            room = l.get("room", "")
-
-            # =========================
-            # COMPACT MODE
-            # =========================
             if compact:
-                result += (
-                    f"\n• <b>{time}</b> — {subject}"
-                )
-
-                if lesson_type:
-                    result += f" ({lesson_type})"
-
+                result += f"\n• <b>{time}</b> — {subject} ({ttype})"
                 if teacher != "—":
                     result += f" • {teacher}"
-
                 if room != "—":
                     result += f" • {room}"
-
-                continue
-
-            # =========================
-            # FULL MODE (NOTION STYLE)
-            # =========================
-            result += (
-                f"\n┌─ 📖 <b>{time}</b>\n"
-                f"│  {subject}\n"
-                f"│  🏷 {lesson_type}\n"
-                f"│  👤 {teacher}\n"
-                f"│  🏫 {room}\n"
-                f"└────────────────────\n"
-            )
+            else:
+                result += (
+                    f"\n╭─ 📖 <b>{time}</b>\n"
+                    f"│ {subject}\n"
+                    f"│ 🏷 {ttype}\n"
+                    f"│ 👤 {teacher}\n"
+                    f"│ 🏫 {room}\n"
+                    f"╰──────────────\n"
+                )
 
     return result
+
+
 # =========================
 # HELPERS
 # =========================
-from datetime import datetime, timedelta
-
-
 def get_week():
     schedule = parse_schedule()
 
-    # сортировка дат
-    sorted_schedule = dict(
-        sorted(
-            schedule.items(),
-            key=lambda x: datetime.strptime(x[0], "%d.%m.%Y")
-        )
-    )
-
-    return format_schedule(sorted_schedule)
+    return dict(sorted(
+        schedule.items(),
+        key=lambda x: datetime.strptime(x[0], "%d.%m.%Y")
+    ))
 
 
 def get_today():
     schedule = parse_schedule()
     today = datetime.now().strftime("%d.%m.%Y")
-
-    for d in schedule:
-        if today == d:
-            return format_schedule({d: schedule[d]})
-
-    return "Сегодня пар нет 😎"
+    return schedule.get(today, [])
 
 
 def get_tomorrow():
     schedule = parse_schedule()
     tomorrow = (datetime.now() + timedelta(days=1)).strftime("%d.%m.%Y")
-
-    for d in schedule:
-        if tomorrow == d:
-            return format_schedule({d: schedule[d]})
-
-    return "Завтра пар нет 😎"
+    return schedule.get(tomorrow, [])

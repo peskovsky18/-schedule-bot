@@ -58,10 +58,8 @@ def load_users():
 
 def save_user(user_id):
     users = load_users()
-
     if user_id not in users:
         users.append(user_id)
-
         with open(USERS_FILE, "w", encoding="utf-8") as f:
             json.dump(users, f, ensure_ascii=False, indent=2)
 
@@ -85,11 +83,7 @@ def send_safe(chat_id, text):
 
     MAX = 3800
     for i in range(0, len(text), MAX):
-        bot.send_message(
-            chat_id,
-            text[i:i + MAX],
-            reply_markup=main_menu()
-        )
+        bot.send_message(chat_id, text[i:i + MAX], reply_markup=main_menu())
 
 
 # =========================
@@ -107,7 +101,7 @@ def start(message):
 
 
 # =========================
-# ADMIN PANEL (ONLY COMMAND)
+# ADMIN ONLY COMMAND
 # =========================
 @bot.message_handler(commands=["admin"])
 def admin(message):
@@ -161,7 +155,7 @@ def callbacks(call):
 
     elif call.data == "broadcast":
         broadcast_mode.add(chat_id)
-        bot.send_message(chat_id, "📢 Введите текст рассылки")
+        bot.send_message(chat_id, "📢 Введите текст")
 
 
 # =========================
@@ -171,13 +165,13 @@ def callbacks(call):
 def handle(message):
 
     chat_id = message.chat.id
-    text = (message.text or "").strip()
+    text = message.text.strip()
 
     if text.startswith("/"):
         return
 
     try:
-        # ================= BROADCAST =================
+        # BROADCAST
         if chat_id == ADMIN_ID and chat_id in broadcast_mode:
             broadcast_mode.remove(chat_id)
 
@@ -194,7 +188,7 @@ def handle(message):
             bot.send_message(chat_id, f"✔ Sent: {ok} | ❌ Failed: {fail}")
             return
 
-        # ================= SCHEDULE =================
+        # SCHEDULE
         schedule = parse_schedule()
 
         if not schedule:
@@ -204,24 +198,14 @@ def handle(message):
         keys = sorted(schedule.keys())
 
         if text == "📅 Сегодня":
-            if keys:
-                send_safe(
-                    chat_id,
-                    format_schedule({keys[0]: schedule[keys[0]]}, compact=False)
-                )
+            send_safe(chat_id, format_schedule({keys[0]: schedule[keys[0]]}))
 
         elif text == "⏭ Завтра":
             if len(keys) > 1:
-                send_safe(
-                    chat_id,
-                    format_schedule({keys[1]: schedule[keys[1]]}, compact=True)
-                )
+                send_safe(chat_id, format_schedule({keys[1]: schedule[keys[1]]}))
 
         elif text == "📆 Неделя":
-            send_safe(
-                chat_id,
-                format_schedule(schedule, compact=True)
-            )
+            send_safe(chat_id, format_schedule(schedule))
 
     except Exception as e:
         ERROR_LOGS.append(str(e))
