@@ -21,7 +21,7 @@ bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
 ERROR_LOGS = []
-broadcast_mode = set()
+broadcast_mode = set()  # admin_id storage
 
 
 # =========================
@@ -30,23 +30,27 @@ broadcast_mode = set()
 @app.route("/", methods=["POST"])
 def webhook():
     try:
-        update = telebot.types.Update.de_json(
-            request.get_data().decode("utf-8")
-        )
+        data = request.get_data().decode("utf-8")
+
+        if not data:
+            return "OK", 200
+
+        update = telebot.types.Update.de_json(data)
         bot.process_new_updates([update])
+
     except Exception as e:
-        print("WEBHOOK ERROR:", e)
         ERROR_LOGS.append(str(e))
+        print("WEBHOOK ERROR:", e)
 
     return "OK", 200
 
 
 # =========================
-# USERS
+# USERS STORAGE
 # =========================
 def load_users():
     try:
-        with open(USERS_FILE, "r") as f:
+        with open(USERS_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     except:
         return []
@@ -54,25 +58,21 @@ def load_users():
 
 def save_user(user_id):
     users = load_users()
+
     if user_id not in users:
         users.append(user_id)
-        with open(USERS_FILE, "w") as f:
-            json.dump(users, f)
+
+        with open(USERS_FILE, "w", encoding="utf-8") as f:
+            json.dump(users, f, ensure_ascii=False, indent=2)
 
 
 # =========================
-# KEYBOARD
+# UI
 # =========================
-def main_menu(user_id=None):
+def main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-
     markup.row("📅 Сегодня", "⏭ Завтра")
     markup.row("📆 Неделя")
-
-    # только для админа
-    if user_id == ADMIN_ID:
-        markup.row("👑 Админ панель")
-
     return markup
 
 
@@ -84,10 +84,13 @@ def send_safe(chat_id, text):
         text = "Пусто"
 
     MAX = 3800
-    parts = [text[i:i + MAX] for i in range(0, len(text), MAX)]
 
-    for part in parts:
-        bot.send_message(chat_id, part, reply_markup=main_menu(chat_id))
+    for i in range(0, len(text), MAX):
+        bot.send_message(
+            chat_id,
+            text[i:i + MAX],
+            reply_markup=main_menu()
+        )
 
 
 # =========================
@@ -95,18 +98,17 @@ def send_safe(chat_id, text):
 # =========================
 @bot.message_handler(commands=["start"])
 def start(message):
-
     save_user(message.chat.id)
 
     bot.send_message(
         message.chat.id,
         "📚 Бот запущен",
-        reply_markup=main_menu(message.from_user.id)
+        reply_markup=main_menu()
     )
 
 
 # =========================
-# ADMIN PANEL
+# ADMIN PANEL (ONLY COMMAND)
 # =========================
 @bot.message_handler(commands=["admin"])
 def admin(message):
@@ -162,8 +164,8 @@ def callbacks(call):
         )
 
     elif call.data == "broadcast":
-        broadcast_mode.add(chat_id)
-        bot.send_message(chat_id, "📢 Отправь текст рассылки")
+        broadcast_mode.add(call.from_user.id)
+        bot.send_message(chat_id, "📢 Введите текст рассылки")
 
 
 # =========================
@@ -175,13 +177,12 @@ def handle(message):
     chat_id = message.chat.id
     text = (message.text or "").strip()
 
-    # игнор команд
     if text.startswith("/"):
         return
 
     try:
         # =========================
-        # ADMIN BROADCAST
+        # BROADCAST MODE
         # =========================
         if chat_id == ADMIN_ID and chat_id in broadcast_mode:
             broadcast_mode.remove(chat_id)
@@ -220,10 +221,6 @@ def handle(message):
 
         elif text == "📆 Неделя":
             send_safe(chat_id, format_schedule(schedule))
-
-        elif text == "👑 Админ sasha swag 6767":
-            if chat_id == ADMIN_ID:
-                admin(message)
 
     except Exception as e:
         ERROR_LOGS.append(str(e))
