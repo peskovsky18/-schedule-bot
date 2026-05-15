@@ -1,6 +1,5 @@
 import os
 import json
-import time
 import telebot
 
 from flask import Flask, request
@@ -60,11 +59,12 @@ def send_safe(chat_id, text):
         bot.send_message(chat_id, text[i:i+MAX], reply_markup=main_menu())
 
 # =========================
-# WEBHOOK ROUTE
+# WEBHOOK (FIXED)
 # =========================
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
-    update = telebot.types.Update.de_json(request.stream.read().decode("utf-8"))
+    json_str = request.get_data().decode("utf-8")
+    update = telebot.types.Update.de_json(json_str)
     bot.process_new_updates([update])
     return "OK", 200
 
@@ -74,10 +74,14 @@ def webhook():
 @bot.message_handler(commands=["start"])
 def start(message):
     save_user(message.chat.id)
-    bot.send_message(message.chat.id, "📚 Бот запущен", reply_markup=main_menu())
+    bot.send_message(
+        message.chat.id,
+        "📚 Бот запущен",
+        reply_markup=main_menu()
+    )
 
 # =========================
-# BUTTONS + BROADCAST MODE
+# MAIN HANDLER
 # =========================
 @bot.message_handler(func=lambda m: True)
 def handle(message):
@@ -87,7 +91,7 @@ def handle(message):
     chat_id = message.chat.id
     text = message.text
 
-    # 🔥 PRO broadcast mode
+    # 🔥 BROADCAST MODE
     if chat_id == ADMIN_ID and broadcast_mode.get(chat_id):
         broadcast_mode[chat_id] = False
 
@@ -101,18 +105,22 @@ def handle(message):
             except:
                 failed += 1
 
-        bot.send_message(chat_id, f"✔ {success} sent | ❌ {failed} failed")
+        bot.send_message(chat_id, f"✔ Sent: {success} | ❌ Failed: {failed}")
         return
 
     try:
         schedule = parse_schedule()
 
         if text == "📅 Сегодня":
-            day = schedule.get(list(schedule.keys())[0])
-            send_safe(chat_id, format_schedule(schedule))
+            today = list(schedule.keys())[0]
+            send_safe(chat_id, format_schedule({today: schedule[today]}))
 
         elif text == "⏭ Завтра":
-            send_safe(chat_id, format_schedule(schedule))
+            keys = list(schedule.keys())
+            if len(keys) > 1:
+                send_safe(chat_id, format_schedule({keys[1]: schedule[keys[1]]}))
+            else:
+                send_safe(chat_id, "Завтра нет данных 😎")
 
         elif text == "📆 Неделя":
             send_safe(chat_id, format_schedule(schedule))
@@ -122,12 +130,12 @@ def handle(message):
         send_safe(chat_id, f"Ошибка: {e}")
 
 # =========================
-# 👑 PRO ADMIN PANEL
+# PRO ADMIN PANEL
 # =========================
 @bot.message_handler(commands=["admin"])
 def admin_panel(message):
 
-    if message.chat.id != ADMIN_ID:
+    if message.from_user.id != ADMIN_ID:
         return
 
     markup = types.InlineKeyboardMarkup()
@@ -146,7 +154,7 @@ def admin_panel(message):
         types.InlineKeyboardButton("🟢 Ping", callback_data="ping")
     )
 
-    bot.send_message(chat_id=message.chat.id, text="👑 PRO ADMIN PANEL", reply_markup=markup)
+    bot.send_message(message.chat.id, "👑 PRO ADMIN PANEL", reply_markup=markup)
 
 # =========================
 # CALLBACKS
@@ -156,7 +164,7 @@ def callbacks(call):
 
     chat_id = call.message.chat.id
 
-    if chat_id != ADMIN_ID:
+    if call.from_user.id != ADMIN_ID:
         return
 
     bot.answer_callback_query(call.id)
@@ -175,7 +183,7 @@ def callbacks(call):
 
     elif call.data == "broadcast":
         broadcast_mode[chat_id] = True
-        bot.send_message(chat_id, "📢 Send broadcast message now")
+        bot.send_message(chat_id, "📢 Send message for broadcast")
 
 # =========================
 # START SERVER
