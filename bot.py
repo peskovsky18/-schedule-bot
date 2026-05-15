@@ -3,6 +3,7 @@ import json
 import telebot
 
 from flask import Flask, request
+from datetime import datetime
 from telebot import types
 
 from parser import parse_schedule, format_schedule
@@ -51,21 +52,36 @@ def main_menu():
     return markup
 
 # =========================
-# SAFE SEND
+# SAFE SEND (FIXED)
 # =========================
 def send_safe(chat_id, text):
     MAX = 3800
-    for i in range(0, len(text), MAX):
-        bot.send_message(chat_id, text[i:i+MAX], reply_markup=main_menu())
+    parts = [text[i:i + MAX] for i in range(0, len(text), MAX)]
+
+    for i, part in enumerate(parts):
+        bot.send_message(
+            chat_id,
+            part,
+            reply_markup=main_menu() if i == len(parts) - 1 else None
+        )
 
 # =========================
-# WEBHOOK (FIXED)
+# WEBHOOK (FIXED SAFE)
 # =========================
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
-    json_str = request.get_data().decode("utf-8")
-    update = telebot.types.Update.de_json(json_str)
-    bot.process_new_updates([update])
+    try:
+        json_str = request.get_data().decode("utf-8")
+
+        if not json_str:
+            return "OK", 200
+
+        update = telebot.types.Update.de_json(json_str)
+        bot.process_new_updates([update])
+
+    except Exception as e:
+        print("WEBHOOK ERROR:", e)
+
     return "OK", 200
 
 # =========================
@@ -74,6 +90,8 @@ def webhook():
 @bot.message_handler(commands=["start"])
 def start(message):
     save_user(message.chat.id)
+    broadcast_mode.clear()
+
     bot.send_message(
         message.chat.id,
         "📚 Бот запущен",
@@ -81,61 +99,13 @@ def start(message):
     )
 
 # =========================
-# MAIN HANDLER
-# =========================
-@bot.message_handler(func=lambda m: True)
-def handle(message):
-
-    global broadcast_mode
-
-    chat_id = message.chat.id
-    text = message.text
-
-    # 🔥 BROADCAST MODE
-    if chat_id == ADMIN_ID and broadcast_mode.get(chat_id):
-        broadcast_mode[chat_id] = False
-
-        users = load_users()
-        success, failed = 0, 0
-
-        for u in users:
-            try:
-                bot.send_message(u, f"📢 {text}")
-                success += 1
-            except:
-                failed += 1
-
-        bot.send_message(chat_id, f"✔ Sent: {success} | ❌ Failed: {failed}")
-        return
-
-    try:
-        schedule = parse_schedule()
-
-        if text == "📅 Сегодня":
-            today = list(schedule.keys())[0]
-            send_safe(chat_id, format_schedule({today: schedule[today]}))
-
-        elif text == "⏭ Завтра":
-            keys = list(schedule.keys())
-            if len(keys) > 1:
-                send_safe(chat_id, format_schedule({keys[1]: schedule[keys[1]]}))
-            else:
-                send_safe(chat_id, "Завтра нет данных 😎")
-
-        elif text == "📆 Неделя":
-            send_safe(chat_id, format_schedule(schedule))
-
-    except Exception as e:
-        ERROR_LOGS.append(str(e))
-        send_safe(chat_id, f"Ошибка: {e}")
-
-# =========================
-# PRO ADMIN PANEL
+# ADMIN PANEL
 # =========================
 @bot.message_handler(commands=["admin"])
 def admin_panel(message):
 
     if message.from_user.id != ADMIN_ID:
+        bot.send_message(message.chat.id, "⛔ Нет доступа")
         return
 
     markup = types.InlineKeyboardMarkup()
@@ -162,11 +132,10 @@ def admin_panel(message):
 @bot.callback_query_handler(func=lambda call: True)
 def callbacks(call):
 
-    chat_id = call.message.chat.id
-
     if call.from_user.id != ADMIN_ID:
         return
 
+    chat_id = call.message.chat.id
     bot.answer_callback_query(call.id)
 
     if call.data == "stats":
@@ -182,8 +151,76 @@ def callbacks(call):
         bot.send_message(chat_id, "\n".join(ERROR_LOGS[-10:]) or "No errors")
 
     elif call.data == "broadcast":
-        broadcast_mode[chat_id] = True
-        bot.send_message(chat_id, "📢 Send message for broadcast")
+        broadcast_mode["admin"] = True
+        bot.send_message(chat_id, "📢 Введите текст рассылки")
+
+# =========================
+# MAIN HANDLER (FIXED)
+# =========================
+@bot.message_handler(content_types=["text"])
+def handle(message):
+
+    chat_id = message.chat.id
+    text = message.text or ""
+
+    # игнор команд
+    if text.startswith("/"):
+        return
+
+    global broadcast_mode
+
+    # =========================
+    # BROADCAST MODE
+    # =========================
+    if chat_id == ADMIN_ID and broadcast_mode.get("admin"):
+        broadcast_mode["admin"] = False
+
+        users = load_users()
+        success, failed = 0, 0
+
+        for u in users:
+            try:
+                bot.send_message(u, f"📢 {text}")
+                success += 1
+            except:
+                failed += 1
+
+        bot.send_message(chat_id, f"✔ Sent: {success} | ❌ Failed: {failed}")
+        return
+
+    # =========================
+    # SCHEDULE
+    # =========================
+    try:
+        schedule = parse_schedule()
+
+        if not schedule:
+            send_safe(chat_id, "Нет данных 😎")
+            return
+
+        # FIX: правильный порядок дат
+        keys = sorted(schedule.keys(), key=lambda x: datetime.strptime(x, "%d.%m.%Y"))
+
+        if text == "📅 Сегодня":
+            if not keys:
+                send_safe(chat_id, "Нет расписания")
+                return
+
+            send_safe(chat_id, format_schedule({keys[0]: schedule[keys[0]]}))
+
+        elif text == "⏭ Завтра":
+            if len(keys) < 2:
+                send_safe(chat_id, "Завтра нет данных 😎")
+                return
+
+            send_safe(chat_id, format_schedule({keys[1]: schedule[keys[1]]}))
+
+        elif text == "📆 Неделя":
+            send_safe(chat_id, format_schedule(schedule))
+
+    except Exception as e:
+        ERROR_LOGS.append(str(e))
+        send_safe(chat_id, f"Ошибка: {e}")
 
 # =========================
 # START SERVER
