@@ -1,4 +1,5 @@
 import requests
+import re
 import time
 
 from bs4 import BeautifulSoup
@@ -11,7 +12,8 @@ URL = "https://guide.herzen.spb.ru/schedule/23316/by-dates"
 # =========================
 _cached_schedule = None
 _cached_time = 0
-CACHE_TTL = 300
+CACHE_TTL = 300  # 5 минут
+
 
 # =========================
 # FETCH HTML
@@ -19,27 +21,36 @@ CACHE_TTL = 300
 def fetch_html():
 
     headers = {
-        "User-Agent": "Mozilla/5.0"
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X)",
+        "Accept": "text/html,application/xhtml+xml"
     }
 
-    for _ in range(3):
+    for attempt in range(3):
 
         try:
-            r = requests.get(URL, headers=headers, timeout=15)
 
-            if r.status_code == 200:
+            r = requests.get(
+                URL,
+                headers=headers,
+                timeout=15
+            )
+
+            if r.status_code == 200 and len(r.text) > 1000:
                 r.encoding = "utf-8"
                 return r.text
 
+            print(f"[FETCH] BAD STATUS: {r.status_code}")
+
         except Exception as e:
-            print("FETCH ERROR:", e)
+            print(f"[FETCH ERROR] {e}")
 
         time.sleep(2)
 
     return None
 
+
 # =========================
-# PARSE
+# PARSE SCHEDULE
 # =========================
 def parse_schedule():
 
@@ -59,76 +70,45 @@ def parse_schedule():
 
         soup = BeautifulSoup(html, "html.parser")
 
+        # 🔥 весь текст страницы
+        text = soup.get_text("\n", strip=True)
+
+        # даты
+        date_pattern = r"\d{2}\.\d{2}\.\d{4}"
+
+        parts = re.split(f"({date_pattern})", text)
+
         schedule = {}
+        current_date = None
 
-        # все дни
-        days = soup.select(".schedule-day")
+        for part in parts:
 
-        for day in days:
+            part = part.strip()
 
-            # дата
-            date_el = day.select_one(".schedule-day__title")
-
-            if not date_el:
+            if not part:
                 continue
 
-            date = date_el.get_text(strip=True)
+            # =========================
+            # DATE
+            # =========================
+            if re.fullmatch(date_pattern, part):
 
-            schedule[date] = []
+                current_date = part
+                schedule[current_date] = []
 
-            # пары
-            lessons = day.select(".schedule-lesson")
+                continue
 
-            for lesson in lessons:
+            # =========================
+            # LESSONS
+            # =========================
+            if current_date:
 
-                # время
-                time_el = lesson.select_one(".schedule-lesson__time")
+                lessons = parse_lessons(part)
 
-                lesson_time = (
-                    time_el.get_text(" ", strip=True)
-                    if time_el else "—"
-                )
+                if lessons:
+                    schedule[current_date].extend(lessons)
 
-                # предмет
-                subject_el = lesson.select_one(".schedule-lesson__discipline")
-
-                subject = (
-                    subject_el.get_text(" ", strip=True)
-                    if subject_el else "—"
-                )
-
-                # тип
-                type_el = lesson.select_one(".schedule-lesson__type")
-
-                lesson_type = (
-                    type_el.get_text(" ", strip=True)
-                    if type_el else "занятие"
-                )
-
-                # преподаватель
-                teacher_el = lesson.select_one(".schedule-lesson__teacher")
-
-                teacher = (
-                    teacher_el.get_text(" ", strip=True)
-                    if teacher_el else "—"
-                )
-
-                # аудитория
-                room_el = lesson.select_one(".schedule-lesson__auditory")
-
-                room = (
-                    room_el.get_text(" ", strip=True)
-                    if room_el else "—"
-                )
-
-                schedule[date].append({
-                    "time": lesson_time,
-                    "subject": subject,
-                    "type": lesson_type,
-                    "teacher": teacher,
-                    "room": room
-                })
-
+        # cache update
         _cached_schedule = schedule
         _cached_time = time.time()
 
@@ -136,17 +116,137 @@ def parse_schedule():
 
     except Exception as e:
 
-        print("PARSE ERROR:", e)
+        print("[PARSE ERROR]", e)
 
         return _cached_schedule or {}
 
+
 # =========================
-# FORMAT
+# PARSE LESSONS
+# =========================
+def parse_lessons(text):
+
+    lessons = []
+
+    # разбиваем по времени пары
+    pattern = r"(\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2})"
+
+    parts = re.split(pattern, text)
+
+    if len(parts) < 2:
+        return lessons
+
+    for i in range(1, len(parts), 2):
+
+        try:
+
+            lesson_time = (
+                parts[i]
+                .replace("-", "–")
+                .replace(" ", "")
+                .strip()
+            )
+
+            block = parts[i + 1].strip()
+
+            # строки блока
+            lines = [
+                x.strip()
+                for x in block.split("\n")
+                if x.strip()
+            ]
+
+            if not lines:
+                continue
+
+            # =========================
+            # SUBJECT
+            # =========================
+            subject = lines[0]
+
+            # =========================
+            # TYPE
+            # =========================
+            lesson_type = "занятие"
+
+            for line in lines:
+
+                lower = line.lower()
+
+                if "лекц" in lower:
+                    lesson_type = "лекция"
+
+                elif "практ" in lower:
+                    lesson_type = "практика"
+
+                elif "лаб" in lower:
+                    lesson_type = "лабораторная"
+
+                elif "экзам" in lower:
+                    lesson_type = "экзамен"
+
+                elif "зач" in lower:
+                    lesson_type = "зачёт"
+
+            # =========================
+            # TEACHER
+            # =========================
+            teacher = "—"
+
+            for line in lines:
+
+                lower = line.lower()
+
+                if any(word in lower for word in [
+                    "доц",
+                    "проф",
+                    "асс",
+                    "преп",
+                    "зав. каф",
+                    "ст. преп"
+                ]):
+
+                    teacher = line
+                    break
+
+            # =========================
+            # ROOM
+            # =========================
+            room = "—"
+
+            for line in lines:
+
+                lower = line.lower()
+
+                if (
+                    "ауд." in lower
+                    or "корпус" in lower
+                    or "мойка" in lower
+                ):
+                    room = line
+                    break
+
+            lessons.append({
+                "time": lesson_time,
+                "subject": subject,
+                "type": lesson_type,
+                "teacher": teacher,
+                "room": room
+            })
+
+        except Exception as e:
+            print("[LESSON ERROR]", e)
+
+    return lessons
+
+
+# =========================
+# FORMAT OUTPUT
 # =========================
 def format_schedule(schedule):
 
     if not schedule:
-        return "📚 Расписание недоступно"
+        return "📚 Расписание временно недоступно"
 
     result = "📚 Расписание\n"
 
@@ -170,8 +270,9 @@ def format_schedule(schedule):
 
     return result
 
+
 # =========================
-# HELPERS
+# API HELPERS
 # =========================
 def get_today():
 
@@ -182,9 +283,12 @@ def get_today():
     for date in schedule:
 
         if today in date:
-            return format_schedule({date: schedule[date]})
+            return format_schedule({
+                date: schedule[date]
+            })
 
     return "Сегодня пар нет 😎"
+
 
 def get_tomorrow():
 
@@ -197,9 +301,12 @@ def get_tomorrow():
     for date in schedule:
 
         if tomorrow in date:
-            return format_schedule({date: schedule[date]})
+            return format_schedule({
+                date: schedule[date]
+            })
 
     return "Завтра пар нет 😎"
+
 
 def get_week():
     return format_schedule(parse_schedule())
