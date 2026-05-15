@@ -18,11 +18,11 @@ USERS_FILE = "users.json"
 if not TOKEN:
     raise Exception("TOKEN is not set")
 
-bot = telebot.TeleBot(TOKEN)
+bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
 ERROR_LOGS = []
-broadcast_mode = {}
+broadcast_mode = set()  # safer than dict
 
 # =========================
 # USERS
@@ -48,12 +48,16 @@ def main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row("📅 Сегодня", "⏭ Завтра")
     markup.row("📆 Неделя")
+    markup.row("/admin")
     return markup
 
 # =========================
 # SAFE SEND
 # =========================
 def send_safe(chat_id, text):
+    if not text:
+        text = "Пусто"
+
     MAX = 3800
     parts = [text[i:i + MAX] for i in range(0, len(text), MAX)]
 
@@ -63,15 +67,16 @@ def send_safe(chat_id, text):
 # =========================
 # WEBHOOK
 # =========================
-@app.route(f"/{TOKEN}", methods=["POST"])
+@app.route("/", methods=["POST"])
 def webhook():
     try:
-        update = telebot.types.Update.de_json(
-            request.get_data().decode("utf-8")
-        )
+        json_str = request.get_data().decode("utf-8")
+        update = telebot.types.Update.de_json(json_str)
         bot.process_new_updates([update])
+
     except Exception as e:
         print("WEBHOOK ERROR:", e)
+        ERROR_LOGS.append(str(e))
 
     return "OK", 200
 
@@ -80,14 +85,23 @@ def webhook():
 # =========================
 @bot.message_handler(commands=["start"])
 def start(message):
+    print("START:", message.from_user.id)
+
     save_user(message.chat.id)
-    bot.send_message(message.chat.id, "📚 Бот запущен", reply_markup=main_menu())
+
+    bot.send_message(
+        message.chat.id,
+        "📚 Бот запущен",
+        reply_markup=main_menu()
+    )
 
 # =========================
-# ADMIN (ONLY ONE!)
+# ADMIN PANEL
 # =========================
 @bot.message_handler(commands=["admin"])
 def admin_panel(message):
+
+    print("ADMIN HIT:", message.from_user.id)
 
     if message.from_user.id != ADMIN_ID:
         bot.send_message(message.chat.id, "⛔ Нет доступа")
@@ -117,66 +131,82 @@ def admin_panel(message):
 @bot.callback_query_handler(func=lambda call: True)
 def callbacks(call):
 
-    if call.from_user.id != ADMIN_ID:
-        return
+    try:
+        if call.from_user.id != ADMIN_ID:
+            return
 
-    chat_id = call.message.chat.id
-    bot.answer_callback_query(call.id)
+        chat_id = call.message.chat.id
+        bot.answer_callback_query(call.id)
 
-    if call.data == "stats":
-        bot.send_message(chat_id, f"👥 Users: {len(load_users())}")
+        if call.data == "stats":
+            bot.send_message(chat_id, f"👥 Users: {len(load_users())}")
 
-    elif call.data == "users":
-        bot.send_message(chat_id, f"👥 Total: {len(load_users())}")
+        elif call.data == "users":
+            bot.send_message(chat_id, f"👥 Total: {len(load_users())}")
 
-    elif call.data == "ping":
-        bot.send_message(chat_id, "🟢 OK")
+        elif call.data == "ping":
+            bot.send_message(chat_id, "🟢 OK")
 
-    elif call.data == "logs":
-        bot.send_message(chat_id, "\n".join(ERROR_LOGS[-10:]) or "No errors")
+        elif call.data == "logs":
+            logs = "\n".join(ERROR_LOGS[-10:]) or "No errors"
+            bot.send_message(chat_id, logs)
 
-    elif call.data == "broadcast":
-        broadcast_mode["admin"] = True
-        bot.send_message(chat_id, "📢 Введите текст рассылки")
+        elif call.data == "broadcast":
+            broadcast_mode.add(chat_id)
+            bot.send_message(chat_id, "📢 Отправь текст рассылки")
+
+    except Exception as e:
+        print("CALLBACK ERROR:", e)
+        ERROR_LOGS.append(str(e))
 
 # =========================
-# TEXT HANDLER (SINGLE!)
+# TEXT HANDLER (MAIN ROUTER)
 # =========================
 @bot.message_handler(content_types=["text"])
 def handle(message):
 
     chat_id = message.chat.id
-    text = message.text or ""
+    text = (message.text or "").strip()
 
+    print("TEXT:", chat_id, text)
+
+    # ❗ IGNORE COMMANDS HERE
     if text.startswith("/"):
         return
 
-    # BROADCAST
-    if chat_id == ADMIN_ID and broadcast_mode.get("admin"):
-        broadcast_mode["admin"] = False
-
-        users = load_users()
-        ok, fail = 0, 0
-
-        for u in users:
-            try:
-                bot.send_message(u, f"📢 {text}")
-                ok += 1
-            except:
-                fail += 1
-
-        bot.send_message(chat_id, f"✔ Sent: {ok} | ❌ Failed: {fail}")
-        return
-
-    # SCHEDULE
     try:
+        # =========================
+        # BROADCAST MODE
+        # =========================
+        if chat_id in broadcast_mode and chat_id == ADMIN_ID:
+            broadcast_mode.remove(chat_id)
+
+            users = load_users()
+            ok, fail = 0, 0
+
+            for u in users:
+                try:
+                    bot.send_message(u, f"📢 {text}")
+                    ok += 1
+                except:
+                    fail += 1
+
+            bot.send_message(chat_id, f"✔ Sent: {ok} | ❌ Failed: {fail}")
+            return
+
+        # =========================
+        # SCHEDULE
+        # =========================
         schedule = parse_schedule()
 
         if not schedule:
-            send_safe(chat_id, "Нет  😎")
+            send_safe(chat_id, "Нет данных 😎")
             return
 
-        keys = sorted(schedule.keys(), key=lambda x: datetime.strptime(x, "%d.%m.%Y"))
+        keys = sorted(
+            schedule.keys(),
+            key=lambda x: datetime.strptime(x, "%d.%m.%Y")
+        )
 
         if text == "📅 Сегодня":
             if keys:
@@ -185,11 +215,14 @@ def handle(message):
         elif text == "⏭ Завтра":
             if len(keys) > 1:
                 send_safe(chat_id, format_schedule({keys[1]: schedule[keys[1]]}))
+            else:
+                send_safe(chat_id, "Завтра нет данных 😎")
 
         elif text == "📆 Неделя":
             send_safe(chat_id, format_schedule(schedule))
 
     except Exception as e:
+        print("HANDLE ERROR:", e)
         ERROR_LOGS.append(str(e))
         send_safe(chat_id, f"Ошибка: {e}")
 
@@ -197,4 +230,5 @@ def handle(message):
 # START SERVER
 # =========================
 if __name__ == "__main__":
+    print("BOT STARTED")
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
