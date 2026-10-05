@@ -36,7 +36,13 @@ TOKEN = os.getenv("TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "439819918"))
 
 # Публичный адрес сервиса. Нужен, чтобы бот сам зарегистрировал webhook.
-WEBHOOK_URL = (os.getenv("WEBHOOK_URL") or "").strip().rstrip("/")
+# На Render переменная RENDER_EXTERNAL_URL задаётся автоматически,
+# поэтому вручную указывать адрес не требуется.
+WEBHOOK_URL = (
+    os.getenv("WEBHOOK_URL")
+    or os.getenv("RENDER_EXTERNAL_URL")
+    or ""
+).strip().rstrip("/")
 
 # Необязательный секрет: Telegram будет присылать его в заголовке,
 # и мы сможем отбросить поддельные запросы.

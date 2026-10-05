@@ -24,7 +24,7 @@
 | Переменная | Обязательна | Описание |
 |---|---|---|
 | `TOKEN` | да | Токен бота от [@BotFather](https://t.me/BotFather) |
-| `WEBHOOK_URL` | для webhook | Публичный адрес сервиса, например `https://my-bot.onrender.com`. Бот сам вызовет `setWebhook` при старте |
+| `WEBHOOK_URL` | для webhook | Публичный адрес сервиса, например `https://my-bot.onrender.com`. На Render можно не задавать: адрес автоматически берётся из `RENDER_EXTERNAL_URL` |
 | `GROUP_ID` | нет | ID группы на сайте. По умолчанию `25111` (4об_ППРСД/23) |
 | `GROUP_NAME` | нет | Название группы, например `4об_ППРСД`. Если задано, актуальный ID ищется автоматически |
 | `ADMIN_ID` | нет | Telegram ID администратора. По умолчанию `439819918` |
@@ -79,7 +79,24 @@ Netlify Functions работает на TypeScript, JavaScript и Go —
 | **Fly.io** | Docker, постоянно включён, нужна карта |
 | **VPS** | полный контроль, платно |
 
-Команда запуска для Render:
+### Развёртывание на Render
+
+В репозитории лежит готовый `render.yaml` — Render настроит сервис сам.
+
+1. Зайдите на [dashboard.render.com](https://dashboard.render.com) и
+   авторизуйтесь через GitHub.
+2. **New → Blueprint**, выберите репозиторий `-schedule-bot`.
+3. Render прочитает `render.yaml` и попросит ввести `TOKEN` — значение
+   помечено `sync: false`, поэтому оно не хранится в репозитории.
+4. Нажмите **Apply**. После сборки сервис будет доступен по адресу вида
+   `https://schedule-bot.onrender.com`.
+
+Адрес указывать вручную не нужно: Render задаёт `RENDER_EXTERNAL_URL`, и бот
+берёт его оттуда, регистрируя webhook при старте. Убедиться, что всё
+поднялось, можно открыв `https://<ваш-сервис>.onrender.com/health`.
+
+Файл `Procfile` делает то же самое, если вы предпочитаете создать сервис
+вручную (**New → Web Service**), без Blueprint:
 
 ```
 gunicorn bot:app --bind 0.0.0.0:$PORT --workers 1 --threads 4

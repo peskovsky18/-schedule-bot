@@ -1,0 +1,39 @@
+# Blueprint для Render: https://render.com/docs/blueprint-spec
+#
+# Как развернуть:
+#   1. Зайти на https://dashboard.render.com → New → Blueprint
+#   2. Выбрать репозиторий peskovsky18/-schedule-bot
+#   3. Render прочитает этот файл и попросит ввести TOKEN (он помечен sync: false)
+#
+# Адрес сервиса Render подставит в RENDER_EXTERNAL_URL сам — бот
+# зарегистрирует webhook автоматически.
+
+services:
+  - type: web
+    name: schedule-bot
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn bot:app --bind 0.0.0.0:$PORT --workers 1 --threads 4
+    healthCheckPath: /health
+    envVars:
+      # Секрет: Render спросит значение при создании сервиса
+      - key: TOKEN
+        sync: false
+
+      # Группа. Название надёжнее ID: ID на сайте меняется каждый год,
+      # а GROUP_NAME позволяет находить актуальный автоматически.
+      # Полное имя группы — 4об_ППРСД/23, суффикс года можно опустить.
+      - key: GROUP_NAME
+        value: "4об_ППРСД"
+
+      # Telegram ID администратора для панели /admin
+      - key: ADMIN_ID
+        value: "439819918"
+
+      - key: PYTHON_VERSION
+        value: "3.14.3"
+
+      # Чтобы время в логах было московским
+      - key: TZ
+        value: Europe/Moscow
