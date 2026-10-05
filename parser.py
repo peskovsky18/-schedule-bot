@@ -1,93 +1,367 @@
-import requests
+# -*- coding: utf-8 -*-
+"""
+Парсер расписания РГПУ им. А. И. Герцена (guide.herzen.spb.ru).
+
+Основной источник данных — JSON внутри Livewire-снимка страницы
+(`wire:snapshot`). Там уже есть готовые поля: SCHEDULE_DATE (ISO),
+TIME_START, TIME_END, NAMEDISC, LECTYPE, FIO, ROOM_NAME, NOTE, E_COURSE_URL.
+Разбирать HTML регулярками больше не нужно: вёрстка может меняться, а JSON
+остаётся стабильным.
+
+Если снимок почему-то недоступен, включается резервный разбор HTML —
+на случай редизайна сайта.
+"""
+
+import html as html_lib
+import json
+import os
 import re
 import time
-from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
-URL = "https://guide.herzen.spb.ru/schedule/23316/by-dates"
+import requests
+from bs4 import BeautifulSoup
 
 # =========================
-# CACHE
+# ЧАСОВОЙ ПОЯС
+# =========================
+# Сервер может стоять в UTC. Расписание герценовское, поэтому все «сегодня»
+# и «завтра» считаем строго по Москве.
+try:
+    from zoneinfo import ZoneInfo
+
+    MSK = ZoneInfo("Europe/Moscow")
+except Exception:  # нет tzdata — берём фиксированное смещение
+    MSK = timezone(timedelta(hours=3))
+
+
+def now_msk():
+    return datetime.now(MSK)
+
+
+# =========================
+# КОНФИГ
+# =========================
+BASE = "https://guide.herzen.spb.ru"
+
+# ID группы на сайте выдаётся на учебный год и каждый сентябрь меняется,
+# поэтому он вынесен в переменную окружения.
+# 25111 = 4об_ППРСД/23, Институт педагогики (проверено 06.10.2026).
+GROUP_ID = os.getenv("GROUP_ID", "25111").strip()
+
+# Необязательно: если задать GROUP_NAME, бот сам найдёт актуальный ID группы
+# по названию (например, "4об_ППРСД"). Спасает от смены ID каждое 1 сентября.
+GROUP_NAME = os.getenv("GROUP_NAME", "").strip()
+
+WEB_TIMEOUT = 20
+CACHE_TTL = 300
+
+WEEKDAYS = [
+    "понедельник", "вторник", "среда", "четверг",
+    "пятница", "суббота", "воскресенье",
+]
+
+# Как читаются коды типов занятий с сайта
+LESSON_TYPES = {
+    "лекц": "лекция",
+    "лекция": "лекция",
+    "практ": "практика",
+    "практика": "практика",
+    "лаб": "лабораторная",
+    "лабораторная": "лабораторная",
+    "сем": "семинар",
+    "семинар": "семинар",
+    "зачет": "зачёт",
+    "экзамен": "экзамен",
+}
+
+
+# =========================
+# КЕШ
 # =========================
 _cached_schedule = None
 _cached_time = 0
-CACHE_TTL = 300
+_cached_group = None
+_cached_group_time = 0
 
 
 # =========================
-# FETCH
+# ЗАГРУЗКА
 # =========================
-def fetch_html():
+def fetch_html(url):
+    """Скачивает страницу. Возвращает текст или None."""
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122 Safari/537.36"
+        ),
+        "Accept-Language": "ru-RU,ru;q=0.9",
+    }
+
+    last_error = None
+    for attempt in range(2):
+        try:
+            r = requests.get(url, headers=headers, timeout=WEB_TIMEOUT)
+            r.encoding = "utf-8"
+
+            if r.status_code == 404:
+                print(f"[FETCH] 404: {url} — группа или адрес устарели")
+                return None
+
+            r.raise_for_status()
+
+            if len(r.text) < 2000:
+                print("[FETCH] HTML подозрительно короткий — возможно, пустая страница")
+
+            return r.text
+
+        except Exception as e:
+            last_error = e
+            if attempt == 0:
+                time.sleep(1)
+
+    print(f"[FETCH ERROR] {url}: {last_error}")
+    return None
+
+
+def find_group_id(name):
+    """Ищет актуальный ID группы по названию на странице /schedule."""
+    global _cached_group, _cached_group_time
+
+    if _cached_group and (time.time() - _cached_group_time < CACHE_TTL * 12):
+        return _cached_group
+
+    page = fetch_html(f"{BASE}/schedule")
+    if not page:
+        return None
+
+    pairs = re.findall(
+        r'href="' + re.escape(BASE) + r'/schedule/(\d+)/classes"[^>]*>\s*'
+        r'<span[^>]*>([^<]+)</span>',
+        page,
+    )
+
+    # В списке групп имя идёт как "4об_ППРСД", а на странице группы —
+    # "4об_ППРСД/23". Сравниваем без суффикса года.
+    def base(value):
+        return value.strip().lower().split("/")[0]
+
+    target = base(name)
+    exact = None
+    partial = []
+
+    for group_id, raw_name in pairs:
+        group_name = html_lib.unescape(raw_name).strip()
+        low = base(group_name)
+
+        if low == target:
+            exact = group_id
+            break
+        if target and target in low:
+            partial.append(group_id)
+
+    result = exact or (partial[0] if partial else None)
+
+    if result:
+        _cached_group = result
+        _cached_group_time = time.time()
+        print(f"[GROUP] '{name}' → ID {result}")
+    else:
+        print(f"[GROUP] группа '{name}' не найдена, беру GROUP_ID={GROUP_ID}")
+
+    return result
+
+
+def group_url():
+    """Актуальный адрес страницы «По датам» для нужной группы."""
+    group_id = GROUP_ID
+
+    if GROUP_NAME:
+        found = find_group_id(GROUP_NAME)
+        if found:
+            group_id = found
+
+    return f"{BASE}/schedule/{group_id}/by-dates"
+
+
+# =========================
+# РАЗБОР JSON ИЗ LIVEWIRE
+# =========================
+def _walk(obj):
+    """Рекурсивно обходит вложенные dict/list."""
+    if isinstance(obj, dict):
+        yield obj
+        for value in obj.values():
+            yield from _walk(value)
+    elif isinstance(obj, list):
+        for value in obj:
+            yield from _walk(value)
+
+
+def _extract_snapshot(page):
+    """Достаёт JSON из атрибута wire:snapshot."""
+    match = re.search(r'wire:snapshot="([^"]*)"', page)
+    if not match:
+        return None
+
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
-
-        r = requests.get(URL, headers=headers, timeout=10)
-        r.encoding = "utf-8"
-
-        if len(r.text) < 2000:
-            print("[FETCH] HTML too small → possible empty page")
-
-        return r.text
-
+        return json.loads(html_lib.unescape(match.group(1)))
     except Exception as e:
-        print("[FETCH ERROR]", e)
+        print("[SNAPSHOT] не удалось разобрать JSON:", e)
         return None
 
 
+def _norm_room(room):
+    if not room:
+        return "—"
+    return re.sub(r"\s+", " ", str(room)).strip() or "—"
+
+
+def time_key(time_str):
+    """
+    Ключ сортировки пар по времени начала.
+
+    Сортировать строки нельзя: '9:40' оказалось бы после '15:10'.
+    """
+    match = re.match(r"\s*(\d{1,2}):(\d{2})", str(time_str))
+    if not match:
+        return (99, 99)
+    return (int(match.group(1)), int(match.group(2)))
+
+
+def _norm_teacher(row):
+    fio = (row.get("FIO") or "").strip()
+    duty = (row.get("DUTY_NAME") or row.get("ZV_NAME") or "").strip()
+
+    if not fio:
+        return "—"
+    return f"{duty} {fio}".strip() if duty else fio
+
+
+def _norm_type(raw):
+    if not raw:
+        return "занятие"
+    return LESSON_TYPES.get(str(raw).strip().lower(), str(raw).strip())
+
+
+def parse_from_snapshot(page):
+    """
+    Собирает расписание из Livewire-снимка.
+
+    Структура: «слот» хранит дату и время (SCHEDULE_DATE, TIME_START,
+    TIME_END), а сами предметы лежат глубже — во вложенном ROWS.
+    """
+    snapshot = _extract_snapshot(page)
+    if not snapshot:
+        return {}
+
+    slots = [
+        d for d in _walk(snapshot)
+        if "SCHEDULE_DATE" in d and "TIME_START" in d
+    ]
+    if not slots:
+        return {}
+
+    schedule = {}
+    seen = set()
+
+    for slot in slots:
+        date_iso = str(slot.get("SCHEDULE_DATE") or "").strip()
+        if not date_iso:
+            continue
+
+        time_from = str(slot.get("TIME_START") or "").strip()
+        time_to = str(slot.get("TIME_END") or "").strip()
+        time_str = f"{time_from}–{time_to}" if time_to else time_from
+
+        # Предметы внутри слота; если их нет — возможно, слот самодостаточен
+        rows = [
+            d for d in _walk(slot.get("ROWS") or [])
+            if "NAMEDISC" in d and str(d.get("NAMEDISC") or "").strip()
+        ]
+        if not rows and str(slot.get("NAMEDISC") or "").strip():
+            rows = [slot]
+
+        for row in rows:
+            subject = re.sub(r"\s+", " ", str(row.get("NAMEDISC"))).strip()
+            teacher = _norm_teacher(row)
+            room = _norm_room(row.get("ROOM_NAME"))
+
+            key = (date_iso, time_str, subject, teacher, room)
+            if key in seen:
+                continue
+            seen.add(key)
+
+            subgroup = row.get("SUBGROUP") or 0
+            try:
+                subgroup = int(subgroup)
+            except (TypeError, ValueError):
+                subgroup = 0
+
+            moodle = (row.get("E_COURSE_URL") or "").strip() or None
+            note = (row.get("NOTE") or "").strip().replace("—", "–") or None
+
+            schedule.setdefault(date_iso, []).append({
+                "time": time_str,
+                "subject": subject,
+                "type": _norm_type(row.get("LECTYPE")),
+                "teacher": teacher,
+                "room": room,
+                "note": note,
+                "subgroup": subgroup,
+                "moodle": moodle,
+            })
+
+    for lessons in schedule.values():
+        lessons.sort(key=lambda l: time_key(l["time"]))
+
+    return schedule
+
+
 # =========================
-# PARSER
+# РЕЗЕРВНЫЙ РАЗБОР HTML
 # =========================
-def parse_schedule():
-    global _cached_schedule, _cached_time
-
-    if _cached_schedule and (time.time() - _cached_time < CACHE_TTL):
-        return _cached_schedule
-
-    html = fetch_html()
-    if not html:
-        return _cached_schedule or {}
-
-    soup = BeautifulSoup(html, "html.parser")
+def parse_from_html(page):
+    """
+    Запасной вариант: разбор текста страницы.
+    Нужен, только если Livewire-снимок пропал.
+    """
+    soup = BeautifulSoup(page, "html.parser")
     text = soup.get_text("\n", strip=True)
 
-    date_pattern = r"\d{2}\.\d{2}\.\d{4}"
-    time_pattern = r"\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}"
+    # День и месяц могут быть однозначными: 6.10.2026
+    date_pattern = r"\d{1,2}\.\d{1,2}\.\d{4}"
+    time_pattern = r"\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}"
 
     parts = re.split(f"({date_pattern})", text)
 
     schedule = {}
-    current_date = None
+    current = None
 
     for part in parts:
         part = part.strip()
         if not part:
             continue
 
-        # DATE
         if re.fullmatch(date_pattern, part):
-            current_date = part
-            schedule[current_date] = []
+            day, month, year = part.split(".")
+            current = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+            schedule.setdefault(current, [])
             continue
 
-        if not current_date:
+        if not current:
             continue
 
-        matches = re.split(f"({time_pattern})", part)
+        chunks = re.split(f"({time_pattern})", part)
 
-        for i in range(1, len(matches), 2):
+        for i in range(1, len(chunks), 2):
             try:
-                time_raw = matches[i]
-                block = matches[i + 1]
-
-                time_str = time_raw.replace(" ", "").replace("-", "–")
+                time_str = chunks[i].replace(" ", "").replace("-", "–")
+                block = chunks[i + 1]
 
                 lines = [x.strip() for x in block.split("\n") if x.strip()]
                 if not lines:
                     continue
-
-                subject = lines[0]
 
                 lesson_type = "занятие"
                 teacher = "—"
@@ -95,28 +369,62 @@ def parse_schedule():
 
                 for line in lines:
                     low = line.lower()
-
                     if "лекц" in low:
                         lesson_type = "лекция"
                     elif "практ" in low:
                         lesson_type = "практика"
                     elif "лаб" in low:
                         lesson_type = "лабораторная"
-                    elif "ауд" in low or "корпус" in low or "мойка" in low:
+                    elif "ауд" in low or "корпус" in low:
                         room = line
                     elif any(x in low for x in ["доц", "проф", "преп", "зав"]):
                         teacher = line
 
-                schedule[current_date].append({
+                schedule[current].append({
                     "time": time_str,
-                    "subject": subject,
+                    "subject": lines[0],
                     "type": lesson_type,
                     "teacher": teacher,
-                    "room": room
+                    "room": room,
+                    "note": None,
+                    "subgroup": 0,
+                    "moodle": None,
                 })
 
             except Exception as e:
                 print("[PARSE ERROR]", e)
+
+    for lessons in schedule.values():
+        lessons.sort(key=lambda l: time_key(l["time"]))
+
+    return schedule
+
+
+# =========================
+# ОСНОВНАЯ ФУНКЦИЯ
+# =========================
+def parse_schedule(force=False):
+    """
+    Возвращает расписание: {"2026-10-06": [пары...], ...}
+    Ключ — ISO-дата, внутри список пар, отсортированный по времени.
+    """
+    global _cached_schedule, _cached_time
+
+    if not force and _cached_schedule and (time.time() - _cached_time < CACHE_TTL):
+        return _cached_schedule
+
+    page = fetch_html(group_url())
+    if not page:
+        return _cached_schedule or {}
+
+    schedule = parse_from_snapshot(page)
+
+    if not schedule:
+        print("[PARSE] JSON недоступен — перехожу на разбор HTML")
+        schedule = parse_from_html(page)
+
+    if not schedule:
+        return _cached_schedule or {}
 
     _cached_schedule = schedule
     _cached_time = time.time()
@@ -125,67 +433,103 @@ def parse_schedule():
 
 
 # =========================
-# FORMAT (Notion style + compact)
+# ФОРМАТИРОВАНИЕ
 # =========================
+def format_date(iso):
+    """'2026-10-06' → '06.10.2026, вторник'."""
+    try:
+        d = date.fromisoformat(iso)
+    except ValueError:
+        return iso
+    return f"{d.strftime('%d.%m.%Y')}, {WEEKDAYS[d.weekday()]}"
+
+
 def format_schedule(schedule, compact=False):
+    """Собирает текст сообщения из расписания."""
     if not schedule:
         return "📚 Расписание временно недоступно"
 
-    result = "📚 Расписание\n"
+    result = "📚 Расписание"
 
-    for date, lessons in schedule.items():
+    for iso in sorted(schedule.keys()):
+        lessons = schedule[iso]
 
-        result += f"\n\n📅 {date}\n"
+        result += f"\n\n📅 {format_date(iso)}\n"
 
         if not lessons:
             result += "   😎 Нет пар\n"
             continue
 
-        for l in lessons:
-
-            time = l["time"]
-            subject = l["subject"]
-            ttype = l["type"]
-            teacher = l["teacher"]
-            room = l["room"]
+        for lesson in lessons:
+            subject = lesson["subject"]
+            teacher = lesson.get("teacher", "—")
+            room = lesson.get("room", "—")
+            subgroup = lesson.get("subgroup") or 0
 
             if compact:
-                result += f"\n• {time} — {subject}"
-
+                line = f"\n• {lesson['time']} — {subject}"
                 if teacher != "—":
-                    result += f" • {teacher}"
+                    line += f" • {teacher}"
                 if room != "—":
-                    result += f" • {room}"
-
+                    line += f" • {room}"
+                result += line
             else:
-                result += (
-                    f"\n┌─ 📖 {time}\n"
-                    f"│ {subject}\n"
-                    f"│ 🏷 {ttype}\n"
-                    f"│ 👤 {teacher}\n"
-                    f"│ 🏫 {room}\n"
-                    f"└──────────────\n"
-                )
+                head = f"\n┌─ 📖 {lesson['time']}"
+                if subgroup:
+                    head += f" (подгруппа {subgroup})"
+                result += head + "\n"
+                result += f"│ {subject}\n"
+                result += f"│ 🏷 {lesson['type']}\n"
+                result += f"│ 👤 {teacher}\n"
+                result += f"│ 🏫 {room}\n"
+
+                if lesson.get("note"):
+                    result += f"│ 🗓 {lesson['note']}\n"
+                if lesson.get("moodle"):
+                    result += f"│ 🔗 {lesson['moodle']}\n"
+
+                result += "└──────────────\n"
 
     return result
 
 
 # =========================
-# HELPERS
+# ВЫБОРКИ ПО ДАТАМ
 # =========================
-def get_week():
-    return parse_schedule()
+def _today_iso():
+    return now_msk().date().isoformat()
 
 
 def get_today():
+    """Пары на сегодня (по московскому времени)."""
+    today = _today_iso()
     schedule = parse_schedule()
-    today = datetime.now().strftime("%d.%m.%Y")
-
-    return {k: v for k, v in schedule.items() if today in k}
+    return {today: schedule[today]} if today in schedule else {}
 
 
 def get_tomorrow():
+    """Пары на завтра (по московскому времени)."""
+    tomorrow = (now_msk().date() + timedelta(days=1)).isoformat()
     schedule = parse_schedule()
-    tomorrow = (datetime.now() + timedelta(days=1)).strftime("%d.%m.%Y")
+    return {tomorrow: schedule[tomorrow]} if tomorrow in schedule else {}
 
-    return {k: v for k, v in schedule.items() if tomorrow in k}
+
+def get_week():
+    """Пары на ближайшие 7 дней, начиная с сегодня."""
+    schedule = parse_schedule()
+    today = now_msk().date()
+
+    week = {}
+    for offset in range(7):
+        iso = (today + timedelta(days=offset)).isoformat()
+        if iso in schedule:
+            week[iso] = schedule[iso]
+
+    return week
+
+
+def get_upcoming():
+    """Всё, что ещё будет, без прошедших дат."""
+    schedule = parse_schedule()
+    today = _today_iso()
+    return {iso: lessons for iso, lessons in schedule.items() if iso >= today}

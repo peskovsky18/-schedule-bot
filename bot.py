@@ -1,18 +1,50 @@
-import os
-import json
-import telebot
+# -*- coding: utf-8 -*-
+"""
+Телеграм-бот с расписанием РГПУ им. А. И. Герцена.
 
-from flask import Flask, request
+Работает через webhook: Telegram сам присылает POST на этот сервер при
+каждом сообщении. Для локальной отладки можно включить long polling
+переменной окружения USE_POLLING=1.
+
+Переменные окружения:
+    TOKEN         — токен бота от @BotFather (обязательно)
+    WEBHOOK_URL   — публичный адрес сервиса, например
+                    https://schedule-bot.onrender.com (для webhook)
+    ADMIN_ID      — Telegram ID администратора (по умолчанию 439819918)
+    GROUP_ID      — ID группы на сайте guide.herzen.spb.ru
+    GROUP_NAME    — название группы; если задано, ID ищется автоматически
+    TELEGRAM_SECRET — необязательный секрет для проверки, что запросы
+                    действительно от Telegram
+    USE_POLLING   — 1, чтобы работать через long polling (локально)
+"""
+
+import json
+import os
+import traceback
+
+import telebot
+from flask import Flask, jsonify, request
 from telebot import types
 
-from parser import parse_schedule, format_schedule, get_today, get_tomorrow
+from parser import format_schedule, get_today, get_tomorrow, get_week, parse_schedule
 
 # =========================
 # CONFIG
 # =========================
 TOKEN = os.getenv("TOKEN")
-ADMIN_ID = 439819918
-USERS_FILE = "users.json"
+
+ADMIN_ID = int(os.getenv("ADMIN_ID", "439819918"))
+
+# Публичный адрес сервиса. Нужен, чтобы бот сам зарегистрировал webhook.
+WEBHOOK_URL = (os.getenv("WEBHOOK_URL") or "").strip().rstrip("/")
+
+# Необязательный секрет: Telegram будет присылать его в заголовке,
+# и мы сможем отбросить поддельные запросы.
+TELEGRAM_SECRET = (os.getenv("TELEGRAM_SECRET") or "").strip()
+
+USE_POLLING = os.getenv("USE_POLLING") == "1"
+
+USERS_FILE = os.getenv("USERS_FILE", "users.json")
 
 if not TOKEN:
     raise Exception("TOKEN is not set")
@@ -29,6 +61,13 @@ broadcast_mode = set()
 # =========================
 @app.route("/", methods=["POST"])
 def webhook():
+    # Проверяем секрет, если он задан
+    if TELEGRAM_SECRET:
+        got = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+        if got != TELEGRAM_SECRET:
+            print("[WEBHOOK] отклонён запрос с неверным секретом")
+            return "Forbidden", 403
+
     try:
         data = request.get_data().decode("utf-8")
 
@@ -41,27 +80,85 @@ def webhook():
     except Exception as e:
         ERROR_LOGS.append(str(e))
         print("WEBHOOK ERROR:", e)
+        traceback.print_exc()
 
+    # Всегда отвечаем 200, иначе Telegram будет слать апдейт повторно
     return "OK", 200
+
+
+@app.route("/", methods=["GET"])
+@app.route("/health", methods=["GET"])
+def health():
+    """Проверка живости сервиса и расписания."""
+    try:
+        username = bot.get_me().username
+    except Exception:
+        username = None
+
+    schedule = parse_schedule()
+    return jsonify({
+        "status": "ok",
+        "bot": username,
+        "dates": len(schedule),
+        "lessons": sum(len(v) for v in schedule.values()),
+        "users": len(load_users()),
+        "errors": len(ERROR_LOGS),
+    })
+
+
+def register_webhook():
+    """Регистрирует webhook в Telegram. Безопасно вызывать повторно."""
+    if not WEBHOOK_URL:
+        print("[WEBHOOK] WEBHOOK_URL не задан — регистрация пропущена")
+        return
+
+    try:
+        bot.remove_webhook()
+        bot.set_webhook(
+            url=WEBHOOK_URL,
+            secret_token=TELEGRAM_SECRET or None,
+            drop_pending_updates=True,
+        )
+        print(f"[WEBHOOK] зарегистрирован: {WEBHOOK_URL}")
+    except Exception as e:
+        print("[WEBHOOK] не удалось зарегистрировать:", e)
 
 
 # =========================
 # USERS
 # =========================
 def load_users():
+    """Список chat_id. Файл может отсутствовать — это нормально."""
     try:
         with open(USERS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
+            data = json.load(f)
+            return data if isinstance(data, list) else []
+    except FileNotFoundError:
+        return []
+    except Exception as e:
+        print("[USERS] не удалось прочитать:", e)
         return []
 
 
 def save_user(user_id):
-    users = load_users()
-    if user_id not in users:
+    """
+    Добавляет пользователя в список.
+
+    На бесплатном хостинге диск может быть только для чтения или
+    очищаться при перезапуске, поэтому ошибка записи не должна ломать
+    команду /start.
+    """
+    try:
+        users = load_users()
+        if user_id in users:
+            return
+
         users.append(user_id)
         with open(USERS_FILE, "w", encoding="utf-8") as f:
             json.dump(users, f, ensure_ascii=False, indent=2)
+
+    except Exception as e:
+        print("[USERS] не удалось сохранить (это не критично):", e)
 
 
 # =========================
@@ -78,12 +175,20 @@ def main_menu():
 # SAFE SEND
 # =========================
 def send_safe(chat_id, text):
+    """Отправляет текст, разбивая слишком длинные сообщения."""
     if not text:
         text = "Пусто"
 
     MAX = 3800
     for i in range(0, len(text), MAX):
-        bot.send_message(chat_id, text[i:i + MAX], reply_markup=main_menu())
+        chunk = text[i:i + MAX]
+        # Кнопку прикрепляем только к последнему сообщению
+        last = i + MAX >= len(text)
+        bot.send_message(
+            chat_id,
+            chunk,
+            reply_markup=main_menu() if last else None,
+        )
 
 
 # =========================
@@ -95,8 +200,8 @@ def start(message):
 
     bot.send_message(
         message.chat.id,
-        "📚 Бот запущен",
-        reply_markup=main_menu()
+        "📚 Бот запущен\n\nВыберите, что показать:",
+        reply_markup=main_menu(),
     )
 
 
@@ -142,7 +247,13 @@ def callbacks(call):
     bot.answer_callback_query(call.id)
 
     if call.data == "stats":
-        bot.send_message(chat_id, f"👥 Users: {len(load_users())}")
+        schedule = parse_schedule()
+        bot.send_message(
+            chat_id,
+            f"👥 Пользователей: {len(load_users())}\n"
+            f"📅 Дней в расписании: {len(schedule)}\n"
+            f"📚 Пар всего: {sum(len(v) for v in schedule.values())}",
+        )
 
     elif call.data == "users":
         bot.send_message(chat_id, f"👥 Total: {len(load_users())}")
@@ -173,7 +284,7 @@ def handle(message):
     try:
         # ================= BROADCAST =================
         if chat_id == ADMIN_ID and chat_id in broadcast_mode:
-            broadcast_mode.remove(chat_id)
+            broadcast_mode.discard(chat_id)
 
             users = load_users()
             ok, fail = 0, 0
@@ -182,36 +293,68 @@ def handle(message):
                 try:
                     bot.send_message(u, f"📢 {text}")
                     ok += 1
-                except:
+                except Exception as e:
+                    print(f"[BROADCAST] не доставлено {u}: {e}")
                     fail += 1
 
             bot.send_message(chat_id, f"✔ Sent: {ok} | ❌ Failed: {fail}")
             return
 
         # ================= SCHEDULE =================
-        schedule = parse_schedule()
-
-        if not schedule:
-            send_safe(chat_id, "Нет данных 😎")
-            return
-
         if text == "📅 Сегодня":
-            send_safe(chat_id, format_schedule(get_today(), compact=False))
+            lessons = get_today()
+            if not lessons:
+                bot.send_message(chat_id, "😎 Сегодня пар нет", reply_markup=main_menu())
+            else:
+                send_safe(chat_id, format_schedule(lessons))
 
         elif text == "⏭ Завтра":
-            send_safe(chat_id, format_schedule(get_tomorrow(), compact=True))
+            lessons = get_tomorrow()
+            if not lessons:
+                bot.send_message(chat_id, "😎 Завтра пар нет", reply_markup=main_menu())
+            else:
+                send_safe(chat_id, format_schedule(lessons, compact=True))
 
         elif text == "📆 Неделя":
-            send_safe(chat_id, format_schedule(schedule, compact=False))
+            lessons = get_week()
+            if not lessons:
+                bot.send_message(
+                    chat_id,
+                    "😎 На ближайшую неделю пар нет",
+                    reply_markup=main_menu(),
+                )
+            else:
+                send_safe(chat_id, format_schedule(lessons, compact=True))
+
+        else:
+            bot.send_message(
+                chat_id,
+                "Не понял 🤔 Выберите пункт меню.",
+                reply_markup=main_menu(),
+            )
 
     except Exception as e:
         ERROR_LOGS.append(str(e))
+        traceback.print_exc()
         send_safe(chat_id, f"Ошибка: {e}")
 
 
 # =========================
 # START SERVER
 # =========================
+# При запуске через gunicorn блок __main__ не выполняется, поэтому webhook
+# регистрируем на уровне модуля.
+if not USE_POLLING:
+    register_webhook()
+
+
 if __name__ == "__main__":
-    print("BOT STARTED")
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    port = int(os.environ.get("PORT", 8080))
+
+    if USE_POLLING:
+        print("BOT STARTED (polling)")
+        bot.remove_webhook()
+        bot.infinity_polling()
+    else:
+        print(f"BOT STARTED (webhook) on port {port}")
+        app.run(host="0.0.0.0", port=port)

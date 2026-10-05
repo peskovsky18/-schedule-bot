@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Список пользователей — локальные данные, в репозиторий не нужен
+users.json
+
+# Секреты
+.env
+
+# macOS
+.DS_Store
