@@ -441,10 +441,15 @@
     if (!isFinite(delay) || delay < 0) delay = 30000;
     if (!isFinite(duration) || duration <= 0) duration = 3000;
 
-    // Заранее загружаем картинку: иначе она появится с задержкой
-    // на подгрузку и розыгрыш смажется.
-    var preload = new Image();
-    preload.src = src;
+    // Картинку готовим заранее и показываем ровно этот элемент.
+    // Если создать новый <img> в момент показа, он начнёт загрузку
+    // заново, и вместо лица на мгновение мелькнёт чёрный экран.
+    var imgEl = new Image();
+    imgEl.className = "screamer__img";
+    imgEl.alt = "";
+    // cover заполняет экран с обрезкой краёв, contain показывает целиком
+    imgEl.style.objectFit = cfg.fit === "contain" ? "contain" : "cover";
+    imgEl.src = src;
 
     var overlay = null;
     var autoClose = null;
@@ -487,12 +492,8 @@
 
       overlay = el("div", "screamer");
 
-      var img = el("img", "screamer__img");
-      img.src = src;
-      img.alt = "";
-      // cover заполняет экран с обрезкой краёв, contain показывает целиком
-      img.style.objectFit = cfg.fit === "contain" ? "contain" : "cover";
-      overlay.appendChild(img);
+      // Уже загруженный заранее элемент — показывается мгновенно
+      overlay.appendChild(imgEl);
 
       var btn = el("button", "screamer__close", "✕");
       btn.type = "button";
