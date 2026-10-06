@@ -390,7 +390,14 @@ body {
   right: 0;
   bottom: 0;
   z-index: 71;
-  width: min(330px, 86vw);
+
+  /*
+    На весь экран: разделов стало много, и в узкой колонке 330 px они
+    не помещались. На широком экране (например, в Telegram Web)
+    ограничиваем ширину, иначе панель растянется на весь монитор.
+  */
+  width: 100%;
+  max-width: 560px;
   display: flex;
   flex-direction: column;
   background: var(--card);
@@ -980,3 +987,55 @@ body.has-netlify-badge .app {
 }
 
 .support__close:active { background: var(--line); }
+
+
+/* ---------- Раскрывающийся заголовок «Приколы» ---------- */
+
+.menu__group--toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menu__group--toggle:active { background: var(--bg-soft); }
+
+.menu__chevron {
+  font-size: 13px;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+
+/* Развёрнуто — стрелка смотрит вверх */
+.menu__group--toggle[aria-expanded="true"] .menu__chevron {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu__chevron { transition: none; }
+}
+
+/*
+  Размер фигур считаем от ширины доски, а не от ширины окна.
+
+  Раньше стояло min(7vw, 26px): после перехода меню на весь экран доска
+  стала шире, и фигуры выглядели бы мелкими. Единицы контейнера дают
+  ровно 70 % от клетки при любой ширине — и на телефоне, и в Telegram Web.
+*/
+@supports (container-type: inline-size) {
+  .chess__board { container-type: inline-size; }
+  .chess__piece { font-size: 9cqw; }
+}

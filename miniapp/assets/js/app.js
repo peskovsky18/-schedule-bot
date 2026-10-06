@@ -795,6 +795,7 @@
     var pollTimer = null;
     var busy = false;
     var menuOpen = false;
+    var funOpen = false;
 
     function showError(message) {
       errorEl.textContent = message || "";
@@ -1160,24 +1161,36 @@
       return waitingForOpponent ? CHESS_POLL_MS : CHESS_IDLE_MS;
     }
 
+    /** Доска видна, только когда открыто меню и раскрыты «Приколы». */
+    function boardVisible() {
+      return menuOpen && funOpen;
+    }
+
     function maybePoll() {
       stopPolling();
-      if (!menuOpen || !gameId || !game) return;
+      if (!boardVisible() || !gameId || !game) return;
 
       // Перезапускаем таймер каждый раз, а не setInterval: задержка
       // зависит от состояния и должна меняться на ходу
       pollTimer = setTimeout(function tick() {
         if (document.visibilityState === "visible") refresh();
-        pollTimer = menuOpen && gameId && game
+        pollTimer = boardVisible() && gameId && game
           ? setTimeout(tick, pollDelay())
           : null;
       }, pollDelay());
     }
 
-    // Опрашиваем, только пока меню открыто: доска всё равно видна лишь там
+    // Опрашиваем, только пока доска на экране: нужно и открытое меню,
+    // и раскрытые «Приколы». В свёрнутом виде запросы были бы впустую.
     onMenuToggle(function (open) {
       menuOpen = open;
-      if (open) refresh().then(maybePoll);
+      if (open && funOpen) refresh().then(maybePoll);
+      else stopPolling();
+    });
+
+    onFunToggle(function (open) {
+      funOpen = open;
+      if (open && menuOpen) refresh().then(maybePoll);
       else stopPolling();
     });
 
@@ -1227,6 +1240,48 @@
       } catch (e) {
         console.warn("[menu] обработчик упал:", e && e.message);
       }
+    });
+  }
+
+  // Кому сообщать о раскрытии «Приколов». Нужно шахматам: опрашивать
+  // соперника имеет смысл, только когда доска действительно на экране.
+  var funHandlers = [];
+
+  function onFunToggle(handler) {
+    funHandlers.push(handler);
+  }
+
+  function notifyFun(open) {
+    funHandlers.forEach(function (handler) {
+      try {
+        handler(open);
+      } catch (e) {
+        console.warn("[fun] обработчик упал:", e && e.message);
+      }
+    });
+  }
+
+  /**
+   * Раскрывающийся раздел «Приколы».
+   *
+   * По умолчанию свёрнут: меню длинное, и развлечения в нём тонули.
+   * Состояние не запоминаем — при следующем открытии снова свёрнуто,
+   * иначе смысл прятать теряется.
+   */
+  function initFun() {
+    var toggle = document.getElementById("funToggle");
+    var content = document.getElementById("funContent");
+
+    if (!toggle || !content) return;
+
+    function setOpen(open) {
+      content.hidden = !open;
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      notifyFun(open);
+    }
+
+    toggle.addEventListener("click", function () {
+      setOpen(content.hidden);
     });
   }
 
@@ -1428,6 +1483,7 @@
 
     render();
     initMenu();
+    initFun();
     initSupport();
     initChess();
     initRoulette();
