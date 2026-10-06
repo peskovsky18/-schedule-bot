@@ -30,6 +30,7 @@ import telebot.apihelper as apihelper
 from flask import Flask, jsonify, request
 from telebot import types
 
+import chess_api
 import parser
 from parser import format_schedule, get_today, get_tomorrow, get_week, parse_schedule
 
@@ -81,6 +82,10 @@ if not TOKEN:
 
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
+
+# Шахматы: раздел /api/chess. Токен нужен, чтобы проверять подпись
+# Telegram и понимать, кто именно ходит.
+chess_api.init_app(app, TOKEN)
 
 ERROR_LOGS = []
 broadcast_mode = set()
@@ -182,8 +187,10 @@ def add_cors_headers(response):
     """CORS только для /api/* — вебхук трогать не нужно."""
     if request.path.startswith("/api/"):
         response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGINS
-        response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        # X-Telegram-Init-Data — подпись Telegram, по ней шахматы
+        # понимают, кто именно ходит
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Telegram-Init-Data"
         response.headers["Vary"] = "Origin"
     return response
 
