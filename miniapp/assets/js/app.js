@@ -16,12 +16,12 @@
   var API_KEY = "schedule.apiBase";
   var CACHE_TTL = 5 * 60 * 1000; // 5 минут, как и на сервере
 
-  // В верхней панели — только два быстрых режима. Остальные
-  // («Неделя», «Следующая неделя», «Всё расписание») переехали в меню,
-  // иначе они перестали бы быть доступными вообще.
+  // В верхней панели — три быстрых режима. Остальные («Неделя»,
+  // «Всё расписание») остались в выездном меню.
   var MODES = [
     { id: "today", title: "Сегодня" },
     { id: "tomorrow", title: "Завтра" },
+    { id: "next", title: "Следующая неделя" },
   ];
 
   /* ---------- Telegram ---------- */
@@ -198,22 +198,10 @@
 
   function renderGroup() {
     var box = document.getElementById("group");
-    var sub = document.getElementById("groupSub");
-    if (!box) return;
+    var title = (window.APP && window.APP.title) || "ППРСД super app";
 
-    var info = (state.data && state.data.group) || {};
-    var name = info.name || "Расписание";
-
-    box.textContent = name;
-
-    var parts = [];
-    if (info.institute) parts.push(info.institute);
-    if (info.program) parts.push(info.program);
-
-    sub.textContent = parts.join(" · ");
-    sub.hidden = parts.length === 0;
-
-    document.title = name + " — расписание";
+    if (box) box.textContent = title;
+    document.title = title;
   }
 
   function renderSegments() {
@@ -1393,6 +1381,37 @@
     });
   }
 
+  /* ---------- Техподдержка ---------- */
+
+  /**
+   * Кнопка внизу страницы и сообщение по ней.
+   *
+   * Это шутка, поэтому сообщение закрывается крестиком и больше ничего
+   * не делает: никаких ссылок и переходов.
+   */
+  function initSupport() {
+    var btn = document.getElementById("supportBtn");
+    var toast = document.getElementById("supportToast");
+    var close = document.getElementById("supportClose");
+
+    if (!btn || !toast || !close) return;
+
+    function hide() {
+      toast.hidden = true;
+    }
+
+    btn.addEventListener("click", function () {
+      toast.hidden = false;
+    });
+
+    close.addEventListener("click", hide);
+
+    // Escape закрывает — привычно для всплывающих сообщений
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !toast.hidden) hide();
+    });
+  }
+
   function start() {
     initTelegram();
     watchNetlifyBadge();
@@ -1409,6 +1428,7 @@
 
     render();
     initMenu();
+    initSupport();
     initChess();
     initRoulette();
     initTracks();

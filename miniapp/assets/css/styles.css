@@ -871,3 +871,102 @@ body.has-netlify-badge .app {
 }
 
 .chess__promo-btn:active { background: var(--bg-soft); }
+
+/* ---------- Группы в меню ---------- */
+
+/*
+  Заголовок верхнего уровня: «Расписание» и «Приколы». Разделены линией,
+  чтобы несрочное не смешивалось с расписанием.
+*/
+.menu__group {
+  padding: 18px 16px 8px;
+  margin-top: 6px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+
+.menu__group:first-child {
+  margin-top: 0;
+  border-top: 0;
+}
+
+/* Вложенные подписи внутри группы — тише заголовка */
+.menu__group + .menu__section { padding-top: 10px; }
+
+/* ---------- Техподдержка ---------- */
+
+.support {
+  padding: 24px 0 8px;
+  text-align: center;
+}
+
+/*
+  Намеренно неприметная: подчёркнутый текст меньшей прозрачности.
+  На глаза попадается, но от расписания не отвлекает.
+*/
+.support__btn {
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--hint);
+  opacity: 0.45;
+  font: inherit;
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.support__btn:active { opacity: 0.85; }
+
+/* Сообщение: всплывает снизу, закрывается крестиком */
+.support__toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  /*
+    Ширину задаём явно. При одном только left: 50% браузер отводит
+    элементу место лишь до правого края, и сообщение сжималось вдвое —
+    текст переносился на две строки без нужды.
+  */
+  width: calc(100% - 32px);
+  max-width: 380px;
+  padding: 12px 10px 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  font-size: 13.5px;
+  transform: translateX(-50%);
+}
+
+.support__text { flex: 1; }
+
+.support__close {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--bg-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.support__close:active { background: var(--line); }

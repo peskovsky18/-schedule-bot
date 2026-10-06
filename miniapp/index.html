@@ -5,16 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark light">
   <meta name="theme-color" content="#0e1116">
-  <title>Расписание</title>
+  <title>ППРСД super app</title>
   <meta name="description" content="Расписание занятий группы — Telegram Mini App">
 
   <!--
-    ?v=4 — обход кэша. Ассеты отдаются с no-cache (см. _headers), так что
-    поднимать номер не обязательно: он нужен был, чтобы сбросить файлы,
-    закэшированные раньше с max-age=3600. Если меняете файлы в assets/
-    и хотите гарантию — увеличьте число.
+    ?v=N — обход кэша. GitHub Pages своих заголовков кэша не поддерживает
+    и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
+    поднимайте номер: иначе Telegram покажет старую версию.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=4">
+  <link rel="stylesheet" href="assets/css/styles.css?v=7">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -25,8 +24,7 @@
 
     <header class="appbar">
       <div class="appbar__titles">
-        <h1 class="appbar__group" id="group">Расписание</h1>
-        <div class="appbar__sub" id="groupSub" hidden></div>
+        <h1 class="appbar__group" id="group">ППРСД super app</h1>
       </div>
 
       <button class="icon-btn" id="refresh" type="button" title="Обновить" aria-label="Обновить расписание">
@@ -56,6 +54,20 @@
 
     <main class="days" id="days"></main>
 
+    <!--
+      Кнопка техподдержки. Намеренно тихая: текст меньшей прозрачности,
+      чтобы не отвлекать от расписания.
+    -->
+    <footer class="support">
+      <button class="support__btn" id="supportBtn" type="button">Техподдержка</button>
+    </footer>
+
+  </div>
+
+  <!-- Сообщение техподдержки: появляется по кнопке внизу страницы -->
+  <div class="support__toast" id="supportToast" role="status" aria-live="polite" hidden>
+    <span class="support__text">Поддержки нет. Живите так.</span>
+    <button class="support__close" id="supportClose" type="button" aria-label="Закрыть сообщение">✕</button>
   </div>
 
   <!-- Затемнение под меню -->
@@ -72,12 +84,17 @@
     </div>
 
     <div class="menu__scroll">
-      <div class="menu__section">Расписание</div>
+      <div class="menu__group">Расписание</div>
       <div class="menu__nav" id="menuNav">
         <button class="menu__item" type="button" data-mode="week">Неделя</button>
-        <button class="menu__item" type="button" data-mode="next">Следующая неделя</button>
         <button class="menu__item" type="button" data-mode="all">Всё расписание</button>
       </div>
+
+      <!--
+        Приколы: всё несрочное собрано под одним заголовком, чтобы
+        расписание оставалось сверху и не тонуло в развлечениях.
+      -->
+      <div class="menu__group">Приколы</div>
 
       <div class="menu__section">Шахматы</div>
       <div class="chess" id="chess">
@@ -138,14 +155,14 @@
         <div class="roulette__result" id="rouletteResult" role="status" aria-live="polite"></div>
       </div>
 
-      <div class="menu__section">Треки</div>
+      <div class="menu__section">ППРСД music</div>
       <div class="tracks" id="tracks"></div>
     </div>
   </aside>
 
-  <script src="assets/js/config.js?v=6"></script>
-  <script src="assets/js/core.js?v=6"></script>
-  <script src="assets/js/chess.js?v=6"></script>
-  <script src="assets/js/app.js?v=6"></script>
+  <script src="assets/js/config.js?v=7"></script>
+  <script src="assets/js/core.js?v=7"></script>
+  <script src="assets/js/chess.js?v=7"></script>
+  <script src="assets/js/app.js?v=7"></script>
 </body>
 </html>

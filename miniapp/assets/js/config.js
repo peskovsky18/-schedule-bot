@@ -11,6 +11,16 @@
  * Адрес можно переопределить и без правки файла — параметром в ссылке:
  *   https://ваш-сайт.netlify.app/?api=https://schedule-bot-abc1.onrender.com
  */
+/**
+ * Название в шапке приложения.
+ *
+ * Раньше здесь стояли номер группы и институт — они длинные и занимали
+ * две строки, а название группы всё равно одно и то же.
+ */
+window.APP = {
+  title: "ППРСД super app",
+};
+
 window.SCHEDULE_API_BASE = "https://schedule-bot-umgq.onrender.com";
 
 /**
