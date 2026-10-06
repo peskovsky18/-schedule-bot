@@ -67,7 +67,17 @@ USE_POLLING = os.getenv("USE_POLLING") == "1"
 USERS_FILE = os.getenv("USERS_FILE", "users.json")
 
 if not TOKEN:
-    raise Exception("TOKEN is not set")
+    raise Exception(
+        "Переменная окружения TOKEN не задана, работать нечем.\n"
+        "Как исправить:\n"
+        "  1. Откройте сервис на Render → вкладка Environment.\n"
+        "  2. Add Environment Variable: Key = TOKEN, "
+        "Value = токен бота от @BotFather.\n"
+        "  3. Save — Render перезапустит сервис сам.\n"
+        "Если сервис создавался как Blueprint, TOKEN запрашивается только\n"
+        "при первом создании: при обновлении существующего Blueprint Render\n"
+        "переменные с sync: false игнорирует, поэтому добавьте вручную."
+    )
 
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
