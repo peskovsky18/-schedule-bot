@@ -125,9 +125,10 @@ def health():
     """
     Проверка живости сервиса.
 
-    Специально не ходит на guide.herzen.spb.ru: Render вызывает этот адрес
-    для проверки сервиса, и недоступность сайта университета не должна
-    выглядеть как падение бота. Состояние расписания берётся из кэша.
+    Обращений к сети здесь нет вообще: ни к сайту университета, ни
+    к Telegram. Render дёргает этот адрес, чтобы понять, жив ли сервис,
+    и недоступность внешнего API не должна выглядеть как падение бота.
+    Расписание берётся из кэша, имя бота — из уже выясненного.
 
     Чтобы принудительно обновить расписание, добавьте ?deep=1.
     """
@@ -137,7 +138,7 @@ def health():
 
     return jsonify({
         "status": "ok",
-        "bot": bot_username(),
+        "bot": _bot_username,
         "ready": parser.cache_age() is not None,
         "cache_age": parser.cache_age(),
         "dates": len(schedule),
@@ -147,15 +148,21 @@ def health():
     })
 
 
-def bot_username():
-    """Имя бота для диагностики. Без сети, если уже выяснили."""
+def warm_bot_username():
+    """
+    Узнаёт имя бота и запоминает его.
+
+    Вызывается из фоновой настройки, а не из /health: проверка живости
+    не должна ждать ответа Telegram.
+    """
     global _bot_username
 
     if _bot_username is None:
         try:
             _bot_username = bot.get_me().username
-        except Exception:
-            return None
+            print(f"[BOT] @{_bot_username}")
+        except Exception as e:
+            print("[BOT] не удалось получить имя бота:", e)
 
     return _bot_username
 
@@ -296,6 +303,10 @@ def setup_telegram():
     with _setup_lock:
         if _setup_done:
             return True
+
+        # Заодно узнаём имя бота — потом /health отдаст его без обращения
+        # к сети
+        warm_bot_username()
 
         webhook_ok = register_webhook()
         menu_ok = register_menu_button()

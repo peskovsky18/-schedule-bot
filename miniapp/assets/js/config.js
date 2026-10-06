@@ -11,4 +11,4 @@
  * Адрес можно переопределить и без правки файла — параметром в ссылке:
  *   https://ваш-сайт.netlify.app/?api=https://schedule-bot-abc1.onrender.com
  */
-window.SCHEDULE_API_BASE = "";
+window.SCHEDULE_API_BASE = "https://schedule-bot-umgq.onrender.com";
