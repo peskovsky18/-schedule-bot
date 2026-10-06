@@ -16,6 +16,7 @@
     { id: "today", title: "Сегодня" },
     { id: "tomorrow", title: "Завтра" },
     { id: "week", title: "Неделя" },
+    { id: "next", title: "Следующая" },
     { id: "all", title: "Всё" },
   ];
 
@@ -420,6 +421,87 @@
     return card;
   }
 
+  /* ---------- Скример ---------- */
+
+  /**
+   * Розыгрыш: через delayMs после открытия на весь экран появляется
+   * картинка. Закрывается крестиком, тапом в любом месте или сама
+   * через durationMs.
+   *
+   * Настройки — в config.js (window.SCREAMER). Выключить: enabled: false.
+   */
+  function initScreamer() {
+    var cfg = window.SCREAMER || {};
+    if (cfg.enabled !== true) return;
+
+    var delay = Number(cfg.delayMs);
+    var duration = Number(cfg.durationMs);
+    var src = cfg.image || "assets/img/scare.jpg";
+
+    if (!isFinite(delay) || delay < 0) delay = 30000;
+    if (!isFinite(duration) || duration <= 0) duration = 3000;
+
+    // Заранее загружаем картинку: иначе она появится с задержкой
+    // на подгрузку и розыгрыш смажется.
+    var preload = new Image();
+    preload.src = src;
+
+    var overlay = null;
+    var autoClose = null;
+
+    function close() {
+      if (autoClose) {
+        clearTimeout(autoClose);
+        autoClose = null;
+      }
+      if (!overlay) return;
+
+      overlay.remove();
+      overlay = null;
+    }
+
+    function show() {
+      if (overlay) return;
+
+      overlay = el("div", "screamer");
+
+      var img = el("img", "screamer__img");
+      img.src = src;
+      img.alt = "";
+      overlay.appendChild(img);
+
+      var btn = el("button", "screamer__close", "✕");
+      btn.type = "button";
+      btn.setAttribute("aria-label", "Закрыть");
+      btn.addEventListener("click", function (event) {
+        event.stopPropagation();
+        close();
+      });
+      overlay.appendChild(btn);
+
+      // Тап в любом месте тоже закрывает — так розыгрыш не затягивается
+      overlay.addEventListener("click", close);
+
+      document.body.appendChild(overlay);
+
+      // Класс добавляем после вставки в документ, иначе переход
+      // прозрачности не сработает и картинка останется невидимой.
+      var reveal = function () {
+        if (overlay) overlay.classList.add("is-visible");
+      };
+
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(reveal);
+      } else {
+        reveal();
+      }
+
+      autoClose = setTimeout(close, duration);
+    }
+
+    setTimeout(show, delay);
+  }
+
   /* ---------- Запуск ---------- */
 
   function bindRefresh() {
@@ -458,6 +540,7 @@
     }
 
     render();
+    initScreamer();
 
     fetchSchedule();
   }

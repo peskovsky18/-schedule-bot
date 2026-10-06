@@ -39,6 +39,14 @@ const DAYS = [
       { time: "11:20–12:50", subject: "Четвёртая", type: "практика", teacher: "—", room: "—" },
     ],
   },
+  {
+    // Попадает в окно «Следующая неделя» (сегодня + 8 дней)
+    date: "2026-10-14",
+    human: "14 октября, среда",
+    lessons: [
+      { time: "13:30–15:00", subject: "Пятая", type: "лабораторная", teacher: "—", room: "—" },
+    ],
+  },
 ];
 
 console.log("=== Даты по Москве ===");
@@ -85,7 +93,7 @@ check(
 check("«Завтра» — пустой день", core.buildView(DAYS, "tomorrow", TODAY)[0].isEmpty, true);
 check("«Завтра» — подпись", core.buildView(DAYS, "tomorrow", TODAY)[0].label, "Завтра");
 check("«Неделя» — семь дней", core.buildView(DAYS, "week", TODAY).length, 7);
-check("«Всё» — только дни из данных", core.buildView(DAYS, "all", TODAY).length, 2);
+check("«Всё» — только дни из данных", core.buildView(DAYS, "all", TODAY).length, 3);
 check(
   "«Всё» пропускает прошедшие дни",
   core.buildView(
@@ -93,7 +101,39 @@ check(
     "all",
     TODAY
   ).length,
-  2
+  3
+);
+
+console.log("\n=== Следующая неделя ===");
+const next = core.buildView(DAYS, "next", TODAY);
+check("семь дней", next.length, 7);
+check("начинается с сегодня + 7", next[0].date, "2026-10-13");
+check("заканчивается сегодня + 13", next[6].date, "2026-10-19");
+check(
+  "пары из этого окна на месте",
+  next.filter((d) => !d.isEmpty).map((d) => d.date),
+  ["2026-10-14"]
+);
+check(
+  "подписи — не «Сегодня» и не «Завтра»",
+  next.some((d) => d.label === "Сегодня" || d.label === "Завтра"),
+  false
+);
+check("ни один день не помечен как сегодня", next.some((d) => d.isToday), false);
+
+const week = core.buildView(DAYS, "week", TODAY);
+const overlap = week.filter((w) => next.some((n) => n.date === w.date));
+check("«Неделя» и «Следующая» не пересекаются", overlap.length, 0);
+check(
+  "вместе покрывают 14 дней подряд",
+  week.length + next.length,
+  14
+);
+check("«Следующая» без данных — 7 пустых дней", core.buildView([], "next", TODAY).length, 7);
+check(
+  "все дни пустые без данных",
+  core.buildView([], "next", TODAY).every((d) => d.isEmpty),
+  true
 );
 
 console.log("\n=== Пустые данные не ломают интерфейс ===");
@@ -101,6 +141,7 @@ check("«Неделя» без данных — 7 дней", core.buildView([], 
 check("все дни пустые", core.buildView([], "week", TODAY).every((d) => d.isEmpty), true);
 check("«Всё» без данных", core.buildView([], "all", TODAY).length, 0);
 check("мусор вместо данных", core.buildView(null, "week", TODAY).length, 7);
+check("мусор в «Следующей»", core.buildView(null, "next", TODAY).length, 7);
 
 console.log("\n=== Типы занятий и ссылки ===");
 check("лекция", core.typeClass("лекция"), "lecture");

@@ -126,20 +126,30 @@ body {
 
 /* ---------- Переключатель ---------- */
 
+/*
+  Вкладок пять, и на узких экранах подписи могут не поместиться.
+  Поэтому flex с запретом сжатия: когда места хватает — кнопки
+  растягиваются поровну, когда нет — полоса прокручивается.
+*/
 .segmented {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
+  display: flex;
   gap: 4px;
   padding: 4px;
   margin-bottom: 10px;
   background: var(--bg-soft);
   border: 1px solid var(--line);
   border-radius: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
 
+.segmented::-webkit-scrollbar { display: none; }
+
 .segmented__btn {
-  padding: 9px 6px;
+  flex: 1 0 auto;
+  white-space: nowrap;
+  padding: 9px 8px;
   border: 0;
   border-radius: 9px;
   background: transparent;
@@ -346,10 +356,69 @@ body {
   .lesson { gap: 9px; }
   .lesson__time { width: 74px; font-size: 12.5px; }
   .appbar__group { font-size: 19px; }
+
+  /* Пять вкладок на узком экране: подписи мельче, чтобы влезли целиком */
+  .segmented__btn { padding: 8px 6px; font-size: 12.5px; }
 }
 
 /* Экран слишком узкий для двух колонок — время уходит наверх */
 @media (max-width: 340px) {
   .lesson { display: block; }
   .lesson__time { width: auto; margin-bottom: 4px; }
+  .segmented__btn { font-size: 12px; padding: 8px 5px; }
 }
+
+/* ---------- Скример ---------- */
+
+/*
+  Появление без вспышек и стробоскопа: короткое затухание прозрачности.
+  Никаких резких миганий — это опасно для людей с фотосенситивной
+  эпилепсией.
+*/
+.screamer {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  background: #000;
+  opacity: 0;
+  transition: opacity 0.15s linear;
+  /* Скример не должен прокручивать страницу под собой */
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.screamer.is-visible { opacity: 1; }
+
+.screamer__img {
+  width: 100%;
+  height: 100%;
+  /* Заполняет экран целиком, без чёрных полей */
+  object-fit: cover;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.screamer__close {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: 12px;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.screamer__close:hover { background: rgba(255, 255, 255, 0.32); }
+.screamer__close:active { transform: scale(0.92); }

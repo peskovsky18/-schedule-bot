@@ -191,6 +191,15 @@
       return week;
     }
 
+    // Следующая неделя — следующее окно из семи дней, встык к «Неделе»:
+    // если «Неделя» показывает дни 0…6 от сегодня, то здесь 7…13.
+    // Так вкладки не пересекаются и не оставляют пропусков.
+    if (mode === "next") {
+      var next = [];
+      for (var j = 7; j < 14; j++) next.push(makeDay(addDays(today, j)));
+      return next;
+    }
+
     // Всё, что есть в данных, начиная с сегодня
     return Object.keys(byDate)
       .filter(function (iso) { return iso >= today; })
