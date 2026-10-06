@@ -804,6 +804,7 @@
     var cellNodes = [];
     var pollTimer = null;
     var busy = false;
+    var menuOpen = false;
 
     function showError(message) {
       errorEl.textContent = message || "";
@@ -1046,6 +1047,7 @@
           remember(data.game.id);
           game = data.game;
           render();
+          maybePoll();
         })
         .catch(function (error) { showError(error.message); })
         .then(function () {
@@ -1060,11 +1062,15 @@
           remember(id);
           game = data.game;
           render();
+          maybePoll();
         })
         .catch(function (error) {
           // Уже участник или место занято — показываем состояние как есть
           remember(id);
-          return refresh().then(function () { showError(error.message); });
+          return refresh().then(function () {
+            maybePoll();
+            showError(error.message);
+          });
         });
     }
 
@@ -1098,15 +1104,6 @@
 
     /* ---- опрос ---- */
 
-    function startPolling() {
-      stopPolling();
-      if (!gameId || !game) return;
-
-      pollTimer = setInterval(function () {
-        if (document.visibilityState === "visible") refresh();
-      }, CHESS_POLL_MS);
-    }
-
     function stopPolling() {
       if (pollTimer) {
         clearInterval(pollTimer);
@@ -1114,9 +1111,27 @@
       }
     }
 
+    /**
+     * Включает опрос, если он вообще нужен.
+     *
+     * Вызывать нужно после каждого изменения состояния: партия могла
+     * появиться уже после открытия меню, и тогда прежний запуск опроса
+     * молча выходил ни с чем — из-за этого приложение не замечало
+     * присоединившегося соперника.
+     */
+    function maybePoll() {
+      stopPolling();
+      if (!menuOpen || !gameId || !game) return;
+
+      pollTimer = setInterval(function () {
+        if (document.visibilityState === "visible") refresh();
+      }, CHESS_POLL_MS);
+    }
+
     // Опрашиваем, только пока меню открыто: доска всё равно видна лишь там
     onMenuToggle(function (open) {
-      if (open) refresh().then(startPolling);
+      menuOpen = open;
+      if (open) refresh().then(maybePoll);
       else stopPolling();
     });
 
