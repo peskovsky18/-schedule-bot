@@ -450,6 +450,11 @@ def notify_chess_move(game, game_id, mover_id, resigned=False):
     if not opponent:
         return
 
+    # Соперник сейчас смотрит на доску — он увидит ход сам через пару
+    # секунд, и сообщение только дёрнет телефон зря
+    if chess_api.seen_recently(game_id, opponent["id"]):
+        return
+
     if resigned:
         text = "♟ Соперник сдался. Вы победили!"
     else:

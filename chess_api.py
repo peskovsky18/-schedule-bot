@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import json
 import os
+import time
 import urllib.parse
 
 from flask import Blueprint, jsonify, request
@@ -27,6 +28,38 @@ _bot_token = None
 # импортировать его сам — получится замкнутый круг, bot.py уже
 # импортирует chess_api.
 _notify = None
+
+# Кто и когда последний раз открывал доску. Хранится в памяти процесса
+# намеренно: это подсказка для уведомлений, а не данные партии. Потерять
+# её не страшно — в худшем случае придёт лишнее сообщение. Зато не тратит
+# ни одной команды Upstash, а на бесплатном тарифе их 10 000 в сутки.
+_seen = {}
+SEEN_WINDOW = 90
+
+
+def mark_seen(game_id, user_id):
+    """Запоминает, что игрок сейчас смотрит на доску."""
+    _seen[(game_id, user_id)] = time.time()
+
+
+def seen_recently(game_id, user_id, within=None):
+    """Открывал ли игрок доску вот только что."""
+    stamp = _seen.get((game_id, user_id))
+    if not stamp:
+        return False
+
+    return (time.time() - stamp) < (SEEN_WINDOW if within is None else within)
+
+
+def forget_old_seen(limit=500):
+    """Убирает старые отметки, чтобы словарь не рос бесконечно."""
+    if len(_seen) < limit:
+        return
+
+    deadline = time.time() - SEEN_WINDOW
+    for key, stamp in list(_seen.items()):
+        if stamp < deadline:
+            _seen.pop(key, None)
 
 # Режим отладки: разрешает играть без подписи Telegram.
 # Нужен только для локального запуска в браузере, где initData пустая.
@@ -208,6 +241,12 @@ def api_state(game_id):
     game = chess_game.load_game(game_id)
     if not game:
         return jsonify({"ok": False, "error": "Партия не найдена"}), 404
+
+    # Игрок смотрит на доску — значит, о ходе ему можно не писать:
+    # он увидит его сам через пару секунд
+    if user and chess_game.is_player(game, user["id"]):
+        mark_seen(game_id, user["id"])
+        forget_old_seen()
 
     return jsonify({
         "ok": True,

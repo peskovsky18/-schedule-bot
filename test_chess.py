@@ -485,6 +485,52 @@ bot.MINIAPP_URL = saved_url
 
 
 # =========================
+print("\n=== Не дёргаем того, кто смотрит на доску ===")
+
+# Возвращаем записывающую заглушку: в прошлом разделе send_message
+# специально бросал исключение, чтобы проверить поведение при сбое
+notified.clear()
+bot.bot.send_message = lambda chat_id, text, **kw: notified.append(
+    {"chat": chat_id, "text": text, "markup": kw.get("reply_markup")}
+)
+
+watch = client.post("/api/chess/new", headers=ALICE).get_json()["game"]
+wid = watch["id"]
+client.post(f"/api/chess/{wid}/join", headers=BOB)
+
+# Боб открывает доску
+client.get(f"/api/chess/{wid}", headers=BOB)
+truthy("просмотр доски отмечен", chess_api.seen_recently(wid, 202))
+
+notified.clear()
+client.post(f"/api/chess/{wid}/move", headers=ALICE, json={"from": "e2", "to": "e4"})
+time_module.sleep(0.4)
+check("смотрящему на доску не пишем", len(notified), 0)
+
+# Прошло время — теперь писать нужно
+chess_api.SEEN_WINDOW = 0
+notified.clear()
+client.post(f"/api/chess/{wid}/move", headers=BOB, json={"from": "e7", "to": "e5"})
+wait_for_notifications()
+check("отвлёкшемуся пишем", len(notified), 1)
+check("сообщение ушло белым", notified[0]["chat"] if notified else None, 101)
+
+# Зритель не считается смотрящим: он не участник партии
+chess_api.SEEN_WINDOW = 90
+chess_api._seen.clear()
+client.get(f"/api/chess/{wid}", headers=CAROL)
+truthy("посторонний просмотр не отмечается", not chess_api.seen_recently(wid, 303))
+
+# Отметки не растут бесконечно
+chess_api._seen.clear()
+for i in range(600):
+    chess_api._seen[("игра", i)] = 0
+chess_api.forget_old_seen()
+truthy("старые отметки вычищаются", len(chess_api._seen) < 600, f"осталось {len(chess_api._seen)}")
+chess_api._seen.clear()
+
+
+# =========================
 print("\n=== Хранилище Upstash (на локальной заглушке) ===")
 
 import http.server
