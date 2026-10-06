@@ -282,6 +282,24 @@ def api_move(game_id):
     return jsonify({"ok": True, "game": chess_game.serialize(game, user["id"])})
 
 
+@bp.route("/<game_id>/cancel", methods=["POST"])
+def api_cancel(game_id):
+    """Отменяет партию, к которой никто не присоединился."""
+    user, error = current_user()
+    if error:
+        return jsonify({"ok": False, "error": error}), 401
+
+    game = chess_game.load_game(game_id)
+    if not game:
+        return jsonify({"ok": False, "error": "Партия не найдена"}), 404
+
+    game, error = chess_game.cancel(game, user["id"])
+    if error:
+        return jsonify({"ok": False, "error": error}), 409
+
+    return jsonify({"ok": True, "cancelled": game_id})
+
+
 @bp.route("/<game_id>/resign", methods=["POST"])
 def api_resign(game_id):
     """Игрок сдаётся."""

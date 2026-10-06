@@ -287,6 +287,23 @@ def apply_move(game, user_id, from_square, to_square, promotion=None):
     return save_game(game), None
 
 
+def cancel(game, user_id):
+    """
+    Отменяет партию, к которой никто не присоединился.
+
+    Иначе случайно созданная партия висит мёртвым грузом до истечения
+    срока хранения, и выйти из неё в приложении нечем.
+    """
+    if not is_player(game, user_id):
+        return None, "Вы не участник этой партии"
+
+    if game["status"] != "waiting":
+        return None, "Партия уже началась — сдавайтесь"
+
+    delete_game(game["id"])
+    return game, None
+
+
 def resign(game, user_id):
     """Игрок сдаётся: победа достаётся сопернику."""
     color = player_color(game, user_id)

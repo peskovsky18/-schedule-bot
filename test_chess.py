@@ -485,6 +485,39 @@ bot.MINIAPP_URL = saved_url
 
 
 # =========================
+print("\n=== Отмена партии, к которой не присоединились ===")
+
+abandoned = client.post("/api/chess/new", headers=ALICE).get_json()["game"]
+aid = abandoned["id"]
+
+response = client.post(f"/api/chess/{aid}/cancel", headers=BOB)
+check("посторонний отменить не может", response.status_code, 409)
+
+response = client.post(f"/api/chess/{aid}/cancel")
+check("без авторизации отменить нельзя", response.status_code, 401)
+
+truthy("партия пока на месте", chess_game.load_game(aid) is not None)
+
+response = client.post(f"/api/chess/{aid}/cancel", headers=ALICE)
+check("создатель отменяет свою партию", response.status_code, 200)
+check("партия удалена", chess_game.load_game(aid), None)
+
+response = client.post(f"/api/chess/{aid}/cancel", headers=ALICE)
+check("повторная отмена — партии уже нет", response.status_code, 404)
+
+# Начавшуюся партию отменять нельзя: для этого есть сдача
+started = client.post("/api/chess/new", headers=ALICE).get_json()["game"]
+sid = started["id"]
+client.post(f"/api/chess/{sid}/join", headers=BOB)
+
+response = client.post(f"/api/chess/{sid}/cancel", headers=ALICE)
+check("начатую партию отменить нельзя", response.status_code, 409)
+truthy("подсказка про сдачу", "сдава" in response.get_json().get("error", "").lower(),
+       response.get_json().get("error", ""))
+truthy("партия не удалена", chess_game.load_game(sid) is not None)
+
+
+# =========================
 print("\n=== Не дёргаем того, кто смотрит на доску ===")
 
 # Возвращаем записывающую заглушку: в прошлом разделе send_message

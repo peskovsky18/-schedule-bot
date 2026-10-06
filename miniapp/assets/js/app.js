@@ -791,6 +791,7 @@
     var blackEl = document.getElementById("chessBlack");
     var inviteBtn = document.getElementById("chessInvite");
     var resignBtn = document.getElementById("chessResign");
+    var cancelBtn = document.getElementById("chessCancel");
     var againBtn = document.getElementById("chessAgain");
     var newBtn = document.getElementById("chessNew");
     var promoEl = document.getElementById("chessPromo");
@@ -928,6 +929,7 @@
       }
 
       inviteBtn.hidden = game.status !== "waiting";
+      cancelBtn.hidden = game.status !== "waiting";
       resignBtn.hidden = game.status !== "active";
       againBtn.hidden = game.status !== "finished";
 
@@ -1090,6 +1092,31 @@
       window.open(share, "_blank");
     }
 
+    /**
+     * Отменяет партию, к которой никто не присоединился.
+     *
+     * Без этого случайно созданная партия оставалась навсегда: выйти
+     * из неё в приложении было нечем.
+     */
+    function cancelGame() {
+      if (busy || !gameId) return;
+      busy = true;
+      cancelBtn.disabled = true;
+
+      chessFetch("/" + gameId + "/cancel", { method: "POST" })
+        .then(function () {
+          stopPolling();
+          remember(null);
+          game = null;
+          render();
+        })
+        .catch(function (error) { showError(error.message); })
+        .then(function () {
+          busy = false;
+          cancelBtn.disabled = false;
+        });
+    }
+
     function resign() {
       if (busy || !gameId) return;
       busy = true;
@@ -1162,6 +1189,7 @@
 
     newBtn.addEventListener("click", createGame);
     inviteBtn.addEventListener("click", invite);
+    cancelBtn.addEventListener("click", cancelGame);
     resignBtn.addEventListener("click", resign);
     againBtn.addEventListener("click", createGame);
 
