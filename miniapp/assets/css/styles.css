@@ -38,6 +38,13 @@ html[data-scheme="light"] {
 
 * { box-sizing: border-box; }
 
+/*
+  Атрибут hidden прячет элемент только стилем браузера по умолчанию,
+  поэтому любое своё display (например, display: flex у меню) его
+  перебивает — и «скрытая» панель остаётся на экране. Фиксируем явно.
+*/
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
