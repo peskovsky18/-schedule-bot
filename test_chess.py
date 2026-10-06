@@ -233,6 +233,14 @@ import bot
 
 client = bot.app.test_client()
 
+# Заглушаем отправку сообщений сразу: иначе тестовые ходы будут
+# по-настоящему стучаться в Telegram с фиктивным токеном и ждать
+# таймаута, а в лог посыпятся 401
+stub_messages = []
+bot.bot.send_message = lambda chat_id, text, **kw: stub_messages.append(
+    {"chat": chat_id, "text": text, "markup": kw.get("reply_markup")}
+)
+
 ALICE = {"X-Dev-User-Id": "101", "X-Dev-User-Name": "Алиса"}
 BOB = {"X-Dev-User-Id": "202", "X-Dev-User-Name": "Боб"}
 CAROL = {"X-Dev-User-Id": "303"}
@@ -377,6 +385,101 @@ bot.start(FakeMessage(303, "Карol", "/start"))
 truthy("обычный запуск показывает меню",
        "Бот запущен" in (sent[0]["text"] if sent else ""),
        sent[0]["text"][:40] if sent else "")
+
+bot.MINIAPP_URL = saved_url
+
+
+# =========================
+print("\n=== Уведомления о ходах ===")
+
+import time as time_module
+
+notified = []
+bot.bot.send_message = lambda chat_id, text, **kw: notified.append(
+    {"chat": chat_id, "text": text, "markup": kw.get("reply_markup")}
+)
+
+# Кнопка «Открыть доску» появляется только при заданном адресе приложения
+bot.MINIAPP_URL = "https://pprsd.netlify.app"
+
+
+def wait_for_notifications(count=1, limit=2.0):
+    """Уведомления уходят в отдельном потоке — даём им время."""
+    deadline = time_module.time() + limit
+    while time_module.time() < deadline and len(notified) < count:
+        time_module.sleep(0.05)
+    return len(notified)
+
+
+# Партия 101 (белые) против 202 (чёрные)
+notif = client.post("/api/chess/new", headers=ALICE).get_json()["game"]
+nid = notif["id"]
+client.post(f"/api/chess/{nid}/join", headers=BOB)
+
+notified.clear()
+client.post(f"/api/chess/{nid}/move", headers=ALICE, json={"from": "e2", "to": "e4"})
+wait_for_notifications()
+
+check("пришло одно уведомление", len(notified), 1)
+check("уведомление ушло сопернику (чёрным)", notified[0]["chat"] if notified else None, 202)
+truthy("текст про ход", "Ваш ход" in (notified[0]["text"] if notified else ""),
+       notified[0]["text"] if notified else "")
+truthy("есть кнопка «Открыть доску»",
+       bool(notified and notified[0]["markup"] and notified[0]["markup"].keyboard))
+
+# Тот, кто сходил, уведомления получать не должен
+notified.clear()
+client.post(f"/api/chess/{nid}/move", headers=BOB, json={"from": "e7", "to": "e5"})
+wait_for_notifications()
+check("белым тоже сообщили", notified[0]["chat"] if notified else None, 101)
+
+# Шах — отдельный текст
+notified.clear()
+client.post(f"/api/chess/{nid}/move", headers=ALICE, json={"from": "f1", "to": "c4"})
+wait_for_notifications()
+client.post(f"/api/chess/{nid}/move", headers=BOB, json={"from": "b8", "to": "c6"})
+wait_for_notifications(2)
+client.post(f"/api/chess/{nid}/move", headers=ALICE, json={"from": "d1", "to": "h5"})
+wait_for_notifications(3)
+client.post(f"/api/chess/{nid}/move", headers=BOB, json={"from": "g8", "to": "f6"})
+wait_for_notifications(4)
+
+notified.clear()
+client.post(f"/api/chess/{nid}/move", headers=ALICE, json={"from": "h5", "to": "f7"})
+wait_for_notifications()
+truthy("о мате сообщается отдельно",
+       "Мат" in (notified[0]["text"] if notified else ""),
+       notified[0]["text"] if notified else "")
+check("партия закончена матом", chess_game.load_game(nid)["status"], "finished")
+
+# Сдача
+resign_game = client.post("/api/chess/new", headers=ALICE).get_json()["game"]
+rid = resign_game["id"]
+client.post(f"/api/chess/{rid}/join", headers=BOB)
+
+notified.clear()
+client.post(f"/api/chess/{rid}/resign", headers=ALICE)
+wait_for_notifications()
+truthy("о сдаче сообщается отдельно",
+       "сдался" in (notified[0]["text"] if notified else "").lower(),
+       notified[0]["text"] if notified else "")
+check("уведомление о сдаче ушло чёрным", notified[0]["chat"] if notified else None, 202)
+
+# Если Telegram недоступен, ход всё равно должен пройти
+def broken_send(*args, **kwargs):
+    raise RuntimeError("Telegram недоступен")
+
+bot.bot.send_message = broken_send
+
+broken_game = client.post("/api/chess/new", headers=ALICE).get_json()["game"]
+bid = broken_game["id"]
+client.post(f"/api/chess/{bid}/join", headers=BOB)
+
+response = client.post(f"/api/chess/{bid}/move", headers=ALICE,
+                       json={"from": "d2", "to": "d4"})
+check("ход проходит, даже если уведомление не ушло", response.status_code, 200)
+time_module.sleep(0.3)
+check("ход всё равно записан", chess_game.load_game(bid)["moves"], ["d2d4"])
 
 bot.MINIAPP_URL = saved_url
 

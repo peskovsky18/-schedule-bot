@@ -84,9 +84,8 @@ if not TOKEN:
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-# Шахматы: раздел /api/chess. Токен нужен, чтобы проверять подпись
-# Telegram и понимать, кто именно ходит.
-chess_api.init_app(app, TOKEN)
+# Раздел шахмат /api/chess подключается ниже — после того, как объявлена
+# функция уведомлений: в Python имя должно существовать в момент вызова.
 
 ERROR_LOGS = []
 broadcast_mode = set()
@@ -432,6 +431,58 @@ def start(message):
         "📚 Бот запущен\n\nВыберите, что показать:",
         reply_markup=main_menu(),
     )
+
+
+def notify_chess_move(game, game_id, mover_id, resigned=False):
+    """
+    Пишет сопернику, что сделан ход.
+
+    Вызывается из обработчика HTTP, поэтому отправка уходит в отдельный
+    поток: ответ на ход не должен ждать Telegram, иначе доска будет
+    подвисать на время сетевого запроса.
+    """
+    players = [game.get("white"), game.get("black")]
+    opponent = next(
+        (p for p in players if p and p.get("id") and p["id"] != mover_id),
+        None,
+    )
+
+    if not opponent:
+        return
+
+    if resigned:
+        text = "♟ Соперник сдался. Вы победили!"
+    else:
+        board = chess_game.board_of(game)
+        if board.is_checkmate():
+            text = "♟ Мат! Партия закончена."
+        elif board.is_check():
+            text = "♟ Шах! Ваш ход."
+        else:
+            text = "♟ Ваш ход."
+
+    def work():
+        try:
+            markup = None
+
+            if MINIAPP_URL:
+                markup = types.InlineKeyboardMarkup()
+                markup.add(types.InlineKeyboardButton(
+                    "Открыть доску",
+                    web_app=types.WebAppInfo(url=f"{MINIAPP_URL}/?game={game_id}"),
+                ))
+
+            bot.send_message(opponent["id"], text, reply_markup=markup)
+        except Exception as e:
+            # Соперник мог не начать чат с ботом — это не повод ронять ход
+            print("[CHESS] не удалось сообщить о ходе:", e)
+
+    threading.Thread(target=work, daemon=True, name="chess-notify").start()
+
+
+# Токен нужен, чтобы проверять подпись Telegram и понимать, кто ходит.
+# notify связывает ходы с сообщениями в боте.
+chess_api.init_app(app, TOKEN, notify=notify_chess_move)
 
 
 def accept_chess_invite(message, game_id):

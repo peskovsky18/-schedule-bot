@@ -742,7 +742,8 @@
   /* ---------- Шахматы ---------- */
 
   var CHESS_GAME_KEY = "chess.game";
-  var CHESS_POLL_MS = 2500;
+  var CHESS_POLL_MS = 2500; // ждём хода соперника — опрашиваем часто
+  var CHESS_IDLE_MS = 8000; // наш ход — менять состояние можем только мы
 
   /** Заголовки с подписью Telegram: по ней сервер понимает, кто ходит. */
   function chessHeaders() {
@@ -1106,7 +1107,7 @@
 
     function stopPolling() {
       if (pollTimer) {
-        clearInterval(pollTimer);
+        clearTimeout(pollTimer);
         pollTimer = null;
       }
     }
@@ -1119,13 +1120,33 @@
      * молча выходил ни с чем — из-за этого приложение не замечало
      * присоединившегося соперника.
      */
+    /**
+     * Как часто спрашивать сервер.
+     *
+     * Когда ждём хода соперника — часто: изменения появятся именно там.
+     * Когда ход наш — редко: состояние меняем только мы сами (разве что
+     * соперник сдастся). Так расход команд Upstash падает почти вдвое,
+     * а на бесплатном тарифе это 10 000 в сутки.
+     */
+    function pollDelay() {
+      var waitingForOpponent = game && game.status === "active" &&
+        game.you && game.turn !== game.you;
+
+      return waitingForOpponent ? CHESS_POLL_MS : CHESS_IDLE_MS;
+    }
+
     function maybePoll() {
       stopPolling();
       if (!menuOpen || !gameId || !game) return;
 
-      pollTimer = setInterval(function () {
+      // Перезапускаем таймер каждый раз, а не setInterval: задержка
+      // зависит от состояния и должна меняться на ходу
+      pollTimer = setTimeout(function tick() {
         if (document.visibilityState === "visible") refresh();
-      }, CHESS_POLL_MS);
+        pollTimer = menuOpen && gameId && game
+          ? setTimeout(tick, pollDelay())
+          : null;
+      }, pollDelay());
     }
 
     // Опрашиваем, только пока меню открыто: доска всё равно видна лишь там

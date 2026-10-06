@@ -23,16 +23,26 @@ bp = Blueprint("chess", __name__, url_prefix="/api/chess")
 # Токен бота нужен для проверки подписи. Проставляется в init_app.
 _bot_token = None
 
+# Чем сообщать сопернику о ходе. Ставит bot.py: chess_api не может
+# импортировать его сам — получится замкнутый круг, bot.py уже
+# импортирует chess_api.
+_notify = None
+
 # Режим отладки: разрешает играть без подписи Telegram.
 # Нужен только для локального запуска в браузере, где initData пустая.
 # В проде быть не должно — тогда личность не проверяется вообще.
 DEV_AUTH = os.getenv("CHESS_DEV_AUTH") == "1"
 
 
-def init_app(app, bot_token):
-    """Регистрирует раздел шахмат в приложении."""
-    global _bot_token
+def init_app(app, bot_token, notify=None):
+    """
+    Регистрирует раздел шахмат в приложении.
+
+    notify(game, game_id, user_id) вызывается после хода и после сдачи.
+    """
+    global _bot_token, _notify
     _bot_token = bot_token
+    _notify = notify
 
     if DEV_AUTH:
         print("[CHESS] ВНИМАНИЕ: CHESS_DEV_AUTH=1 — подпись Telegram не проверяется")
@@ -131,6 +141,23 @@ def current_user():
     return None, "Нужна авторизация через Telegram"
 
 
+def _tell_opponent(game, game_id, user_id, resigned=False):
+    """
+    Просит бота предупредить соперника.
+
+    Уведомление — вещь полезная, но необязательная: если Telegram
+    недоступен, ход всё равно должен пройти, поэтому ошибку только
+    записываем в лог.
+    """
+    if not _notify:
+        return
+
+    try:
+        _notify(game, game_id, user_id, resigned)
+    except Exception as error:
+        print("[CHESS] уведомление не ушло:", error)
+
+
 # =========================
 # МАРШРУТЫ
 # =========================
@@ -211,6 +238,8 @@ def api_move(game_id):
     if error:
         return jsonify({"ok": False, "error": error}), 409
 
+    _tell_opponent(game, game_id, user["id"])
+
     return jsonify({"ok": True, "game": chess_game.serialize(game, user["id"])})
 
 
@@ -228,6 +257,8 @@ def api_resign(game_id):
     game, error = chess_game.resign(game, user["id"])
     if error:
         return jsonify({"ok": False, "error": error}), 409
+
+    _tell_opponent(game, game_id, user["id"], resigned=True)
 
     return jsonify({"ok": True, "game": chess_game.serialize(game, user["id"])})
 
