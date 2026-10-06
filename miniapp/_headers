@@ -9,8 +9,12 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
 
+# Ассеты отдаём с обязательной ревалидацией, а не с max-age.
+# Приложение крошечное (около 30 КБ), экономить тут нечего, а вот
+# Telegram агрессивно кэширует мини-приложения: с max-age=3600 он
+# показывал старый код до часа, и обновления не доходили до людей.
 /assets/*
-  Cache-Control: public, max-age=3600
+  Cache-Control: no-cache, must-revalidate
 
 /index.html
   Cache-Control: no-cache, must-revalidate

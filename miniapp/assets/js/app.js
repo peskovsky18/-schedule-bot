@@ -448,6 +448,27 @@
 
     var overlay = null;
     var autoClose = null;
+    var timer = null;
+
+    // Отсчитываем время только пока приложение на экране. В Telegram
+    // WebView затормаживает таймеры в фоне, и без этого розыгрыш мог
+    // сработать при заблокированном экране — то есть пропасть зря.
+    var remaining = delay;
+    var startedAt = 0;
+
+    function startTimer() {
+      if (timer || overlay || remaining <= 0) return;
+      startedAt = Date.now();
+      timer = setTimeout(show, remaining);
+    }
+
+    function pauseTimer() {
+      if (!timer) return;
+      clearTimeout(timer);
+      timer = null;
+      remaining -= Date.now() - startedAt;
+      if (remaining < 0) remaining = 0;
+    }
 
     function close() {
       if (autoClose) {
@@ -461,6 +482,7 @@
     }
 
     function show() {
+      timer = null;
       if (overlay) return;
 
       overlay = el("div", "screamer");
@@ -501,7 +523,13 @@
       autoClose = setTimeout(close, duration);
     }
 
-    setTimeout(show, delay);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") startTimer();
+      else pauseTimer();
+    });
+
+    // Если страница открылась в фоне, отсчёт начнётся при возвращении
+    if (document.visibilityState === "visible") startTimer();
   }
 
   /* ---------- Запуск ---------- */

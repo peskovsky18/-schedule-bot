@@ -8,7 +8,15 @@
   <title>Расписание</title>
   <meta name="description" content="Расписание занятий группы — Telegram Mini App">
 
-  <link rel="stylesheet" href="assets/css/styles.css">
+  <!--
+    ?v=2 — обход кэша. Раньше ассеты отдавались с max-age=3600, и Telegram
+    держал старые app.js/config.js до часа, поэтому обновления не доходили.
+    Сейчас ассеты отдаются с no-cache (см. _headers), так что номер версии
+    поднимать не обязательно — он нужен был, чтобы сбросить уже
+    закэшированные файлы. Если меняете файлы в assets/ и хотите гарантию,
+    увеличьте число.
+  -->
+  <link rel="stylesheet" href="assets/css/styles.css?v=2">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -38,8 +46,8 @@
 
   </div>
 
-  <script src="assets/js/config.js"></script>
-  <script src="assets/js/core.js"></script>
-  <script src="assets/js/app.js"></script>
+  <script src="assets/js/config.js?v=2"></script>
+  <script src="assets/js/core.js?v=2"></script>
+  <script src="assets/js/app.js?v=2"></script>
 </body>
 </html>
