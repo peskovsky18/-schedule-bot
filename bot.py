@@ -492,7 +492,7 @@ def notify_chess_move(game, game_id, mover_id, resigned=False):
 
 # Токен нужен, чтобы проверять подпись Telegram и понимать, кто ходит.
 # notify связывает ходы с сообщениями в боте.
-chess_api.init_app(app, TOKEN, notify=notify_chess_move)
+chess_api.init_app(app, TOKEN, notify=notify_chess_move, mini_app_url=MINIAPP_URL)
 
 
 def accept_chess_invite(message, game_id):

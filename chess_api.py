@@ -29,6 +29,11 @@ _bot_token = None
 # импортирует chess_api.
 _notify = None
 
+# Адрес мини-приложения. Здесь только для диагностики: из него бот
+# собирает кнопку меню и ссылки «Открыть доску», и если он пустой,
+# обе возможности молчат — а увидеть это снаружи иначе нечем.
+_mini_app_url = ""
+
 # Кто и когда последний раз открывал доску. Хранится в памяти процесса
 # намеренно: это подсказка для уведомлений, а не данные партии. Потерять
 # её не страшно — в худшем случае придёт лишнее сообщение. Зато не тратит
@@ -67,15 +72,16 @@ def forget_old_seen(limit=500):
 DEV_AUTH = os.getenv("CHESS_DEV_AUTH") == "1"
 
 
-def init_app(app, bot_token, notify=None):
+def init_app(app, bot_token, notify=None, mini_app_url=""):
     """
     Регистрирует раздел шахмат в приложении.
 
     notify(game, game_id, user_id) вызывается после хода и после сдачи.
     """
-    global _bot_token, _notify
+    global _bot_token, _notify, _mini_app_url
     _bot_token = bot_token
     _notify = notify
+    _mini_app_url = mini_app_url
 
     if DEV_AUTH:
         print("[CHESS] ВНИМАНИЕ: CHESS_DEV_AUTH=1 — подпись Telegram не проверяется")
@@ -322,7 +328,7 @@ def api_resign(game_id):
 
 @bp.route("/status", methods=["GET"])
 def api_status():
-    """Диагностика: какое хранилище подключено."""
+    """Диагностика: хранилище и адрес мини-приложения."""
     store = chess_game.get_store()
 
     return jsonify({
@@ -330,4 +336,5 @@ def api_status():
         "storage": "redis" if isinstance(store, chess_game.RedisStore) else "memory",
         "persistent": isinstance(store, chess_game.RedisStore),
         "devAuth": DEV_AUTH,
+        "miniAppUrl": _mini_app_url or "",
     })
