@@ -129,6 +129,22 @@
     return Math.floor(hours / 24) + " дн назад";
   }
 
+  /** Секунды в вид «1:23» или «1:02:05» — для плеера. */
+  function formatTime(seconds) {
+    var total = Math.floor(Number(seconds));
+
+    if (!isFinite(total) || total < 0) total = 0;
+
+    var hours = Math.floor(total / 3600);
+    var minutes = Math.floor((total % 3600) / 60);
+    var secs = total % 60;
+
+    var mm = hours > 0 ? String(minutes).padStart(2, "0") : String(minutes);
+    var ss = String(secs).padStart(2, "0");
+
+    return hours > 0 ? hours + ":" + mm + ":" + ss : mm + ":" + ss;
+  }
+
   /* ---------- Виды ---------- */
 
   function moodleLink(lesson) {
@@ -221,6 +237,7 @@
     startMinutes: startMinutes,
     sortLessons: sortLessons,
     formatAge: formatAge,
+    formatTime: formatTime,
     moodleLink: moodleLink,
     typeClass: typeClass,
     dayLabel: dayLabel,

@@ -422,3 +422,102 @@ body {
 
 .screamer__close:hover { background: rgba(255, 255, 255, 0.32); }
 .screamer__close:active { transform: scale(0.92); }
+
+/* ---------- Плеер ---------- */
+
+.player {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--bg-soft);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.18);
+}
+
+/* Приклеенная полоса не должна закрывать последний день расписания */
+body.has-player .app {
+  padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+}
+
+.player__toggle {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text);
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.player__toggle:active { transform: scale(0.92); }
+
+/* Показываем ту иконку, которая соответствует состоянию */
+.player__icon { display: none; }
+.player__icon--play { display: block; }
+
+.player.is-playing .player__icon--play { display: none; }
+.player.is-playing .player__icon--pause { display: block; }
+
+.player__body {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.player__title {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 5px;
+}
+
+/* Полоса прогресса: высота 18 px — удобная зона попадания пальцем,
+   а сама линия тоньше и центрируется через top + отрицательный отступ */
+.player__bar {
+  position: relative;
+  height: 18px;
+  cursor: pointer;
+}
+
+.player__bar::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  margin-top: -1.5px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.player__progress {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  margin-top: -1.5px;
+  height: 3px;
+  width: 0;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.player__time {
+  flex: none;
+  font-size: 12px;
+  color: var(--hint);
+  font-variant-numeric: tabular-nums;
+}

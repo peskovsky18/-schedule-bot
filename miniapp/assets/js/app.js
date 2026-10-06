@@ -533,6 +533,102 @@
     if (document.visibilityState === "visible") startTimer();
   }
 
+  /* ---------- Плеер ---------- */
+
+  /**
+   * Полоса плеера внизу экрана: одна дорожка из config.js.
+   * Включается вручную — автовоспроизведение в мобильных WebView
+   * всё равно заблокировано до касания экрана.
+   */
+  function initPlayer() {
+    var cfg = window.PLAYER || {};
+    if (cfg.enabled !== true || !cfg.src) return;
+
+    var box = document.getElementById("player");
+    var toggle = document.getElementById("playerToggle");
+    var titleEl = document.getElementById("playerTitle");
+    var bar = document.getElementById("playerBar");
+    var progress = document.getElementById("playerProgress");
+    var timeEl = document.getElementById("playerTime");
+
+    if (!box || !toggle || !bar || !progress || !timeEl) return;
+
+    titleEl.textContent = cfg.title || "Трек";
+
+    var audio = new Audio();
+    // preload="none": файл скачивается только после нажатия play,
+    // поэтому вес дорожки не влияет на скорость открытия приложения
+    audio.preload = "none";
+    audio.src = cfg.src;
+
+    var volume = Number(cfg.volume);
+    if (isFinite(volume) && volume >= 0 && volume <= 1) audio.volume = volume;
+
+    box.hidden = false;
+    document.body.classList.add("has-player");
+
+    function render() {
+      var duration = audio.duration;
+      var ratio = 0;
+
+      if (isFinite(duration) && duration > 0) {
+        ratio = Math.max(0, Math.min(1, audio.currentTime / duration));
+      }
+
+      progress.style.width = (ratio * 100).toFixed(2) + "%";
+      bar.setAttribute("aria-valuenow", String(Math.round(ratio * 100)));
+      timeEl.textContent = core.formatTime(audio.currentTime);
+
+      var playing = !audio.paused;
+      box.classList.toggle("is-playing", playing);
+      toggle.setAttribute("aria-label", playing ? "Пауза" : "Воспроизвести");
+    }
+
+    toggle.addEventListener("click", function () {
+      if (!audio.paused) {
+        audio.pause();
+        return;
+      }
+
+      // play() возвращает промис и может отклониться, если WebView
+      // запретил воспроизведение — тогда просто вернём кнопку в исходный вид
+      var started = audio.play();
+
+      if (started && typeof started.catch === "function") {
+        started.catch(function (e) {
+          console.warn("[player] не удалось начать воспроизведение:", e && e.message);
+          render();
+        });
+      }
+    });
+
+    bar.addEventListener("click", function (event) {
+      if (!isFinite(audio.duration) || audio.duration <= 0) return;
+
+      var rect = bar.getBoundingClientRect();
+      if (!rect.width) return;
+
+      var ratio = (event.clientX - rect.left) / rect.width;
+      audio.currentTime = Math.max(0, Math.min(1, ratio)) * audio.duration;
+      render();
+    });
+
+    audio.addEventListener("timeupdate", render);
+    audio.addEventListener("durationchange", render);
+    audio.addEventListener("play", render);
+    audio.addEventListener("pause", render);
+    audio.addEventListener("ended", function () {
+      audio.currentTime = 0;
+      render();
+    });
+    audio.addEventListener("error", function () {
+      timeEl.textContent = "ошибка";
+      console.warn("[player] не удалось загрузить трек:", cfg.src);
+    });
+
+    render();
+  }
+
   /* ---------- Запуск ---------- */
 
   function bindRefresh() {
@@ -572,6 +668,7 @@
 
     render();
     initScreamer();
+    initPlayer();
 
     fetchSchedule();
   }

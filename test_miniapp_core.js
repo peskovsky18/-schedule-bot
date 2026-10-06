@@ -73,6 +73,20 @@ check("5 минут", core.formatAge(300), "5 минут назад");
 check("2 часа", core.formatAge(7200), "2 ч назад");
 check("пустое значение", core.formatAge(null), "");
 
+console.log("\n=== Время трека ===");
+check("ноль", core.formatTime(0), "0:00");
+check("9 секунд", core.formatTime(9), "0:09");
+check("1:05", core.formatTime(65), "1:05");
+check("1:53 (длина трека)", core.formatTime(113.76), "1:53");
+check("ровно минута", core.formatTime(60), "1:00");
+check("час", core.formatTime(3600), "1:00:00");
+check("час две минуты пять секунд", core.formatTime(3725), "1:02:05");
+check("дробные округляются вниз", core.formatTime(59.9), "0:59");
+check("отрицательное не ломает", core.formatTime(-5), "0:00");
+check("NaN не ломает", core.formatTime(NaN), "0:00");
+check("undefined не ломает", core.formatTime(undefined), "0:00");
+check("строка превращается в число", core.formatTime("75"), "1:15");
+
 console.log("\n=== Сортировка пар ===");
 check(
   "утренние пары идут первыми",
