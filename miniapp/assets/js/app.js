@@ -662,7 +662,9 @@
     }
 
     function loadCustom() {
-      return fetch((apiBase || "") + "/api/music")
+      // Подпись обязательна: по ней сервер решает, можно ли удалять
+      // трек. Без неё свои же треки помечались как чужие.
+      return fetch((apiBase || "") + "/api/music", { headers: authHeaders() })
         .then(function (response) { return response.json(); })
         .then(function (data) {
           if (!data || data.ok !== true) return;
@@ -724,7 +726,7 @@
 
       fetch((apiBase || "") + "/api/music/" + encodeURIComponent(track.id) + "/delete", {
         method: "POST",
-        headers: chessHeaders(),
+        headers: authHeaders(),
       })
         .then(function (response) { return response.json(); })
         .then(function (data) {
@@ -989,6 +991,20 @@
   /** Подпись Telegram для заголовка запроса. Вне Telegram пусто. */
   function telegramInitData() {
     return inTelegram && tg && tg.initData ? tg.initData : "";
+  }
+
+  /**
+   * Только подпись, без типа содержимого.
+   *
+   * Для GET-запросов: Content-Type там ни к чему и вызывает лишний
+   * предварительный запрос OPTIONS.
+   */
+  function authHeaders() {
+    var headers = {};
+    var initData = telegramInitData();
+
+    if (initData) headers["X-Telegram-Init-Data"] = initData;
+    return headers;
   }
 
   /** Заголовки с подписью Telegram: по ней сервер понимает, кто ходит. */
