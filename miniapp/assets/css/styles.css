@@ -429,7 +429,9 @@ body {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  /* Поднимается над плашкой Netlify, если она есть: высоту измеряет
+     app.js и кладёт в --badge-offset. Без плашки это 0. */
+  bottom: var(--badge-offset, 0px);
   z-index: 60;
   display: flex;
   align-items: center;
@@ -442,7 +444,7 @@ body {
 
 /* Приклеенная полоса не должна закрывать последний день расписания */
 body.has-player .app {
-  padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(90px + var(--badge-offset, 0px) + env(safe-area-inset-bottom, 0px));
 }
 
 .player__toggle {

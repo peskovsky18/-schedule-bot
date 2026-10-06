@@ -556,6 +556,50 @@
   }
 
   /**
+   * Netlify добавляет в правый нижний угол плашку «Powered by Netlify»
+   * (iframe #nl-badge-frame) с максимальным z-index. Она показывается
+   * всем посетителям и перекрывает низ экрана: кнопка списка треков
+   * и правая половина полосы перемотки становятся некликабельными.
+   *
+   * Плашку стоит отключить в настройках проекта, но приложение должно
+   * работать и с ней. Поэтому измеряем её высоту и поднимаем плеер
+   * ровно на столько — через переменную --badge-offset.
+   */
+  function watchNetlifyBadge() {
+    function measure() {
+      var badge = document.getElementById("nl-badge-frame");
+      var height = 0;
+
+      if (badge) {
+        var rect = badge.getBoundingClientRect();
+        height = rect.height || 0;
+      }
+
+      document.documentElement.style.setProperty("--badge-offset", height + "px");
+      document.body.classList.toggle("has-netlify-badge", height > 0);
+
+      return height > 0;
+    }
+
+    if (measure()) return;
+
+    // Плашку вставляет скрипт Netlify, возможно уже после загрузки
+    if (typeof MutationObserver !== "function") return;
+
+    var observer = new MutationObserver(function () {
+      if (measure()) observer.disconnect();
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Бесконечно следить не нужно
+    setTimeout(function () {
+      observer.disconnect();
+      measure();
+    }, 20000);
+  }
+
+  /**
    * Полоса плеера внизу экрана: список треков из config.js.
    * Включается вручную — автовоспроизведение в мобильных WebView
    * всё равно заблокировано до касания экрана.
@@ -678,9 +722,10 @@
     function openQueue() {
       if (!queue || !backdrop) return;
 
-      // Панель встаёт вплотную над полосой плеера: её высота зависит
-      // от safe-area, поэтому считаем в рантайме, а не в CSS
-      queue.style.bottom = box.getBoundingClientRect().height + "px";
+      // Панель встаёт вплотную над полосой плеера. Считаем от низа окна
+      // до верха плеера: так учитываются и safe-area, и подъём из-за
+      // плашки Netlify — в CSS это не выразить.
+      queue.style.bottom = (window.innerHeight - box.getBoundingClientRect().top) + "px";
       queue.hidden = false;
       backdrop.hidden = false;
       queueBtn.setAttribute("aria-expanded", "true");
@@ -784,6 +829,7 @@
 
   function start() {
     initTelegram();
+    watchNetlifyBadge();
     bindRefresh();
     bindVisibility();
 
