@@ -20,15 +20,23 @@
 
 import json
 import os
+import threading
+import time
 import traceback
 from datetime import date, timedelta
 
 import telebot
+import telebot.apihelper as apihelper
 from flask import Flask, jsonify, request
 from telebot import types
 
 import parser
 from parser import format_schedule, get_today, get_tomorrow, get_week, parse_schedule
+
+# Короткие таймауты к Telegram API. По умолчанию 15 с на соединение и 30 с
+# на ответ — затянувшийся вызов задерживал бы старт сервиса.
+apihelper.CONNECT_TIMEOUT = 5
+apihelper.READ_TIMEOUT = 15
 
 # =========================
 # CONFIG
@@ -209,21 +217,35 @@ def api_schedule():
 
 
 def register_webhook():
-    """Регистрирует webhook в Telegram. Безопасно вызывать повторно."""
+    """
+    Регистрирует webhook в Telegram.
+
+    Возвращает True, если всё в порядке или настраивать нечего
+    (например, локальный запуск без WEBHOOK_URL).
+    """
     if not WEBHOOK_URL:
         print("[WEBHOOK] WEBHOOK_URL не задан — регистрация пропущена")
-        return
+        return True
 
+    # Сносим прошлый webhook отдельным блоком: если именно этот вызов
+    # не удался, новый всё равно нужно поставить. Раньше они были в одном
+    # try, и сбой remove_webhook оставлял бота вообще без webhook.
     try:
         bot.remove_webhook()
+    except Exception as e:
+        print("[WEBHOOK] старый webhook снять не удалось (не критично):", e)
+
+    try:
         bot.set_webhook(
             url=WEBHOOK_URL,
             secret_token=TELEGRAM_SECRET or None,
             drop_pending_updates=True,
         )
         print(f"[WEBHOOK] зарегистрирован: {WEBHOOK_URL}")
+        return True
     except Exception as e:
         print("[WEBHOOK] не удалось зарегистрировать:", e)
+        return False
 
 
 def register_menu_button():
@@ -231,11 +253,12 @@ def register_menu_button():
     Ставит кнопку меню, открывающую мини-приложение.
 
     Без MINIAPP_URL ничего не делает, поэтому задеплоить бота можно
-    раньше, чем мини-приложение.
+    раньше, чем мини-приложение. Возвращает True, если настраивать
+    нечего или всё получилось.
     """
     if not MINIAPP_URL:
         print("[MENU] MINIAPP_URL не задан — кнопка мини-приложения пропущена")
-        return
+        return True
 
     try:
         bot.set_chat_menu_button(
@@ -246,8 +269,52 @@ def register_menu_button():
             )
         )
         print(f"[MENU] кнопка мини-приложения: {MINIAPP_URL}")
+        return True
     except Exception as e:
         print("[MENU] не удалось поставить кнопку меню:", e)
+        return False
+
+
+_setup_lock = threading.Lock()
+_setup_done = False
+
+
+def setup_telegram():
+    """Настраивает webhook и кнопку меню. Возвращает True, если всё готово."""
+    global _setup_done
+
+    with _setup_lock:
+        if _setup_done:
+            return True
+
+        webhook_ok = register_webhook()
+        menu_ok = register_menu_button()
+
+        _setup_done = webhook_ok and menu_ok
+        return _setup_done
+
+
+def start_telegram_setup():
+    """
+    Запускает настройку Telegram в отдельном потоке.
+
+    Раньше это выполнялось прямо при импорте модуля. Gunicorn на Render
+    стартует с --preload, то есть импорт идёт до открытия порта: если
+    Telegram отвечал медленно, сервис не успевал подняться и деплой падал.
+    Теперь старт от сети не зависит, а при неудаче попытки повторяются.
+    """
+    def work():
+        for attempt in range(1, 6):
+            if setup_telegram():
+                return
+
+            delay = min(15 * attempt, 60)
+            print(f"[SETUP] попытка {attempt} не удалась, повтор через {delay} с")
+            time.sleep(delay)
+
+        print("[SETUP] Telegram так и не настроился — проверьте TOKEN и логи")
+
+    threading.Thread(target=work, daemon=True, name="telegram-setup").start()
 
 
 # =========================
@@ -468,12 +535,10 @@ def handle(message):
 # =========================
 # START SERVER
 # =========================
-# При запуске через gunicorn блок __main__ не выполняется, поэтому webhook
-# и кнопку мини-приложения регистрируем на уровне модуля.
+# При запуске через gunicorn блок __main__ не выполняется, поэтому настройку
+# Telegram запускаем на уровне модуля — но в фоне, чтобы не задерживать старт.
 if not USE_POLLING:
-    register_webhook()
-
-register_menu_button()
+    start_telegram_setup()
 
 
 if __name__ == "__main__":
