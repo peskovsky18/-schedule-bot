@@ -20,6 +20,12 @@ function check(name, got, want) {
   );
 }
 
+function truthy(name, got, extra) {
+  const ok = !!got;
+  if (!ok) failed++;
+  console.log(`  ${ok ? "✓" : "✗"} ${name}` + (extra ? ` — ${extra}` : ""));
+}
+
 /* Фиксированные данные, чтобы тест не зависел от сайта */
 const TODAY = "2026-10-06";
 
@@ -170,6 +176,71 @@ check(
   "https://moodle.herzen.spb.ru/course/view.php?id=1"
 );
 check("без ссылки", core.moodleLink({}), null);
+
+console.log("\n=== Рулетка: выбор сектора ===");
+check("0 → первый", core.rouletteIndex(0, 2), 0);
+check("0.49 → первый", core.rouletteIndex(0.49, 2), 0);
+check("0.5 → второй", core.rouletteIndex(0.5, 2), 1);
+check("0.999 → второй", core.rouletteIndex(0.999, 2), 1);
+check("ровно 1 не выходит за границы", core.rouletteIndex(1, 2), 1);
+check("больше 1 тоже безопасно", core.rouletteIndex(1.7, 2), 1);
+check("отрицательное → первый", core.rouletteIndex(-3, 2), 0);
+check("NaN → первый", core.rouletteIndex(NaN, 2), 0);
+check("четыре сектора: 0.3 → второй", core.rouletteIndex(0.3, 4), 1);
+check("четыре сектора: 0.99 → четвёртый", core.rouletteIndex(0.99, 4), 3);
+check("один сектор", core.rouletteIndex(0.7, 1), 0);
+check("нулевое число секторов не ломает", core.rouletteIndex(0.5, 0), 0);
+
+console.log("\n=== Рулетка: честность распределения ===");
+// Проверяем не «случайность» (её не доказать), а то, что раскладка
+// по секторам равномерная и не смещена к одному краю
+[2, 3, 7].forEach(function (n) {
+  const hits = new Array(n).fill(0);
+  const runs = 60000;
+  for (let i = 0; i < runs; i++) hits[core.rouletteIndex(core.randomUnit(), n)]++;
+
+  const expected = runs / n;
+  const worst = Math.max(...hits.map((h) => Math.abs(h - expected) / expected));
+  truthy(`${n} сектора: перекос ${(worst * 100).toFixed(1)}%`, worst < 0.06,
+    hits.map((h) => (h / runs * 100).toFixed(1) + "%").join(" / "));
+});
+
+let unitOk = true;
+for (let i = 0; i < 5000; i++) {
+  const u = core.randomUnit();
+  if (!(u >= 0 && u < 1)) { unitOk = false; break; }
+}
+check("randomUnit всегда в [0, 1)", unitOk, true);
+
+console.log("\n=== Рулетка: угол остановки ===");
+const norm = (deg) => ((deg % 360) + 360) % 360;
+
+// Два сектора: центры на 90° и 270°. Указатель сверху, поэтому
+// чтобы сектор встал под ним, колесо поворачивается на -центр.
+const a0 = core.rouletteStopAngle(0, 2, 0.5);
+const a1 = core.rouletteStopAngle(1, 2, 0.5);
+truthy(`сектор 0 встаёт под указатель (${a0.toFixed(0)}°)`, Math.abs(norm(a0) - 270) < 1);
+truthy(`сектор 1 встаёт под указатель (${a1.toFixed(0)}°)`, Math.abs(norm(a1) - 90) < 1);
+
+// jitter не должен выводить за пределы сектора (полуширина 90°)
+let inSector = true;
+for (let i = 0; i <= 20; i++) {
+  const angle = norm(core.rouletteStopAngle(0, 2, i / 20));
+  const diff = Math.abs(((angle - 270 + 540) % 360) - 180);
+  if (diff > 90) { inSector = false; break; }
+}
+check("дрожание не выходит за сектор", inSector, true);
+
+let rangeOk = true;
+for (let n = 2; n <= 8; n++) {
+  for (let i = 0; i < n; i++) {
+    for (const j of [0, 0.5, 1]) {
+      const angle = core.rouletteStopAngle(i, n, j);
+      if (!(angle >= 0 && angle < 360)) rangeOk = false;
+    }
+  }
+}
+check("угол всегда в [0, 360)", rangeOk, true);
 
 console.log(
   failed === 0

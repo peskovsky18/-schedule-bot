@@ -79,6 +79,18 @@
         <button class="menu__item" type="button" data-mode="all">Всё расписание</button>
       </div>
 
+      <div class="menu__section">Рулетка</div>
+      <div class="roulette" id="roulette">
+        <div class="wheel">
+          <div class="wheel__disc" id="rouletteWheel"></div>
+          <div class="wheel__hub" aria-hidden="true"></div>
+          <div class="wheel__pointer" aria-hidden="true"></div>
+        </div>
+
+        <button class="roulette__spin" id="rouletteSpin" type="button">Крутить</button>
+        <div class="roulette__result" id="rouletteResult" role="status" aria-live="polite"></div>
+      </div>
+
       <div class="menu__section">Треки</div>
       <div class="tracks" id="tracks"></div>
     </div>

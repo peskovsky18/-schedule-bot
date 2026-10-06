@@ -631,3 +631,112 @@ body {
 body.has-netlify-badge .app {
   padding-bottom: calc(28px + var(--badge-offset, 0px) + env(safe-area-inset-bottom, 0px));
 }
+
+/* ---------- Рулетка ---------- */
+
+.roulette { padding: 4px 16px 8px; }
+
+.wheel {
+  position: relative;
+  width: 172px;
+  height: 172px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  border: 3px solid var(--line);
+  background: var(--bg-soft);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+}
+
+.wheel__disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  transition: transform 2.6s cubic-bezier(0.17, 0.67, 0.16, 1);
+  will-change: transform;
+}
+
+/* Указатель смотрит вниз на сектор, который остановился сверху */
+.wheel__pointer {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  margin-left: -9px;
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 15px solid var(--text);
+  z-index: 2;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+
+.wheel__hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 2px solid var(--line);
+  z-index: 1;
+}
+
+.wheel__label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 52px;
+  margin: -17px 0 0 -26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.wheel__emoji { font-size: 16px; line-height: 1; }
+
+.roulette__spin {
+  display: block;
+  width: 100%;
+  max-width: 172px;
+  margin: 0 auto;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.15s ease;
+}
+
+.roulette__spin:active { transform: scale(0.97); }
+.roulette__spin:disabled { opacity: 0.55; cursor: default; transform: none; }
+
+.roulette__result {
+  min-height: 22px;
+  margin-top: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.roulette__result.is-go { color: #45c48c; }
+.roulette__result.is-skip { color: #ff7a72; }
+
+/* Уважаем системную настройку: без анимации колесо просто
+   перескакивает на результат (app.js в этом случае ждёт 0 мс) */
+@media (prefers-reduced-motion: reduce) {
+  .wheel__disc { transition: none; }
+}

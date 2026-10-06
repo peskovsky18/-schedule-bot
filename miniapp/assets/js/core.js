@@ -223,6 +223,65 @@
       .map(makeDay);
   }
 
+  /* ---------- Рулетка ---------- */
+
+  /**
+   * Случайное число в [0, 1).
+   *
+   * Берём криптографический источник, если он доступен: Math.random()
+   * даёт предсказуемую последовательность, а тут важно, чтобы результат
+   * не зависел от того, сколько раз крутили до этого.
+   */
+  function randomUnit() {
+    if (typeof crypto !== "undefined" && crypto && crypto.getRandomValues) {
+      var buffer = new Uint32Array(1);
+      crypto.getRandomValues(buffer);
+      return buffer[0] / 4294967296;
+    }
+
+    return Math.random();
+  }
+
+  /**
+   * Номер сектора по случайному числу.
+   * Границы обрабатываются отдельно: ровно 1 не должно давать лишний индекс.
+   */
+  function rouletteIndex(unit, count) {
+    var n = Math.floor(count);
+    if (!isFinite(n) || n < 1) n = 1;
+
+    var value = Number(unit);
+    if (!isFinite(value) || value < 0) value = 0;
+    if (value >= 1) value = 0.9999999;
+
+    return Math.min(n - 1, Math.floor(value * n));
+  }
+
+  /**
+   * На какой угол повернуть колесо, чтобы сектор index встал
+   * под указателем сверху. Указатель смотрит вниз, в 12 часов.
+   *
+   * jitter (0…1) сдвигает остановку внутри сектора: без него стрелка
+   * всегда вставала бы ровно в середину, и это выглядело бы поддельно.
+   */
+  function rouletteStopAngle(index, count, jitter) {
+    var n = Math.floor(count);
+    if (!isFinite(n) || n < 1) n = 1;
+
+    var i = Math.min(n - 1, Math.max(0, Math.floor(index)));
+    var span = 360 / n;
+    var center = (i + 0.5) * span;
+
+    var j = Number(jitter);
+    if (!isFinite(j)) j = 0.5;
+    j = Math.max(0, Math.min(1, j));
+
+    // Не даём остановиться у самой кромки сектора
+    var offset = (j * 2 - 1) * span * 0.35;
+
+    return ((-center + offset) % 360 + 360) % 360;
+  }
+
   return {
     MSK: MSK,
     WEEKDAYS: WEEKDAYS,
@@ -242,5 +301,8 @@
     typeClass: typeClass,
     dayLabel: dayLabel,
     buildView: buildView,
+    randomUnit: randomUnit,
+    rouletteIndex: rouletteIndex,
+    rouletteStopAngle: rouletteStopAngle,
   };
 });

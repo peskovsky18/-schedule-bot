@@ -744,6 +744,109 @@
     });
   }
 
+  /* ---------- Рулетка ---------- */
+
+  function prefersReducedMotion() {
+    return !!(window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+
+  /**
+   * Колесо «идти на пары или не идти». Секторы строятся из config.js.
+   * Случайность — crypto.getRandomValues через core.randomUnit:
+   * Math.random даёт предсказуемую последовательность, а здесь важно,
+   * чтобы результат не зависел от предыдущих прокруток.
+   */
+  function initRoulette() {
+    var cfg = window.ROULETTE || {};
+    var box = document.getElementById("roulette");
+    if (!box || cfg.enabled !== true) return;
+
+    var outcomes = Array.isArray(cfg.outcomes) ? cfg.outcomes.filter(function (o) {
+      return o && (o.title || o.short);
+    }) : [];
+
+    if (outcomes.length < 2) return;
+
+    var wheel = document.getElementById("rouletteWheel");
+    var spinBtn = document.getElementById("rouletteSpin");
+    var resultEl = document.getElementById("rouletteResult");
+    if (!wheel || !spinBtn || !resultEl) return;
+
+    var count = outcomes.length;
+    var span = 360 / count;
+
+    // Длительность прокрутки: держим CSS-переход и таймер результата
+    // синхронными, иначе при смене значения они разъедутся.
+    // При системной настройке «меньше движения» анимации нет вовсе —
+    // инлайновый стиль перебил бы правило из медиазапроса, поэтому
+    // отключаем переход прямо здесь.
+    var spinMs = Number(cfg.spinMs);
+    if (!isFinite(spinMs) || spinMs < 0) spinMs = 2600;
+
+    if (prefersReducedMotion()) {
+      wheel.style.transition = "none";
+    } else {
+      wheel.style.transitionDuration = (spinMs / 1000) + "s";
+      wheel.style.transitionTimingFunction = "cubic-bezier(0.17, 0.67, 0.16, 1)";
+    }
+
+    // Секторы колеса
+    var stops = outcomes.map(function (o, i) {
+      var color = o.color || (i % 2 ? "#e0574f" : "#2fb27c");
+      return color + " " + (i * span) + "deg " + ((i + 1) * span) + "deg";
+    });
+    wheel.style.background = "conic-gradient(" + stops.join(", ") + ")";
+
+    // Надписи: сдвигаем к центру сектора и разворачиваем обратно,
+    // иначе текст встал бы боком
+    outcomes.forEach(function (o, i) {
+      var center = (i + 0.5) * span;
+
+      var label = el("span", "wheel__label");
+      if (o.symbol) label.appendChild(el("span", "wheel__emoji", o.symbol));
+      label.appendChild(el("span", "wheel__text", o.short || o.title));
+
+      label.style.transform =
+        "rotate(" + center + "deg) translateY(-46px) rotate(" + (-center) + "deg)";
+
+      wheel.appendChild(label);
+    });
+
+    var rotation = 0;
+    var spinning = false;
+
+    function spin() {
+      if (spinning) return;
+      spinning = true;
+
+      spinBtn.disabled = true;
+      resultEl.textContent = "";
+      resultEl.className = "roulette__result";
+
+      var index = core.rouletteIndex(core.randomUnit(), count);
+      var stop = core.rouletteStopAngle(index, count, core.randomUnit());
+
+      // Докручиваем только вперёд: назад колесо дёргаться не должно
+      var current = ((rotation % 360) + 360) % 360;
+      var delta = ((stop - current) % 360 + 360) % 360;
+      rotation += 360 * 4 + delta;
+
+      wheel.style.transform = "rotate(" + rotation + "deg)";
+
+      setTimeout(function () {
+        spinning = false;
+        spinBtn.disabled = false;
+
+        var won = outcomes[index];
+        resultEl.textContent = (won.symbol ? won.symbol + " " : "") + (won.title || won.short);
+        resultEl.classList.add(won.tone === "skip" ? "is-skip" : "is-go");
+      }, prefersReducedMotion() ? 0 : spinMs);
+    }
+
+    spinBtn.addEventListener("click", spin);
+  }
+
   /* ---------- Меню ---------- */
 
   /**
@@ -912,6 +1015,7 @@
     render();
     initScreamer();
     initMenu();
+    initRoulette();
     initTracks();
 
     fetchSchedule();
