@@ -468,6 +468,8 @@
       var img = el("img", "screamer__img");
       img.src = src;
       img.alt = "";
+      // cover заполняет экран с обрезкой краёв, contain показывает целиком
+      img.style.objectFit = cfg.fit === "contain" ? "contain" : "cover";
       overlay.appendChild(img);
 
       var btn = el("button", "screamer__close", "✕");
