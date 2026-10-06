@@ -9,14 +9,12 @@
   <meta name="description" content="Расписание занятий группы — Telegram Mini App">
 
   <!--
-    ?v=2 — обход кэша. Раньше ассеты отдавались с max-age=3600, и Telegram
-    держал старые app.js/config.js до часа, поэтому обновления не доходили.
-    Сейчас ассеты отдаются с no-cache (см. _headers), так что номер версии
-    поднимать не обязательно — он нужен был, чтобы сбросить уже
-    закэшированные файлы. Если меняете файлы в assets/ и хотите гарантию,
-    увеличьте число.
+    ?v=4 — обход кэша. Ассеты отдаются с no-cache (см. _headers), так что
+    поднимать номер не обязательно: он нужен был, чтобы сбросить файлы,
+    закэшированные раньше с max-age=3600. Если меняете файлы в assets/
+    и хотите гарантию — увеличьте число.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=3">
+  <link rel="stylesheet" href="assets/css/styles.css?v=4">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -36,6 +34,20 @@
           <path fill="currentColor" d="M12 5V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/>
         </svg>
       </button>
+
+      <button
+        class="icon-btn"
+        id="menuBtn"
+        type="button"
+        title="Меню"
+        aria-label="Меню"
+        aria-expanded="false"
+        aria-controls="menu"
+      >
+        <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true">
+          <path fill="currentColor" d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z"/>
+        </svg>
+      </button>
     </header>
 
     <nav class="segmented" id="segments" aria-label="Период"></nav>
@@ -46,62 +58,33 @@
 
   </div>
 
-  <!--
-    Плеер. Показывается, только если в config.js включён window.PLAYER.
-    Лежит вне .app, потому что приклеен к низу экрана.
-  -->
-  <div class="player" id="player" hidden>
-    <button class="player__toggle" id="playerToggle" type="button" aria-label="Воспроизвести">
-      <svg class="player__icon player__icon--play" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-        <path fill="currentColor" d="M8 5v14l11-7z"/>
-      </svg>
-      <svg class="player__icon player__icon--pause" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-        <path fill="currentColor" d="M6 5h4v14H6zM14 5h4v14h-4z"/>
-      </svg>
-    </button>
+  <!-- Затемнение под меню -->
+  <div class="menu-backdrop" id="menuBackdrop" hidden></div>
 
-    <div class="player__body">
-      <div class="player__title" id="playerTitle"></div>
-      <div
-        class="player__bar"
-        id="playerBar"
-        role="progressbar"
-        aria-label="Позиция трека"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        aria-valuenow="0"
-        title="Нажмите, чтобы перемотать"
-      >
-        <div class="player__progress" id="playerProgress"></div>
-      </div>
+  <!--
+    Меню. Выезжает справа от кнопки в шапке.
+    Разделы расписания переключают основную вкладку, «Треки» — плеер.
+  -->
+  <aside class="menu" id="menu" hidden aria-label="Меню">
+    <div class="menu__head">
+      <span class="menu__caption">Меню</span>
+      <button class="menu__close" id="menuClose" type="button" aria-label="Закрыть меню">✕</button>
     </div>
 
-    <div class="player__time" id="playerTime">0:00</div>
+    <div class="menu__scroll">
+      <div class="menu__section">Расписание</div>
+      <div class="menu__nav" id="menuNav">
+        <button class="menu__item" type="button" data-mode="next">Следующая неделя</button>
+        <button class="menu__item" type="button" data-mode="all">Всё расписание</button>
+      </div>
 
-    <button
-      class="player__queue-btn"
-      id="playerQueueBtn"
-      type="button"
-      aria-label="Список треков"
-      aria-expanded="false"
-      hidden
-    >
-      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-        <path fill="currentColor" d="M4 6h16v2H4zM4 11h16v2H4zM4 16h9v2H4zM17 14v6l5-3z"/>
-      </svg>
-    </button>
-  </div>
+      <div class="menu__section">Треки</div>
+      <div class="tracks" id="tracks"></div>
+    </div>
+  </aside>
 
-  <!-- Список треков. Появляется над плеером, высоту позиции считает app.js -->
-  <div class="queue" id="queue" hidden>
-    <div class="queue__head">Треки</div>
-    <div class="queue__list" id="queueList"></div>
-  </div>
-
-  <div class="queue-backdrop" id="queueBackdrop" hidden></div>
-
-  <script src="assets/js/config.js?v=3"></script>
-  <script src="assets/js/core.js?v=3"></script>
-  <script src="assets/js/app.js?v=3"></script>
+  <script src="assets/js/config.js?v=4"></script>
+  <script src="assets/js/core.js?v=4"></script>
+  <script src="assets/js/app.js?v=4"></script>
 </body>
 </html>

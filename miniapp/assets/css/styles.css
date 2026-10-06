@@ -423,213 +423,204 @@ body {
 .screamer__close:hover { background: rgba(255, 255, 255, 0.32); }
 .screamer__close:active { transform: scale(0.92); }
 
-/* ---------- Плеер ---------- */
 
-.player {
+/* ---------- Меню ---------- */
+
+.menu-backdrop {
   position: fixed;
-  left: 0;
+  inset: 0;
+  z-index: 70;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.menu {
+  position: fixed;
+  top: 0;
   right: 0;
-  /* Поднимается над плашкой Netlify, если она есть: высоту измеряет
-     app.js и кладёт в --badge-offset. Без плашки это 0. */
-  bottom: var(--badge-offset, 0px);
-  z-index: 60;
+  bottom: 0;
+  z-index: 71;
+  width: min(330px, 86vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border-left: 1px solid var(--line);
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.28);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  animation: menu-in 0.18s ease-out;
+}
+
+@keyframes menu-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu { animation: none; }
+}
+
+.menu__head {
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
-  background: var(--bg-soft);
-  border-top: 1px solid var(--line);
-  box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.18);
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--line);
 }
 
-/* Приклеенная полоса не должна закрывать последний день расписания */
-body.has-player .app {
-  padding-bottom: calc(90px + var(--badge-offset, 0px) + env(safe-area-inset-bottom, 0px));
+.menu__caption {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--hint);
 }
 
-.player__toggle {
-  flex: none;
-  width: 44px;
-  height: 44px;
+.menu__close {
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   border: 0;
   border-radius: 50%;
-  background: var(--accent);
-  color: var(--accent-text);
+  background: var(--bg-soft);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1;
   cursor: pointer;
   transition: transform 0.12s ease;
 }
 
-.player__toggle:active { transform: scale(0.92); }
+.menu__close:active { transform: scale(0.92); }
 
-/* Показываем ту иконку, которая соответствует состоянию */
-.player__icon { display: none; }
-.player__icon--play { display: block; }
-
-.player.is-playing .player__icon--play { display: none; }
-.player.is-playing .player__icon--pause { display: block; }
-
-.player__body {
-  position: relative;
+.menu__scroll {
   flex: 1;
-  min-width: 0;
-}
-
-.player__title {
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-bottom: 5px;
-}
-
-/* Полоса прогресса: высота 18 px — удобная зона попадания пальцем,
-   а сама линия тоньше и центрируется через top + отрицательный отступ */
-.player__bar {
-  position: relative;
-  height: 18px;
-  cursor: pointer;
-}
-
-.player__bar::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  margin-top: -1.5px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--line);
-}
-
-.player__progress {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  margin-top: -1.5px;
-  height: 3px;
-  width: 0;
-  border-radius: 2px;
-  background: var(--accent);
-  pointer-events: none;
-}
-
-.player__time {
-  flex: none;
-  font-size: 12px;
-  color: var(--hint);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Кнопка списка треков. Появляется, только если треков больше одного */
-.player__queue-btn {
-  flex: none;
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: transparent;
-  color: var(--text);
-  cursor: pointer;
-  transition: transform 0.12s ease, background 0.12s ease;
-}
-
-.player__queue-btn[aria-expanded="true"] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-text);
-}
-
-.player__queue-btn:active { transform: scale(0.92); }
-
-/* ---------- Список треков ---------- */
-
-.queue {
-  position: fixed;
-  left: 0;
-  right: 0;
-  /* bottom подставляет app.js: высота плеера зависит от safe-area */
-  z-index: 59;
-  max-height: 50vh;
   overflow-y: auto;
-  background: var(--card);
-  border-top: 1px solid var(--line);
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.22);
-  animation: queue-in 0.16s ease-out;
+  padding-bottom: 12px;
 }
 
-@keyframes queue-in {
-  from { transform: translateY(12px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .queue { animation: none; }
-}
-
-.queue__head {
-  padding: 12px 16px 6px;
+.menu__section {
+  padding: 16px 16px 8px;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--hint);
 }
 
-.queue__list { padding-bottom: 6px; }
+.menu__nav { display: flex; flex-direction: column; }
 
-.queue__item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 12px 16px;
+.menu__item {
+  padding: 13px 16px;
   border: 0;
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: 15px;
   text-align: left;
   cursor: pointer;
 }
 
-.queue__item:active { background: var(--bg-soft); }
+.menu__item:active { background: var(--bg-soft); }
 
-.queue__item.is-current { color: var(--accent); font-weight: 600; }
+/* Подсвечиваем раздел, который сейчас открыт на экране */
+.menu__item.is-active { color: var(--accent); font-weight: 600; }
 
-.queue__num {
+/* ---------- Треки ---------- */
+
+.tracks { display: flex; flex-direction: column; }
+
+.track {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.track:active { background: var(--bg-soft); }
+
+.track__num {
   flex: none;
   width: 18px;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--hint);
   text-align: center;
 }
 
-.queue__item.is-current .queue__num { color: var(--accent); }
+.track.is-current .track__num { color: var(--accent); }
 
-.queue__name {
-  flex: 1;
-  min-width: 0;
+.track__body { flex: 1; min-width: 0; }
+
+.track__name {
+  display: block;
+  font-size: 13.5px;
+  line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.queue-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 58;
-  background: rgba(0, 0, 0, 0.45);
+.track.is-current .track__name { color: var(--accent); font-weight: 600; }
+
+/* Полоса и время — только у трека, который сейчас в плеере */
+.track__bar {
+  position: relative;
+  display: none;
+  height: 3px;
+  margin-top: 7px;
+  border-radius: 2px;
+  background: var(--line);
 }
 
-/* На узких экранах прячем счётчик времени, чтобы название
-   и кнопка списка помещались */
-@media (max-width: 360px) {
-  .player { gap: 8px; padding-left: 10px; padding-right: 10px; }
-  .player__toggle { width: 40px; height: 40px; }
-  .player__time { display: none; }
+.track__progress {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.track__time {
+  display: none;
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: var(--hint);
+  font-variant-numeric: tabular-nums;
+}
+
+.track.is-current .track__bar,
+.track.is-current .track__time { display: block; }
+
+.track__icon {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--text);
+}
+
+.track.is-current .track__icon {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.track__icon svg { display: block; }
+.track__icon .icon-play { display: block; }
+.track__icon .icon-pause { display: none; }
+.track.is-playing .track__icon .icon-play { display: none; }
+.track.is-playing .track__icon .icon-pause { display: block; }
+
+/* Плашка Netlify внизу справа не должна закрывать последний день.
+   Высоту измеряет app.js и кладёт в --badge-offset. */
+body.has-netlify-badge .app {
+  padding-bottom: calc(28px + var(--badge-offset, 0px) + env(safe-area-inset-bottom, 0px));
 }

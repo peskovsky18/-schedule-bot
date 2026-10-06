@@ -533,7 +533,7 @@
     if (document.visibilityState === "visible") startTimer();
   }
 
-  /* ---------- Плеер ---------- */
+  /* ---------- Треки в меню ---------- */
 
   var LAST_TRACK_KEY = "player.track";
 
@@ -555,15 +555,265 @@
     return [];
   }
 
+  function playIcon(className) {
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("width", "14");
+    svg.setAttribute("height", "14");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("class", className);
+
+    var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("fill", "currentColor");
+    path.setAttribute(
+      "d",
+      className === "icon-pause" ? "M6 5h4v14H6zM14 5h4v14h-4z" : "M8 5v14l11-7z"
+    );
+
+    svg.appendChild(path);
+    return svg;
+  }
+
+  /**
+   * Треки живут в меню, а не в полосе внизу экрана.
+   * Воспроизведение переживает закрытие меню: элемент один на всё
+   * приложение, а список лишь отражает его состояние.
+   */
+  function initTracks() {
+    var cfg = window.PLAYER || {};
+    var box = document.getElementById("tracks");
+
+    if (!box || cfg.enabled !== true) return;
+
+    var tracks = playerTracks(cfg);
+    if (!tracks.length) return;
+
+    var index = 0;
+
+    // Возвращаемся к треку, который слушали в прошлый раз
+    if (cfg.rememberLast === true) {
+      try {
+        var saved = parseInt(localStorage.getItem(LAST_TRACK_KEY), 10);
+        if (isFinite(saved) && saved >= 0 && saved < tracks.length) index = saved;
+      } catch (e) {}
+    }
+
+    var audio = new Audio();
+    // preload="none": файл скачивается только после нажатия play,
+    // поэтому общий вес дорожек не влияет на скорость открытия
+    audio.preload = "none";
+
+    var volume = Number(cfg.volume);
+    if (isFinite(volume) && volume >= 0 && volume <= 1) audio.volume = volume;
+
+    var rows = [];
+
+    function current() {
+      return tracks[index];
+    }
+
+    /** Строит строки один раз; дальше только обновляем состояние. */
+    function build() {
+      box.textContent = "";
+      rows = [];
+
+      tracks.forEach(function (track, i) {
+        var row = el("button", "track");
+        row.type = "button";
+
+        row.appendChild(el("span", "track__num", String(i + 1)));
+
+        var body = el("span", "track__body");
+        body.appendChild(el("span", "track__name", track.title));
+
+        var bar = el("span", "track__bar");
+        var progress = el("span", "track__progress");
+        bar.appendChild(progress);
+        body.appendChild(bar);
+
+        body.appendChild(el("span", "track__time", "0:00"));
+        row.appendChild(body);
+
+        var icon = el("span", "track__icon");
+        icon.appendChild(playIcon("icon-play"));
+        icon.appendChild(playIcon("icon-pause"));
+        row.appendChild(icon);
+
+        row.addEventListener("click", function () {
+          if (i === index) {
+            toggle();
+            return;
+          }
+          // Другой трек — переключаемся и сразу играем
+          select(i, true);
+        });
+
+        box.appendChild(row);
+        rows.push({ row: row, progress: progress, time: body.querySelector(".track__time") });
+      });
+    }
+
+    function select(number, play) {
+      index = number;
+      audio.src = current().src;
+
+      if (cfg.rememberLast === true) {
+        try {
+          localStorage.setItem(LAST_TRACK_KEY, String(index));
+        } catch (e) {}
+      }
+
+      if (play) {
+        // Явный load() перед play(): без него элемент иногда навсегда
+        // застревает в состоянии загрузки (readyState 0) — новый src
+        // не запрашивается, и трек молчит. Проверено на живом сайте.
+        try {
+          audio.load();
+        } catch (e) {}
+
+        var started = audio.play();
+        if (started && typeof started.catch === "function") {
+          started.catch(function (e) {
+            console.warn("[tracks] не удалось начать воспроизведение:", e && e.message);
+            render();
+          });
+        }
+      }
+
+      render();
+    }
+
+    function toggle() {
+      if (!audio.paused) {
+        audio.pause();
+        return;
+      }
+
+      var started = audio.play();
+      if (started && typeof started.catch === "function") {
+        started.catch(function (e) {
+          console.warn("[tracks] не удалось начать воспроизведение:", e && e.message);
+          render();
+        });
+      }
+    }
+
+    function render() {
+      var duration = audio.duration;
+      var ratio = 0;
+
+      if (isFinite(duration) && duration > 0) {
+        ratio = Math.max(0, Math.min(1, audio.currentTime / duration));
+      }
+
+      rows.forEach(function (item, i) {
+        var isCurrent = i === index;
+
+        item.row.classList.toggle("is-current", isCurrent);
+        item.row.classList.toggle("is-playing", isCurrent && !audio.paused);
+        item.row.setAttribute("aria-current", isCurrent ? "true" : "false");
+        item.row.querySelector(".track__num").textContent = isCurrent ? "♪" : String(i + 1);
+
+        if (isCurrent) {
+          item.progress.style.width = (ratio * 100).toFixed(2) + "%";
+          item.time.textContent = core.formatTime(audio.currentTime);
+        }
+      });
+    }
+
+    select(index, false);
+    build();
+    render();
+
+    audio.addEventListener("timeupdate", render);
+    audio.addEventListener("durationchange", render);
+    audio.addEventListener("play", render);
+    audio.addEventListener("pause", render);
+    audio.addEventListener("ended", function () {
+      // autoNext выключен по умолчанию: трек просто останавливается
+      if (cfg.autoNext === true && index < tracks.length - 1) {
+        select(index + 1, true);
+        return;
+      }
+
+      audio.currentTime = 0;
+      render();
+    });
+    audio.addEventListener("error", function () {
+      console.warn("[tracks] не удалось загрузить трек:", current().src);
+    });
+  }
+
+  /* ---------- Меню ---------- */
+
+  /**
+   * Меню выезжает справа. Разделы расписания переключают вкладку
+   * на основной странице и закрывают меню.
+   */
+  function initMenu() {
+    var menu = document.getElementById("menu");
+    var backdrop = document.getElementById("menuBackdrop");
+    var openBtn = document.getElementById("menuBtn");
+    var closeBtn = document.getElementById("menuClose");
+    var nav = document.getElementById("menuNav");
+
+    if (!menu || !openBtn) return;
+
+    function open() {
+      menu.hidden = false;
+      if (backdrop) backdrop.hidden = false;
+      openBtn.setAttribute("aria-expanded", "true");
+      markActive();
+    }
+
+    function close() {
+      menu.hidden = true;
+      if (backdrop) backdrop.hidden = true;
+      openBtn.setAttribute("aria-expanded", "false");
+    }
+
+    /** Подсвечиваем раздел, который сейчас показан на экране. */
+    function markActive() {
+      if (!nav) return;
+
+      Array.prototype.forEach.call(nav.children, function (btn) {
+        btn.classList.toggle("is-active", btn.dataset.mode === state.mode);
+      });
+    }
+
+    if (nav) {
+      Array.prototype.forEach.call(nav.children, function (btn) {
+        btn.addEventListener("click", function () {
+          state.mode = btn.dataset.mode;
+          renderSegments();
+          renderDays();
+          close();
+        });
+      });
+    }
+
+    openBtn.addEventListener("click", function () {
+      if (menu.hidden) open();
+      else close();
+    });
+
+    if (closeBtn) closeBtn.addEventListener("click", close);
+    if (backdrop) backdrop.addEventListener("click", close);
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !menu.hidden) close();
+    });
+
+    // Меню открыто — значит разделы нужно подсвечивать при каждом показе
+    menu.dataset.ready = "1";
+  }
+
   /**
    * Netlify добавляет в правый нижний угол плашку «Powered by Netlify»
    * (iframe #nl-badge-frame) с максимальным z-index. Она показывается
-   * всем посетителям и перекрывает низ экрана: кнопка списка треков
-   * и правая половина полосы перемотки становятся некликабельными.
-   *
-   * Плашку стоит отключить в настройках проекта, но приложение должно
-   * работать и с ней. Поэтому измеряем её высоту и поднимаем плеер
-   * ровно на столько — через переменную --badge-offset.
+   * всем посетителям и перекрывает низ экрана. Отключить её стоит
+   * в настройках проекта, но приложение должно работать и с ней:
+   * измеряем высоту и оставляем под расписанием место.
    */
   function watchNetlifyBadge() {
     function measure() {
@@ -592,7 +842,6 @@
         } catch (e) {}
       }
 
-      // Запасной вариант, если ResizeObserver нет: несколько замеров
       [300, 1000, 3000].forEach(function (delay) {
         setTimeout(measure, delay);
       });
@@ -604,7 +853,6 @@
       return;
     }
 
-    // Плашку вставляет скрипт Netlify, возможно уже после загрузки
     if (typeof MutationObserver !== "function") return;
 
     var observer = new MutationObserver(function () {
@@ -617,222 +865,10 @@
 
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // Бесконечно следить не нужно
     setTimeout(function () {
       observer.disconnect();
       measure();
     }, 20000);
-  }
-
-  /**
-   * Полоса плеера внизу экрана: список треков из config.js.
-   * Включается вручную — автовоспроизведение в мобильных WebView
-   * всё равно заблокировано до касания экрана.
-   */
-  function initPlayer() {
-    var cfg = window.PLAYER || {};
-    if (cfg.enabled !== true) return;
-
-    var tracks = playerTracks(cfg);
-    if (!tracks.length) return;
-
-    var box = document.getElementById("player");
-    var toggle = document.getElementById("playerToggle");
-    var titleEl = document.getElementById("playerTitle");
-    var bar = document.getElementById("playerBar");
-    var progress = document.getElementById("playerProgress");
-    var timeEl = document.getElementById("playerTime");
-    var queueBtn = document.getElementById("playerQueueBtn");
-    var queue = document.getElementById("queue");
-    var queueList = document.getElementById("queueList");
-    var backdrop = document.getElementById("queueBackdrop");
-
-    if (!box || !toggle || !bar || !progress || !timeEl) return;
-
-    var index = 0;
-
-    // Возвращаемся к треку, который слушали в прошлый раз
-    if (cfg.rememberLast === true) {
-      try {
-        var saved = parseInt(localStorage.getItem(LAST_TRACK_KEY), 10);
-        if (isFinite(saved) && saved >= 0 && saved < tracks.length) index = saved;
-      } catch (e) {}
-    }
-
-    var audio = new Audio();
-    // preload="none": файл скачивается только после нажатия play,
-    // поэтому общий вес дорожек не влияет на скорость открытия
-    audio.preload = "none";
-
-    var volume = Number(cfg.volume);
-    if (isFinite(volume) && volume >= 0 && volume <= 1) audio.volume = volume;
-
-    box.hidden = false;
-    document.body.classList.add("has-player");
-
-    function current() {
-      return tracks[index];
-    }
-
-    /** Ставит трек по номеру. play — начинать ли воспроизведение. */
-    function select(number, play) {
-      index = number;
-      audio.src = current().src;
-      titleEl.textContent = current().title;
-      progress.style.width = "0%";
-      timeEl.textContent = "0:00";
-
-      if (cfg.rememberLast === true) {
-        try {
-          localStorage.setItem(LAST_TRACK_KEY, String(index));
-        } catch (e) {}
-      }
-
-      renderQueue();
-
-      if (play) {
-        // Явный load() перед play(): без него элемент иногда навсегда
-        // застревает в состоянии загрузки (readyState 0) — новый src
-        // не запрашивается, и трек молчит. Проверено на живом сайте.
-        try {
-          audio.load();
-        } catch (e) {}
-
-        var started = audio.play();
-        if (started && typeof started.catch === "function") {
-          started.catch(function (e) {
-            console.warn("[player] не удалось начать воспроизведение:", e && e.message);
-            render();
-          });
-        }
-      }
-
-      render();
-    }
-
-    function render() {
-      var duration = audio.duration;
-      var ratio = 0;
-
-      if (isFinite(duration) && duration > 0) {
-        ratio = Math.max(0, Math.min(1, audio.currentTime / duration));
-      }
-
-      progress.style.width = (ratio * 100).toFixed(2) + "%";
-      bar.setAttribute("aria-valuenow", String(Math.round(ratio * 100)));
-      timeEl.textContent = core.formatTime(audio.currentTime);
-
-      var playing = !audio.paused;
-      box.classList.toggle("is-playing", playing);
-      toggle.setAttribute("aria-label", playing ? "Пауза" : "Воспроизвести");
-    }
-
-    function renderQueue() {
-      if (!queueList) return;
-
-      queueList.textContent = "";
-
-      tracks.forEach(function (track, i) {
-        var item = el("button", "queue__item");
-        item.type = "button";
-        item.classList.toggle("is-current", i === index);
-
-        item.appendChild(el("span", "queue__num", i === index ? "♪" : String(i + 1)));
-        item.appendChild(el("span", "queue__name", track.title));
-        item.setAttribute("aria-current", i === index ? "true" : "false");
-
-        item.addEventListener("click", function () {
-          // Если играл другой трек — новый тоже начнём сразу
-          select(i, !audio.paused || i !== index);
-          closeQueue();
-        });
-
-        queueList.appendChild(item);
-      });
-    }
-
-    function openQueue() {
-      if (!queue || !backdrop) return;
-
-      // Панель встаёт вплотную над полосой плеера. Считаем от низа окна
-      // до верха плеера: так учитываются и safe-area, и подъём из-за
-      // плашки Netlify — в CSS это не выразить.
-      queue.style.bottom = (window.innerHeight - box.getBoundingClientRect().top) + "px";
-      queue.hidden = false;
-      backdrop.hidden = false;
-      queueBtn.setAttribute("aria-expanded", "true");
-    }
-
-    function closeQueue() {
-      if (!queue || !backdrop) return;
-
-      queue.hidden = true;
-      backdrop.hidden = true;
-      queueBtn.setAttribute("aria-expanded", "false");
-    }
-
-    select(index, false);
-
-    // Кнопка списка нужна, только если треков больше одного
-    if (queueBtn && queue && tracks.length > 1) {
-      queueBtn.hidden = false;
-      queueBtn.addEventListener("click", function () {
-        if (queue.hidden) openQueue();
-        else closeQueue();
-      });
-      if (backdrop) backdrop.addEventListener("click", closeQueue);
-    }
-
-    toggle.addEventListener("click", function () {
-      if (!audio.paused) {
-        audio.pause();
-        return;
-      }
-
-      // play() возвращает промис и может отклониться, если WebView
-      // запретил воспроизведение — тогда просто вернём кнопку в исходный вид
-      var started = audio.play();
-
-      if (started && typeof started.catch === "function") {
-        started.catch(function (e) {
-          console.warn("[player] не удалось начать воспроизведение:", e && e.message);
-          render();
-        });
-      }
-    });
-
-    bar.addEventListener("click", function (event) {
-      if (!isFinite(audio.duration) || audio.duration <= 0) return;
-
-      var rect = bar.getBoundingClientRect();
-      if (!rect.width) return;
-
-      var ratio = (event.clientX - rect.left) / rect.width;
-      audio.currentTime = Math.max(0, Math.min(1, ratio)) * audio.duration;
-      render();
-    });
-
-    audio.addEventListener("timeupdate", render);
-    audio.addEventListener("durationchange", render);
-    audio.addEventListener("play", render);
-    audio.addEventListener("pause", render);
-    audio.addEventListener("ended", function () {
-      // autoNext выключен по умолчанию: трек просто останавливается
-      if (cfg.autoNext === true && index < tracks.length - 1) {
-        select(index + 1, true);
-        return;
-      }
-
-      audio.currentTime = 0;
-      render();
-    });
-    audio.addEventListener("error", function () {
-      timeEl.textContent = "ошибка";
-      console.warn("[player] не удалось загрузить трек:", current().src);
-    });
-
-    render();
-    renderQueue();
   }
 
   /* ---------- Запуск ---------- */
@@ -875,7 +911,8 @@
 
     render();
     initScreamer();
-    initPlayer();
+    initMenu();
+    initTracks();
 
     fetchSchedule();
   }
