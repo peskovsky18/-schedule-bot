@@ -421,118 +421,6 @@
     return card;
   }
 
-  /* ---------- Скример ---------- */
-
-  /**
-   * Розыгрыш: через delayMs после открытия на весь экран появляется
-   * картинка. Закрывается крестиком, тапом в любом месте или сама
-   * через durationMs.
-   *
-   * Настройки — в config.js (window.SCREAMER). Выключить: enabled: false.
-   */
-  function initScreamer() {
-    var cfg = window.SCREAMER || {};
-    if (cfg.enabled !== true) return;
-
-    var delay = Number(cfg.delayMs);
-    var duration = Number(cfg.durationMs);
-    var src = cfg.image || "assets/img/scare.jpg";
-
-    if (!isFinite(delay) || delay < 0) delay = 30000;
-    if (!isFinite(duration) || duration <= 0) duration = 3000;
-
-    // Картинку готовим заранее и показываем ровно этот элемент.
-    // Если создать новый <img> в момент показа, он начнёт загрузку
-    // заново, и вместо лица на мгновение мелькнёт чёрный экран.
-    var imgEl = new Image();
-    imgEl.className = "screamer__img";
-    imgEl.alt = "";
-    // cover заполняет экран с обрезкой краёв, contain показывает целиком
-    imgEl.style.objectFit = cfg.fit === "contain" ? "contain" : "cover";
-    imgEl.src = src;
-
-    var overlay = null;
-    var autoClose = null;
-    var timer = null;
-
-    // Отсчитываем время только пока приложение на экране. В Telegram
-    // WebView затормаживает таймеры в фоне, и без этого розыгрыш мог
-    // сработать при заблокированном экране — то есть пропасть зря.
-    var remaining = delay;
-    var startedAt = 0;
-
-    function startTimer() {
-      if (timer || overlay || remaining <= 0) return;
-      startedAt = Date.now();
-      timer = setTimeout(show, remaining);
-    }
-
-    function pauseTimer() {
-      if (!timer) return;
-      clearTimeout(timer);
-      timer = null;
-      remaining -= Date.now() - startedAt;
-      if (remaining < 0) remaining = 0;
-    }
-
-    function close() {
-      if (autoClose) {
-        clearTimeout(autoClose);
-        autoClose = null;
-      }
-      if (!overlay) return;
-
-      overlay.remove();
-      overlay = null;
-    }
-
-    function show() {
-      timer = null;
-      if (overlay) return;
-
-      overlay = el("div", "screamer");
-
-      // Уже загруженный заранее элемент — показывается мгновенно
-      overlay.appendChild(imgEl);
-
-      var btn = el("button", "screamer__close", "✕");
-      btn.type = "button";
-      btn.setAttribute("aria-label", "Закрыть");
-      btn.addEventListener("click", function (event) {
-        event.stopPropagation();
-        close();
-      });
-      overlay.appendChild(btn);
-
-      // Тап в любом месте тоже закрывает — так розыгрыш не затягивается
-      overlay.addEventListener("click", close);
-
-      document.body.appendChild(overlay);
-
-      // Класс добавляем после вставки в документ, иначе переход
-      // прозрачности не сработает и картинка останется невидимой.
-      var reveal = function () {
-        if (overlay) overlay.classList.add("is-visible");
-      };
-
-      if (typeof requestAnimationFrame === "function") {
-        requestAnimationFrame(reveal);
-      } else {
-        reveal();
-      }
-
-      autoClose = setTimeout(close, duration);
-    }
-
-    document.addEventListener("visibilitychange", function () {
-      if (document.visibilityState === "visible") startTimer();
-      else pauseTimer();
-    });
-
-    // Если страница открылась в фоне, отсчёт начнётся при возвращении
-    if (document.visibilityState === "visible") startTimer();
-  }
-
   /* ---------- Треки в меню ---------- */
 
   var LAST_TRACK_KEY = "player.track";
@@ -1013,7 +901,6 @@
     }
 
     render();
-    initScreamer();
     initMenu();
     initRoulette();
     initTracks();
