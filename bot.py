@@ -60,9 +60,14 @@ WEBHOOK_URL = (
 # и мы сможем отбросить поддельные запросы.
 TELEGRAM_SECRET = (os.getenv("TELEGRAM_SECRET") or "").strip()
 
-# Адрес мини-приложения (Netlify). Если задан, бот поставит кнопку меню,
-# которая открывает расписание в виде приложения.
-MINIAPP_URL = (os.getenv("MINIAPP_URL") or "").strip().rstrip("/")
+# Адрес мини-приложения. Из него собираются кнопка меню бота и ссылки
+# «Открыть доску» в шахматах, поэтому без него эти возможности молчат.
+#
+# Запасной адрес — публикация на GitHub Pages: так бот работает сразу
+# после переезда с Netlify, без правки переменных на Render. Если
+# MINIAPP_URL задан, он всегда важнее.
+DEFAULT_MINIAPP_URL = "https://peskovsky18.github.io/-schedule-bot"
+MINIAPP_URL = (os.getenv("MINIAPP_URL") or DEFAULT_MINIAPP_URL).strip().rstrip("/")
 
 USE_POLLING = os.getenv("USE_POLLING") == "1"
 
