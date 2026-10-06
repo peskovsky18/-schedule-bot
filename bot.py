@@ -30,6 +30,7 @@ import telebot.apihelper as apihelper
 from flask import Flask, jsonify, request
 from telebot import types
 
+import casino_api
 import chess_api
 import chess_game
 import music_api
@@ -503,6 +504,9 @@ chess_api.init_app(app, TOKEN, notify=notify_chess_move, mini_app_url=MINIAPP_UR
 
 # Музыка: раздел /api/music. Администратор может удалять чужие треки.
 music_api.init_app(app, admin_id=ADMIN_ID)
+
+# Казино: раздел /api/casino. Монеты ненастоящие, но считает их сервер.
+casino_api.init_app(app)
 
 
 def accept_chess_invite(message, game_id):

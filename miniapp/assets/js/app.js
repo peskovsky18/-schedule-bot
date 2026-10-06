@@ -1741,6 +1741,272 @@
     });
   }
 
+  /* ---------- Казино ---------- */
+
+  var CASINO_BET_KEY = "casino.bet";
+  var CASINO_CYCLE_MS = 70;
+  var CASINO_MIN_SPIN_MS = 1500;
+
+  // Состояние игрока и то, что начислили при этом запуске
+  var casinoPlayer = null;
+  var casinoWelcome = null;
+
+  // Перерисовку ставит initCasino: монеты за вход могут прийти как
+  // до, так и после того, как раздел построен
+  var casinoRender = null;
+
+  /**
+   * Монеты за сегодняшний вход.
+   *
+   * Зовётся при каждом запуске приложения: сервер сам решает, начислять
+   * или нет, поэтому повторный вызов в тот же день безвреден — иначе
+   * пришлось бы хранить отметку на клиенте, а её легко потерять.
+   */
+  function casinoClaimDaily() {
+    fetch((apiBase || "") + "/api/casino/claim", {
+      method: "POST",
+      headers: authHeaders(),
+    })
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        if (!data || data.ok !== true) return;
+
+        casinoPlayer = data.player;
+
+        if (data.gained > 0) {
+          casinoWelcome = { gained: data.gained, bonus: data.bonus || 0 };
+        }
+
+        if (typeof casinoRender === "function") casinoRender();
+      })
+      .catch(function (error) {
+        console.warn("[casino] монеты за вход не начислены:", error && error.message);
+      });
+  }
+
+  function initCasino() {
+    var box = document.getElementById("casino");
+    if (!box) return;
+
+    var balanceEl = document.getElementById("casinoBalance");
+    var streakEl = document.getElementById("casinoStreak");
+    var reelsBox = document.getElementById("casinoReels");
+    var resultEl = document.getElementById("casinoResult");
+    var betsBox = document.getElementById("casinoBets");
+    var spinBtn = document.getElementById("casinoSpin");
+
+    if (!balanceEl || !reelsBox || !betsBox || !spinBtn) return;
+
+    var reelEls = Array.prototype.slice.call(reelsBox.querySelectorAll(".reel"));
+    var glyphs = {};
+    var bet = 10;
+    var spinning = false;
+    var cycleTimer = null;
+
+    try {
+      var saved = parseInt(localStorage.getItem(CASINO_BET_KEY), 10);
+      if (isFinite(saved) && saved > 0) bet = saved;
+    } catch (e) {}
+
+    function glyph(key) {
+      return glyphs[key] || "❔";
+    }
+
+    /** Случайный символ для мелькания. Результат определяет сервер. */
+    function flickerGlyph() {
+      var keys = Object.keys(glyphs);
+      if (!keys.length) return "❔";
+      return glyphs[keys[Math.floor(Math.random() * keys.length)]];
+    }
+
+    function showNote(text, tone) {
+      if (!text) {
+        resultEl.textContent = "";
+        resultEl.className = "casino__result";
+        return;
+      }
+
+      resultEl.textContent = text;
+      resultEl.className = "casino__result " + (tone || "");
+    }
+
+    function streakText(player) {
+      var need = player.streakForBonus - player.streak;
+
+      if (player.streak > 0 && need <= 0) {
+        return "Серия " + player.streak + " дн. · в воскресенье бонус " + player.sundayBonus;
+      }
+
+      if (player.streak > 0) {
+        return "Серия " + player.streak + " " +
+          core.plural(player.streak, "день", "дня", "дней") +
+          " · до бонуса " + need;
+      }
+
+      return "Заходите каждый день · за неделю без пропусков бонус " + player.sundayBonus;
+    }
+
+    function renderBets() {
+      if (!casinoPlayer || betsBox.childElementCount) return;
+
+      casinoPlayer.bets.forEach(function (value) {
+        var button = el("button", "casino__bet", String(value));
+        button.type = "button";
+        button.dataset.bet = value;
+
+        button.addEventListener("click", function () {
+          if (spinning) return;
+          bet = value;
+          try {
+            localStorage.setItem(CASINO_BET_KEY, String(value));
+          } catch (e) {}
+          render();
+        });
+
+        betsBox.appendChild(button);
+      });
+    }
+
+    function render() {
+      if (!casinoPlayer) return;
+
+      // Символы приходят с сервера: список и выплаты должны совпадать
+      casinoPlayer.symbols.forEach(function (symbol) {
+        glyphs[symbol.key] = symbol.emoji;
+      });
+
+      renderBets();
+
+      balanceEl.textContent = casinoPlayer.balance;
+      streakEl.textContent = streakText(casinoPlayer);
+
+      Array.prototype.forEach.call(betsBox.children, function (button) {
+        button.classList.toggle("is-active", Number(button.dataset.bet) === bet);
+        button.disabled = spinning;
+      });
+
+      var enough = casinoPlayer.balance >= bet;
+      spinBtn.disabled = spinning || !enough;
+      spinBtn.textContent = spinning ? "Крутится…" : (enough ? "Крутить" : "Не хватает монет");
+
+      // Приветствие за вход показываем один раз и до результата
+      if (casinoWelcome && !spinning) {
+        var text = "+" + casinoWelcome.gained + " монет за вход";
+        if (casinoWelcome.bonus) {
+          text += " · бонус за неделю +" + casinoWelcome.bonus;
+        }
+        showNote(text, "is-win");
+        casinoWelcome = null;
+      }
+    }
+
+    function stopAndLand(reels) {
+      reelEls.forEach(function (reel, i) {
+        setTimeout(function () {
+          reel.classList.remove("is-spinning");
+          reel.querySelector(".reel__symbol").textContent = glyph(reels[i]);
+        }, i * 170);
+      });
+    }
+
+    function showResult(result) {
+      if (result.multiplier >= 10) {
+        showNote("Джекпот! +" + result.win + " монет", "is-jackpot");
+      } else if (result.multiplier > 1) {
+        showNote("Выигрыш +" + result.win + " монет", "is-win");
+      } else if (result.multiplier === 1) {
+        showNote("Ставка вернулась", "is-lose");
+      } else {
+        showNote("Мимо", "is-lose");
+      }
+    }
+
+    function spin() {
+      if (spinning || !casinoPlayer) return;
+
+      if (casinoPlayer.balance < bet) {
+        showNote("Не хватает монет — заходите завтра за новыми", "is-error");
+        return;
+      }
+
+      spinning = true;
+      showNote("");
+      render();
+
+      reelEls.forEach(function (reel) { reel.classList.add("is-spinning"); });
+
+      cycleTimer = setInterval(function () {
+        reelEls.forEach(function (reel) {
+          reel.querySelector(".reel__symbol").textContent = flickerGlyph();
+        });
+      }, CASINO_CYCLE_MS);
+
+      var started = Date.now();
+
+      fetch((apiBase || "") + "/api/casino/spin", {
+        method: "POST",
+        headers: chessHeaders(),
+        body: JSON.stringify({ bet: bet }),
+      })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (!data || data.ok !== true) {
+            throw new Error((data && data.error) || "Сервер не ответил");
+          }
+
+          casinoPlayer = data.player;
+          var result = data.result;
+
+          // Мгновенный результат выглядит как подделка, поэтому даём
+          // барабанам покрутиться хотя бы полторы секунды
+          var wait = Math.max(0, CASINO_MIN_SPIN_MS - (Date.now() - started));
+
+          setTimeout(function () {
+            clearInterval(cycleTimer);
+            cycleTimer = null;
+
+            stopAndLand(result.reels);
+            showResult(result);
+
+            setTimeout(function () {
+              spinning = false;
+              render();
+            }, 700);
+          }, wait);
+        })
+        .catch(function (error) {
+          clearInterval(cycleTimer);
+          cycleTimer = null;
+
+          reelEls.forEach(function (reel) { reel.classList.remove("is-spinning"); });
+          showNote(error.message, "is-error");
+
+          spinning = false;
+          render();
+        });
+    }
+
+    function loadState() {
+      return fetch((apiBase || "") + "/api/casino", { headers: authHeaders() })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (!data || data.ok !== true) return;
+          casinoPlayer = data.player;
+          render();
+        })
+        .catch(function (error) {
+          console.warn("[casino] состояние не загрузилось:", error && error.message);
+        });
+    }
+
+    casinoRender = render;
+
+    spinBtn.addEventListener("click", spin);
+
+    if (casinoPlayer) render();
+    loadState();
+  }
+
   function start() {
     initTelegram();
     watchNetlifyBadge();
@@ -1763,10 +2029,15 @@
     initRoulette();
     initTracks();
     initMusic();
+    initCasino();
 
     // Список треков из config.js уже нарисован; дополняем его тем,
     // что добавлено через приложение
     if (typeof reloadCustomTracks === "function") reloadCustomTracks();
+
+    // Монеты за вход начисляем при каждом запуске: сервер сам решит,
+    // положено ли что-то сегодня
+    casinoClaimDaily();
 
     fetchSchedule();
   }
