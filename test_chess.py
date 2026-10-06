@@ -306,6 +306,82 @@ truthy("CORS разрешает POST", "POST" in response.headers.get("Access-Co
 
 
 # =========================
+print("\n=== Приглашение через бота ===")
+
+# Перехватываем отправку сообщений, чтобы проверить, что бот отвечает
+sent = []
+bot.bot.send_message = lambda chat_id, text, **kw: sent.append(
+    {"chat": chat_id, "text": text, "markup": kw.get("reply_markup")}
+)
+
+
+class FakeMessage:
+    """Мини-заглушка сообщения Telegram: обработчику нужно немного."""
+
+    def __init__(self, user_id, name, text):
+        self.from_user = type("U", (), {"id": user_id, "first_name": name})()
+        self.chat = type("C", (), {"id": user_id})()
+        self.text = text
+
+
+# Партия, где белые — 101
+created = client.post("/api/chess/new", headers=ALICE).get_json()["game"]
+invite_id = created["id"]
+
+# 1. MINIAPP_URL не задан — присоединить должны, но кнопки не будет
+saved_url = bot.MINIAPP_URL
+bot.MINIAPP_URL = ""
+sent.clear()
+bot.start(FakeMessage(202, "Боб", f"/start {invite_id}"))
+truthy("бот ответил на приглашение", len(sent) == 1, f"{len(sent)} сообщений")
+truthy("сообщение про ненастроенное приложение",
+       "MINIAPP_URL" in (sent[0]["text"] if sent else ""),
+       sent[0]["text"][:60] if sent else "")
+
+joined = chess_game.load_game(invite_id)
+check("приглашённый всё равно посажен за чёрных", joined["black"]["id"] if joined["black"] else None, 202)
+
+# 2. С настроенным адресом — приходит кнопка с доской
+bot.MINIAPP_URL = "https://pprsd.netlify.app"
+sent.clear()
+bot.start(FakeMessage(202, "Боб", f"/start {invite_id}"))
+truthy("бот ответил", len(sent) >= 1)
+
+first = sent[0] if sent else {}
+truthy("текст про приглашение", "пригласили" in first.get("text", "").lower() or "ваша" in first.get("text", "").lower(),
+       first.get("text", "")[:60])
+
+markup = first.get("markup")
+button = markup.keyboard[0][0] if markup and markup.keyboard else None
+truthy("есть кнопка", button is not None)
+if button:
+    check("текст кнопки", button.text, "Открыть доску")
+    truthy("кнопка открывает мини-апп с этой партией",
+           button.web_app and invite_id in button.web_app.url,
+           button.web_app.url if button.web_app else "нет web_app")
+
+# 3. Повторный переход по своей же ссылке не ломает партию
+sent.clear()
+bot.start(FakeMessage(202, "Боб", f"/start {invite_id}"))
+truthy("повторный заход обрабатывается", len(sent) >= 1, sent[0]["text"][:50] if sent else "")
+
+# 4. Несуществующая партия — понятное сообщение, а не приветствие
+sent.clear()
+bot.start(FakeMessage(202, "Боб", "/start неттакойпартии"))
+truthy("несуществующая партия", "недоступна" in (sent[0]["text"] if sent else ""),
+       sent[0]["text"][:60] if sent else "")
+
+# 5. Обычный /start без параметра работает как раньше
+sent.clear()
+bot.start(FakeMessage(303, "Карol", "/start"))
+truthy("обычный запуск показывает меню",
+       "Бот запущен" in (sent[0]["text"] if sent else ""),
+       sent[0]["text"][:40] if sent else "")
+
+bot.MINIAPP_URL = saved_url
+
+
+# =========================
 print(
     "\n✅ Все проверки пройдены"
     if failed == 0

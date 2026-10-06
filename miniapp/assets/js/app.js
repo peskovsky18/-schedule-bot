@@ -8,6 +8,10 @@
 
   var core = window.ScheduleCore;
 
+  // Логика шахматной доски. Файл публикует себя как window.ChessBoard,
+  // здесь даём короткое имя, чтобы не путаться с DOM-элементом доски.
+  var chess = window.ChessBoard;
+
   var CACHE_KEY = "schedule.cache.v2";
   var API_KEY = "schedule.apiBase";
   var CACHE_TTL = 5 * 60 * 1000; // 5 минут, как и на сервере
@@ -735,7 +739,434 @@
     spinBtn.addEventListener("click", spin);
   }
 
+  /* ---------- Шахматы ---------- */
+
+  var CHESS_GAME_KEY = "chess.game";
+  var CHESS_POLL_MS = 2500;
+
+  /** Заголовки с подписью Telegram: по ней сервер понимает, кто ходит. */
+  function chessHeaders() {
+    var headers = { "Content-Type": "application/json" };
+    var initData = inTelegram && tg && tg.initData ? tg.initData : "";
+
+    if (initData) headers["X-Telegram-Init-Data"] = initData;
+    return headers;
+  }
+
+  /**
+   * Запрос к шахматному API.
+   *
+   * Адрес берём из того же config.js, что и расписание: мини-апп живёт
+   * на Netlify, а API — на Render, это разные домены.
+   */
+  function chessFetch(path, options) {
+    var request = options || {};
+    request.headers = chessHeaders();
+
+    return fetch((apiBase || "") + "/api/chess" + path, request).then(function (response) {
+      return response.json().catch(function () {
+        return { ok: false, error: "Сервер ответил кодом " + response.status };
+      }).then(function (data) {
+        if (!response.ok || data.ok === false) {
+          throw new Error(data.error || ("Ошибка " + response.status));
+        }
+        return data;
+      });
+    });
+  }
+
+  function initChess() {
+    var cfg = window.CHESS || {};
+    var box = document.getElementById("chess");
+
+    if (!box || cfg.enabled === false) return;
+
+    var introEl = document.getElementById("chessIntro");
+    var gameEl = document.getElementById("chessGame");
+    var boardEl = document.getElementById("chessBoard");
+    var turnEl = document.getElementById("chessTurn");
+    var errorEl = document.getElementById("chessError");
+    var whiteEl = document.getElementById("chessWhite");
+    var blackEl = document.getElementById("chessBlack");
+    var inviteBtn = document.getElementById("chessInvite");
+    var resignBtn = document.getElementById("chessResign");
+    var againBtn = document.getElementById("chessAgain");
+    var newBtn = document.getElementById("chessNew");
+    var promoEl = document.getElementById("chessPromo");
+    var promoList = document.getElementById("chessPromoList");
+
+    if (!introEl || !gameEl || !boardEl || !newBtn) return;
+
+    var gameId = null;
+    var game = null;
+    var selected = null;
+    var pending = null; // { from, to }, пока выбирают фигуру для превращения
+    var cellNodes = [];
+    var pollTimer = null;
+    var busy = false;
+
+    function showError(message) {
+      errorEl.textContent = message || "";
+      errorEl.hidden = !message;
+    }
+
+    function remember(id) {
+      gameId = id;
+      try {
+        if (id) localStorage.setItem(CHESS_GAME_KEY, id);
+        else localStorage.removeItem(CHESS_GAME_KEY);
+      } catch (e) {}
+    }
+
+    function savedId() {
+      try {
+        return localStorage.getItem(CHESS_GAME_KEY);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    /* ---- отрисовка ---- */
+
+    function buildBoard() {
+      boardEl.textContent = "";
+      cellNodes = [];
+
+      for (var i = 0; i < 64; i++) {
+        var file = i % 8;
+        var rank = 7 - Math.floor(i / 8);
+
+        var cell = el("button", "chess__cell");
+        cell.type = "button";
+        cell.dataset.square = chess.squareName(file, rank);
+        cell.addEventListener("click", onCellClick);
+
+        boardEl.appendChild(cell);
+        cellNodes.push(cell);
+      }
+    }
+
+    function renderBoard() {
+      if (!game) return;
+
+      var cells = chess.boardCells(game.fen);
+      if (!cells) return;
+
+      var targets = selected ? chess.targetsFrom(game.legal, selected) : [];
+      var canMove = game.status === "active" && game.you && game.turn === game.you;
+      var kingSquare = game.inCheck ? chess.findKing(game.fen, game.turn) : null;
+
+      cells.forEach(function (info, i) {
+        var node = cellNodes[i];
+        if (!node) return;
+
+        var classes = ["chess__cell", info.light ? "chess__cell--light" : "chess__cell--dark"];
+
+        if (game.lastMove &&
+            (game.lastMove.from === info.square || game.lastMove.to === info.square)) {
+          classes.push("chess__cell--last");
+        }
+        if (selected === info.square) classes.push("chess__cell--selected");
+        if (targets.indexOf(info.square) >= 0) {
+          classes.push(info.code ? "chess__cell--capture" : "chess__cell--target");
+        }
+        if (kingSquare === info.square) classes.push("chess__cell--check");
+        if (info.code) {
+          classes.push(chess.isWhitePiece(info.code) ? "chess__cell--white" : "chess__cell--black");
+        }
+
+        node.className = classes.join(" ");
+        node.textContent = "";
+
+        if (info.code) {
+          node.appendChild(el("span", "chess__piece", chess.pieceGlyph(info.code)));
+
+          var owner = chess.isWhitePiece(info.code) ? "белая" : "чёрная";
+          node.setAttribute("aria-label",
+            info.square + ", " + owner + " " + chess.pieceName(info.code));
+        } else {
+          node.setAttribute("aria-label", info.square + ", пусто");
+        }
+
+        // Нажимать можно свои фигуры и клетки, куда можно пойти
+        var mine = canMove && info.code && chess.pieceColor(info.code) === game.you;
+        node.disabled = !(mine || targets.indexOf(info.square) >= 0);
+      });
+    }
+
+    function playerLabel(player, color) {
+      return (color === "white" ? "Белые" : "Чёрные") + ": " +
+        (player ? player.name : "ждём соперника");
+    }
+
+    function render() {
+      if (!game) {
+        introEl.hidden = false;
+        gameEl.hidden = true;
+        promoEl.hidden = true;
+        return;
+      }
+
+      introEl.hidden = true;
+      gameEl.hidden = false;
+
+      whiteEl.textContent = playerLabel(game.white, "white");
+      blackEl.textContent = playerLabel(game.black, "black");
+      whiteEl.classList.toggle("is-turn", game.status === "active" && game.turn === "white");
+      blackEl.classList.toggle("is-turn", game.status === "active" && game.turn === "black");
+
+      if (game.status === "waiting") {
+        turnEl.textContent = "Ждём соперника — пригласите его";
+      } else if (game.status === "finished") {
+        turnEl.textContent = chess.resultText(game.result, game.you) || "Партия закончена";
+      } else if (game.turn === game.you) {
+        turnEl.textContent = game.inCheck ? "Ваш ход, вам шах!" : "Ваш ход";
+      } else {
+        turnEl.textContent = game.inCheck ? "Ход соперника, у него шах" : "Ход соперника";
+      }
+
+      inviteBtn.hidden = game.status !== "waiting";
+      resignBtn.hidden = game.status !== "active";
+      againBtn.hidden = game.status !== "finished";
+
+      selected = null;
+      renderBoard();
+    }
+
+    /* ---- ходы ---- */
+
+    function onCellClick(event) {
+      var square = event.currentTarget.dataset.square;
+
+      if (!game || game.status !== "active" || pending) return;
+      if (!game.you || game.turn !== game.you) return;
+
+      var cells = chess.boardCells(game.fen) || [];
+      var target = null;
+
+      for (var i = 0; i < cells.length; i++) {
+        if (cells[i].square === square) {
+          target = cells[i];
+          break;
+        }
+      }
+
+      if (selected) {
+        if (chess.targetsFrom(game.legal, selected).indexOf(square) >= 0) {
+          if (chess.needsPromotion(game.fen, selected, square)) {
+            askPromotion(selected, square);
+          } else {
+            sendMove(selected, square, null);
+          }
+          return;
+        }
+
+        selected = null;
+      }
+
+      if (target && target.code && chess.pieceColor(target.code) === game.you &&
+          chess.targetsFrom(game.legal, square).length) {
+        selected = square;
+      }
+
+      renderBoard();
+    }
+
+    function askPromotion(from, to) {
+      pending = { from: from, to: to };
+
+      promoList.textContent = "";
+      ["q", "r", "b", "n"].forEach(function (code) {
+        var btn = el("button", "chess__promo-btn", chess.pieceGlyph(code));
+        btn.type = "button";
+        btn.setAttribute("aria-label", chess.pieceName(code));
+
+        btn.addEventListener("click", function () {
+          promoEl.hidden = true;
+          var move = pending;
+          pending = null;
+          if (move) sendMove(move.from, move.to, code);
+        });
+
+        promoList.appendChild(btn);
+      });
+
+      promoEl.hidden = false;
+    }
+
+    function sendMove(from, to, promotion) {
+      if (busy || !gameId) return;
+      busy = true;
+
+      var body = { from: from, to: to };
+      if (promotion) body.promotion = promotion;
+
+      chessFetch("/" + gameId + "/move", { method: "POST", body: JSON.stringify(body) })
+        .then(function (data) {
+          game = data.game;
+          selected = null;
+          render();
+        })
+        .catch(function (error) {
+          showError(error.message);
+          refresh();
+        })
+        .then(function () { busy = false; });
+    }
+
+    /* ---- сеть ---- */
+
+    function refresh() {
+      if (!gameId) return Promise.resolve();
+
+      return chessFetch("/" + gameId).then(function (data) {
+        game = data.game;
+        render();
+      }).catch(function (error) {
+        // Партии нет — например, хранилище было в памяти и сервис
+        // перезапустился. Тогда честно предлагаем начать заново.
+        if (/не найдена/i.test(error.message)) {
+          remember(null);
+          game = null;
+          render();
+          showError("Партия больше недоступна — создайте новую");
+          return;
+        }
+        showError(error.message);
+      });
+    }
+
+    function createGame() {
+      if (busy) return;
+      busy = true;
+      newBtn.disabled = true;
+
+      chessFetch("/new", { method: "POST" })
+        .then(function (data) {
+          remember(data.game.id);
+          game = data.game;
+          render();
+        })
+        .catch(function (error) { showError(error.message); })
+        .then(function () {
+          busy = false;
+          newBtn.disabled = false;
+        });
+    }
+
+    function joinGame(id) {
+      chessFetch("/" + id + "/join", { method: "POST" })
+        .then(function (data) {
+          remember(id);
+          game = data.game;
+          render();
+        })
+        .catch(function (error) {
+          // Уже участник или место занято — показываем состояние как есть
+          remember(id);
+          return refresh().then(function () { showError(error.message); });
+        });
+    }
+
+    function invite() {
+      if (!gameId) return;
+
+      var bot = (window.CHESS && window.CHESS.bot) || "";
+      var link = "https://t.me/" + bot + "?start=" + gameId;
+      var share = "https://t.me/share/url?url=" + encodeURIComponent(link) +
+        "&text=" + encodeURIComponent("Сыграем в шахматы?");
+
+      if (inTelegram && supports("openTelegramLink")) {
+        try { tg.openTelegramLink(share); return; } catch (e) {}
+      }
+
+      window.open(share, "_blank");
+    }
+
+    function resign() {
+      if (busy || !gameId) return;
+      busy = true;
+
+      chessFetch("/" + gameId + "/resign", { method: "POST" })
+        .then(function (data) {
+          game = data.game;
+          render();
+        })
+        .catch(function (error) { showError(error.message); })
+        .then(function () { busy = false; });
+    }
+
+    /* ---- опрос ---- */
+
+    function startPolling() {
+      stopPolling();
+      if (!gameId || !game) return;
+
+      pollTimer = setInterval(function () {
+        if (document.visibilityState === "visible") refresh();
+      }, CHESS_POLL_MS);
+    }
+
+    function stopPolling() {
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    }
+
+    // Опрашиваем, только пока меню открыто: доска всё равно видна лишь там
+    onMenuToggle(function (open) {
+      if (open) refresh().then(startPolling);
+      else stopPolling();
+    });
+
+    /* ---- запуск ---- */
+
+    buildBoard();
+
+    newBtn.addEventListener("click", createGame);
+    inviteBtn.addEventListener("click", invite);
+    resignBtn.addEventListener("click", resign);
+    againBtn.addEventListener("click", createGame);
+
+    // Ссылка-приглашение выглядит как ?game=<id>
+    var invited = null;
+    try {
+      invited = new URLSearchParams(location.search).get("game");
+    } catch (e) {}
+
+    if (invited) {
+      joinGame(invited);
+    } else {
+      var saved = savedId();
+      if (saved) {
+        remember(saved);
+        refresh();
+      } else {
+        render();
+      }
+    }
+  }
+
   /* ---------- Меню ---------- */
+
+  // Кому сообщать об открытии и закрытии меню. Нужно шахматам:
+  // опрашивать соперника имеет смысл, только пока доска на экране.
+  var menuHandlers = [];
+
+  function onMenuToggle(handler) {
+    menuHandlers.push(handler);
+  }
+
+  function notifyMenu(open) {
+    menuHandlers.forEach(function (handler) {
+      try {
+        handler(open);
+      } catch (e) {
+        console.warn("[menu] обработчик упал:", e && e.message);
+      }
+    });
+  }
 
   /**
    * Меню выезжает справа. Разделы расписания переключают вкладку
@@ -755,12 +1186,14 @@
       if (backdrop) backdrop.hidden = false;
       openBtn.setAttribute("aria-expanded", "true");
       markActive();
+      notifyMenu(true);
     }
 
     function close() {
       menu.hidden = true;
       if (backdrop) backdrop.hidden = true;
       openBtn.setAttribute("aria-expanded", "false");
+      notifyMenu(false);
     }
 
     /** Подсвечиваем раздел, который сейчас показан на экране. */
@@ -902,6 +1335,7 @@
 
     render();
     initMenu();
+    initChess();
     initRoulette();
     initTracks();
 

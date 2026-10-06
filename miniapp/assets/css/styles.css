@@ -684,3 +684,181 @@ body.has-netlify-badge .app {
 @media (prefers-reduced-motion: reduce) {
   .wheel__disc { transition: none; }
 }
+
+/* ---------- Шахматы ---------- */
+
+.chess { padding: 4px 16px 10px; }
+
+.chess__hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--hint);
+}
+
+.chess__btn {
+  display: block;
+  width: 100%;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.15s ease;
+}
+
+.chess__btn:active { transform: scale(0.97); }
+.chess__btn:disabled { opacity: 0.55; cursor: default; transform: none; }
+
+.chess__btn--ghost {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.chess__players {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--hint);
+}
+
+/* Игрок, чей сейчас ход, подсвечивается */
+.chess__player.is-turn { color: var(--accent); font-weight: 600; }
+
+/*
+  Доска: восемь на восемь. Клетки — кнопки, чтобы работали и тап,
+  и клавиатура. Цвета заданы жёстко: шахматная доска должна выглядеть
+  одинаково в светлой и тёмной теме.
+*/
+.chess__board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.chess__cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chess__cell--light { background: #cdd6e3; }
+.chess__cell--dark { background: #6f7f95; }
+
+/* Куда можно пойти: точка на пустой клетке, кольцо — на занятой */
+.chess__cell--target::after {
+  content: "";
+  position: absolute;
+  width: 30%;
+  height: 30%;
+  border-radius: 50%;
+  background: rgba(18, 22, 30, 0.38);
+}
+
+.chess__cell--capture::after {
+  width: 76%;
+  height: 76%;
+  background: transparent;
+  box-shadow: inset 0 0 0 3px rgba(18, 22, 30, 0.38);
+}
+
+.chess__cell--last { box-shadow: inset 0 0 0 100px rgba(255, 214, 102, 0.28); }
+.chess__cell--selected { box-shadow: inset 0 0 0 3px var(--accent); }
+.chess__cell--check { box-shadow: inset 0 0 0 100px rgba(224, 87, 79, 0.45); }
+
+.chess__piece {
+  font-size: min(7vw, 26px);
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Белые фигуры — светлая заливка с тёмной обводкой, чёрные наоборот:
+   так они читаются и на светлых, и на тёмных клетках */
+.chess__cell--white .chess__piece {
+  color: #fbfcfe;
+  text-shadow: 0 0 2px #12161e, 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+.chess__cell--black .chess__piece {
+  color: #141a24;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.7);
+}
+
+.chess__turn {
+  min-height: 20px;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.chess__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.chess__error {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: #ff7a72;
+  text-align: center;
+}
+
+/* Выбор фигуры при превращении пешки */
+.chess__promo {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-soft);
+}
+
+.chess__promo-title {
+  margin-bottom: 8px;
+  font-size: 12.5px;
+  color: var(--hint);
+  text-align: center;
+}
+
+.chess__promo-list {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.chess__promo-btn {
+  display: grid;
+  place-items: center;
+  padding: 8px 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chess__promo-btn:active { background: var(--bg-soft); }

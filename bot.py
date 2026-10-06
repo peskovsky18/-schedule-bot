@@ -31,6 +31,7 @@ from flask import Flask, jsonify, request
 from telebot import types
 
 import chess_api
+import chess_game
 import parser
 from parser import format_schedule, get_today, get_tomorrow, get_week, parse_schedule
 
@@ -419,11 +420,82 @@ def send_safe(chat_id, text):
 def start(message):
     save_user(message.chat.id)
 
+    # Переход по ссылке-приглашению в шахматы выглядит как /start <id партии>
+    parts = (message.text or "").split(maxsplit=1)
+    invite = parts[1].strip() if len(parts) > 1 else ""
+
+    if invite and accept_chess_invite(message, invite):
+        return
+
     bot.send_message(
         message.chat.id,
         "📚 Бот запущен\n\nВыберите, что показать:",
         reply_markup=main_menu(),
     )
+
+
+def accept_chess_invite(message, game_id):
+    """
+    Сажает приглашённого за чёрных и присылает кнопку с доской.
+
+    Возвращает True, если сообщение было про шахматы и обработано здесь —
+    тогда обычное приветствие показывать не нужно.
+    """
+    game = chess_game.load_game(game_id)
+
+    if not game:
+        bot.send_message(
+            message.chat.id,
+            "♟ Эта партия уже недоступна. Создайте новую в приложении.",
+        )
+        return True
+
+    player = {
+        "id": message.from_user.id,
+        "name": message.from_user.first_name or "Игрок",
+    }
+
+    already = chess_game.is_player(game, player["id"])
+
+    if not already:
+        game, error = chess_game.join_game(game, player)
+        if error:
+            bot.send_message(message.chat.id, f"♟ {error}")
+            return True
+
+    if not MINIAPP_URL:
+        bot.send_message(
+            message.chat.id,
+            "♟ Приглашение принято, но приложение не настроено: "
+            "на Render не задан MINIAPP_URL.",
+        )
+        return True
+
+    color = chess_game.player_color(game, player["id"])
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton(
+        "Открыть доску",
+        web_app=types.WebAppInfo(url=f"{MINIAPP_URL}/?game={game_id}"),
+    ))
+
+    if already:
+        text = "♟ Партия уже ваша — вот доска."
+    else:
+        text = "♟ Вас пригласили в шахматы. Вы играете " + (
+            "белыми" if color == "white" else "чёрными"
+        ) + "."
+
+    bot.send_message(message.chat.id, text, reply_markup=markup)
+
+    # Соперника тоже стоит предупредить, что игра началась.
+    # В личном чате chat_id совпадает с id пользователя.
+    if not already and color == "black" and game.get("white"):
+        try:
+            bot.send_message(game["white"]["id"], "♟ Соперник присоединился. Ваш ход!")
+        except Exception as e:
+            print("[CHESS] не удалось предупредить соперника:", e)
+
+    return True
 
 
 # =========================

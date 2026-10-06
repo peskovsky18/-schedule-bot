@@ -79,6 +79,50 @@
         <button class="menu__item" type="button" data-mode="all">Всё расписание</button>
       </div>
 
+      <div class="menu__section">Шахматы</div>
+      <div class="chess" id="chess">
+        <!-- Партии ещё нет -->
+        <div class="chess__intro" id="chessIntro" hidden>
+          <p class="chess__hint">
+            Сыграйте с одногруппником. Вы играете белыми и делаете первый ход.
+          </p>
+          <button class="chess__btn" id="chessNew" type="button">Создать партию</button>
+        </div>
+
+        <!-- Идёт партия -->
+        <div class="chess__game" id="chessGame" hidden>
+          <div class="chess__players">
+            <span class="chess__player" id="chessWhite"></span>
+            <span class="chess__player" id="chessBlack"></span>
+          </div>
+
+          <div class="chess__board" id="chessBoard" role="grid"
+               aria-label="Шахматная доска"></div>
+
+          <div class="chess__turn" id="chessTurn" role="status" aria-live="polite"></div>
+
+          <div class="chess__actions">
+            <button class="chess__btn chess__btn--ghost" id="chessInvite" type="button" hidden>
+              Пригласить
+            </button>
+            <button class="chess__btn chess__btn--ghost" id="chessResign" type="button" hidden>
+              Сдаться
+            </button>
+            <button class="chess__btn chess__btn--ghost" id="chessAgain" type="button" hidden>
+              Новая партия
+            </button>
+          </div>
+        </div>
+
+        <!-- Выбор фигуры при превращении пешки -->
+        <div class="chess__promo" id="chessPromo" hidden>
+          <div class="chess__promo-title">Во что превратить пешку?</div>
+          <div class="chess__promo-list" id="chessPromoList"></div>
+        </div>
+
+        <p class="chess__error" id="chessError" hidden></p>
+      </div>
+
       <div class="menu__section">Рулетка</div>
       <div class="roulette" id="roulette">
         <div class="wheel">
@@ -96,8 +140,9 @@
     </div>
   </aside>
 
-  <script src="assets/js/config.js?v=4"></script>
-  <script src="assets/js/core.js?v=4"></script>
-  <script src="assets/js/app.js?v=4"></script>
+  <script src="assets/js/config.js?v=5"></script>
+  <script src="assets/js/core.js?v=5"></script>
+  <script src="assets/js/chess.js?v=5"></script>
+  <script src="assets/js/app.js?v=5"></script>
 </body>
 </html>

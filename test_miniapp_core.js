@@ -4,10 +4,13 @@
  *     node test_miniapp_core.js
  *
  * Проверяет арифметику, которую легко сломать: даты по Москве, склонения,
- * сортировку пар и режимы «Сегодня / Завтра / Неделя / Всё».
+ * сортировку пар, режимы расписания, рулетку и разбор шахматной доски.
  */
 
 const core = require("./miniapp/assets/js/core.js");
+const chess = require("./miniapp/assets/js/chess.js");
+
+const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 let failed = 0;
 
@@ -241,6 +244,95 @@ for (let n = 2; n <= 8; n++) {
   }
 }
 check("угол всегда в [0, 360)", rangeOk, true);
+
+console.log("\n=== Шахматы: разбор FEN ===");
+const startBoard = chess.parseFen(START_FEN);
+truthy("стартовая позиция разобрана", startBoard !== null);
+check("восемь строк", startBoard.length, 8);
+check("восемь клеток в строке", startBoard[0].length, 8);
+check("первая строка — чёрные фигуры", startBoard[0].join(""), "rnbqkbnr");
+check("последняя — белые", startBoard[7].join(""), "RNBQKBNR");
+check("третья строка пуста", startBoard[2].every((c) => c === null), true);
+
+check("битый FEN — null", chess.parseFen("чепуха"), null);
+check("неполный FEN — null", chess.parseFen("rnbqkbnr/pppppppp"), null);
+check("лишние клетки в строке — null", chess.parseFen("rnbqkbnrr/8/8/8/8/8/8/8"), null);
+check("пустая строка — null", chess.parseFen(""), null);
+check("полный FEN с полями разбирается", chess.parseFen("8/8/8/4k3/8/8/8/4K3 w - - 0 1") !== null, true);
+
+console.log("\n=== Шахматы: клетки ===");
+check("e4 → file 4, rank 3", chess.parseSquare("e4"), { file: 4, rank: 3 });
+check("a1 → file 0, rank 0", chess.parseSquare("a1"), { file: 0, rank: 0 });
+check("h8 → file 7, rank 7", chess.parseSquare("h8"), { file: 7, rank: 7 });
+check("заглавные приводятся", chess.parseSquare("E4"), { file: 4, rank: 3 });
+check("лишние пробелы не мешают", chess.parseSquare("  e4 "), { file: 4, rank: 3 });
+check("мусор → null", chess.parseSquare("z9"), null);
+check("короткая строка → null", chess.parseSquare("e"), null);
+
+check("обратно в имя", chess.squareName(4, 3), "e4");
+check("за границей → null", chess.squareName(8, 0), null);
+
+check("a1 тёмная", chess.isLightSquare(0, 0), false);
+check("h1 светлая", chess.isLightSquare(7, 0), true);
+check("a8 светлая", chess.isLightSquare(0, 7), true);
+check("e4 светлая", chess.isLightSquare(4, 3), true);
+
+console.log("\n=== Шахматы: отрисовка доски ===");
+const cells = chess.boardCells(START_FEN);
+check("всего 64 клетки", cells.length, 64);
+check("первая клетка — a8", cells[0].square, "a8");
+check("последняя — h1", cells[63].square, "h1");
+check("на a8 чёрная ладья", cells[0].code, "r");
+check("на e1 белый король", cells[60].code, "K");
+check("пустая клетка — null", cells[16].code, null);
+check("цвет клетки a8", cells[0].light, true);
+check("цвет клетки a1", cells[56].light, false);
+
+console.log("\n=== Шахматы: фигуры ===");
+check("символ короля", chess.pieceGlyph("k"), "♚");
+check("символ пешки", chess.pieceGlyph("p"), "♟");
+check("регистр не важен", chess.pieceGlyph("Q"), "♛");
+check("пустая клетка — пусто", chess.pieceGlyph(null), "");
+check("название фигуры", chess.pieceName("n"), "конь");
+check("неизвестный код — пусто", chess.pieceGlyph("x"), "");
+
+check("заглавная — белая", chess.isWhitePiece("K"), true);
+check("строчная — чёрная", chess.isWhitePiece("k"), false);
+check("пустая клетка не фигура", chess.isWhitePiece(null), false);
+check("цвет белой", chess.pieceColor("R"), "white");
+check("цвет чёрной", chess.pieceColor("r"), "black");
+
+console.log("\n=== Шахматы: король и превращение ===");
+check("белый король на e1", chess.findKing(START_FEN, "white"), "e1");
+check("чёрный король на e8", chess.findKing(START_FEN, "black"), "e8");
+check("на пустой доске короля нет", chess.findKing("8/8/8/8/8/8/8/8 w - - 0 1", "white"), null);
+
+// Белая пешка на e7 может пойти на e8 с превращением
+const promo = "8/4P3/8/8/8/8/8/8 w - - 0 1";
+check("пешка на предпоследней — нужно превращение", chess.needsPromotion(promo, "e7", "e8"), true);
+check("обычный ход пешки — не нужно", chess.needsPromotion(START_FEN, "e2", "e4"), false);
+check("ход не пешкой — не нужно", chess.needsPromotion(START_FEN, "g1", "f3"), false);
+check("уже на последней — не нужно", chess.needsPromotion("4Q3/8/8/8/8/8/8/8 w - - 0 1", "e8", "e8"), false);
+
+// Чёрная пешка идёт вниз, на первую горизонталь
+const blackPromo = "8/8/8/8/8/8/4p3/8 b - - 0 1";
+check("чёрная пешка на e2 — превращение на e1", chess.needsPromotion(blackPromo, "e2", "e1"), true);
+
+console.log("\n=== Шахматы: подсказки и результат ===");
+const legal = { e2: ["e3", "e4"], g1: ["f3", "h3"] };
+check("цели для e2", chess.targetsFrom(legal, "e2"), ["e3", "e4"]);
+check("нет клетки — пусто", chess.targetsFrom(legal, "d4"), []);
+check("мусор вместо подсказок", chess.targetsFrom(null, "e2"), []);
+check("ходы есть", chess.hasMoves(legal), true);
+check("пустой объект — ходов нет", chess.hasMoves({}), false);
+check("клетки без целей — ходов нет", chess.hasMoves({ e2: [] }), false);
+
+check("победа белых глазами белых", chess.resultText("1-0", "white"), "Вы победили");
+check("поражение белых", chess.resultText("0-1", "white"), "Вы проиграли");
+check("победа чёрных глазами чёрных", chess.resultText("0-1", "black"), "Вы победили");
+check("ничья", chess.resultText("1/2-1/2", "white"), "Ничья");
+check("без результата — пусто", chess.resultText(null, "white"), "");
+check("результат без зрителя", chess.resultText("1-0", null), "Победили белые");
 
 console.log(
   failed === 0
