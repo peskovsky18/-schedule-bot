@@ -290,7 +290,22 @@ check("цвет клетки a1", cells[56].light, false);
 
 console.log("\n=== Шахматы: фигуры ===");
 check("символ короля", chess.pieceGlyph("k"), "♚");
-check("символ пешки", chess.pieceGlyph("p"), "♟");
+
+// Пешка — единственный шахматный символ, который входит в набор эмодзи
+// (U+265F, см. emoji-data.txt). Без селектора U+FE0E телефоны рисуют её
+// эмодзи, а эмодзи игнорирует CSS-заливку: белая пешка выглядела чёрной.
+truthy("у пешки селектор текстового начертания",
+  chess.pieceGlyph("p").endsWith("\uFE0E"),
+  JSON.stringify(chess.pieceGlyph("p")));
+check("белая пешка — тот же символ с селектором", chess.pieceGlyph("P"), chess.pieceGlyph("p"));
+check("сам символ пешки не изменился", chess.pieceGlyph("p")[0], "♟");
+
+// Остальные фигуры в набор эмодзи не входят, и селектор им не нужен:
+// для неэмодзи-символов вариационные селекторы не определены
+["k", "q", "r", "b", "n"].forEach(function (code) {
+  truthy("у «" + chess.pieceName(code) + "» лишнего селектора нет",
+    !chess.pieceGlyph(code).endsWith("\uFE0E"));
+});
 check("регистр не важен", chess.pieceGlyph("Q"), "♛");
 check("пустая клетка — пусто", chess.pieceGlyph(null), "");
 check("название фигуры", chess.pieceName("n"), "конь");
