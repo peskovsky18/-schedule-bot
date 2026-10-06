@@ -581,13 +581,38 @@
       return height > 0;
     }
 
-    if (measure()) return;
+    /** Пересчитываем при изменении размеров: плашка «устаивается» не сразу. */
+    function follow(badge) {
+      measure();
+
+      if (typeof ResizeObserver === "function") {
+        try {
+          new ResizeObserver(measure).observe(badge);
+          return;
+        } catch (e) {}
+      }
+
+      // Запасной вариант, если ResizeObserver нет: несколько замеров
+      [300, 1000, 3000].forEach(function (delay) {
+        setTimeout(measure, delay);
+      });
+    }
+
+    if (measure()) {
+      var existing = document.getElementById("nl-badge-frame");
+      if (existing) follow(existing);
+      return;
+    }
 
     // Плашку вставляет скрипт Netlify, возможно уже после загрузки
     if (typeof MutationObserver !== "function") return;
 
     var observer = new MutationObserver(function () {
-      if (measure()) observer.disconnect();
+      var badge = document.getElementById("nl-badge-frame");
+      if (!badge) return;
+
+      observer.disconnect();
+      follow(badge);
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
@@ -666,6 +691,13 @@
       renderQueue();
 
       if (play) {
+        // Явный load() перед play(): без него элемент иногда навсегда
+        // застревает в состоянии загрузки (readyState 0) — новый src
+        // не запрашивается, и трек молчит. Проверено на живом сайте.
+        try {
+          audio.load();
+        } catch (e) {}
+
         var started = audio.play();
         if (started && typeof started.catch === "function") {
           started.catch(function (e) {
