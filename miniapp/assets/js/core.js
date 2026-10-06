@@ -76,6 +76,27 @@
     return (d.getUTCDay() + 6) % 7;
   }
 
+  /**
+   * Понедельник следующей календарной недели.
+   *
+   * Считаем именно календарную неделю, а не «сегодня плюс семь дней»:
+   * расписание в вузе недельное, и неделя начинается в понедельник.
+   * В среду «сегодня плюс семь» дало бы следующую среду, и блок
+   * «Следующая неделя» начинался бы со среды — это сбивает с толку.
+   *
+   * Если сегодня понедельник, вернём понедельник через неделю:
+   * текущая неделя ещё идёт, и «следующая» — не сегодняшний день.
+   */
+  function startOfNextWeek(iso) {
+    var parts = String(iso).split("-").map(Number);
+    if (parts.length !== 3 || isNaN(parts[0])) return iso;
+
+    var d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+    var shift = 7 - weekdayIndex(d);
+
+    return addDays(iso, shift);
+  }
+
   /** '6 октября, вторник' → '6 октября' (без дня недели) */
   function humanDateShort(iso) {
     return humanDate(iso).split(",")[0];
@@ -207,12 +228,13 @@
       return week;
     }
 
-    // Следующая неделя — следующее окно из семи дней, встык к «Неделе»:
-    // если «Неделя» показывает дни 0…6 от сегодня, то здесь 7…13.
-    // Так вкладки не пересекаются и не оставляют пропусков.
+    // Следующая неделя — календарная, с понедельника по воскресенье.
+    // Раньше здесь было окно «+7…+13 дней от сегодня», и оно начиналось
+    // с того же дня недели, что и сегодня: в среду — со среды.
     if (mode === "next") {
+      var nextMonday = startOfNextWeek(today);
       var next = [];
-      for (var j = 7; j < 14; j++) next.push(makeDay(addDays(today, j)));
+      for (var j = 0; j < 7; j++) next.push(makeDay(addDays(nextMonday, j)));
       return next;
     }
 
@@ -291,6 +313,7 @@
     humanDate: humanDate,
     humanDateShort: humanDateShort,
     weekdayIndex: weekdayIndex,
+    startOfNextWeek: startOfNextWeek,
     plural: plural,
     lessonsWord: lessonsWord,
     startMinutes: startMinutes,
