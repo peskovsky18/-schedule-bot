@@ -448,6 +448,15 @@ body {
   padding-bottom: 12px;
 }
 
+/*
+  Плашка Netlify висит поверх страницы в правом нижнем углу, и последние
+  пункты меню оказывались под ней — по ним нельзя было нажать.
+  Оставляем под содержимым место на её высоту (её измеряет app.js).
+*/
+body.has-netlify-badge .menu__scroll {
+  padding-bottom: calc(12px + var(--badge-offset, 0px));
+}
+
 .menu__section {
   padding: 16px 16px 8px;
   font-size: 12px;
