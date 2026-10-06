@@ -382,6 +382,101 @@ bot.MINIAPP_URL = saved_url
 
 
 # =========================
+print("\n=== Хранилище Upstash (на локальной заглушке) ===")
+
+import http.server
+import threading
+
+
+class FakeRedis(http.server.BaseHTTPRequestHandler):
+    """
+    Заглушка REST-API Upstash: команда приходит массивом, ответ — {"result": ...}.
+
+    Настоящий Upstash здесь не нужен: проверяем, что наш клиент правильно
+    формирует команды и заголовки. Иначе ошибку в хранилище мы увидим
+    только на проде, уже с людьми в партиях.
+    """
+
+    data = {}
+    auth = []
+    commands = []
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", 0))
+        command = json.loads(self.rfile.read(length) or b"[]")
+
+        FakeRedis.commands.append(command)
+        FakeRedis.auth.append(self.headers.get("Authorization"))
+
+        name = str(command[0]).upper()
+        result = None
+
+        if name == "SET":
+            FakeRedis.data[command[1]] = command[2]
+            result = "OK"
+        elif name == "GET":
+            result = FakeRedis.data.get(command[1])
+        elif name == "DEL":
+            result = 1 if FakeRedis.data.pop(command[1], None) is not None else 0
+
+        body = json.dumps({"result": result}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args):
+        pass
+
+
+server = http.server.HTTPServer(("127.0.0.1", 0), FakeRedis)
+port = server.server_address[1]
+threading.Thread(target=server.serve_forever, daemon=True).start()
+
+redis = chess_game.RedisStore(f"http://127.0.0.1:{port}", "test-token-abc123")
+
+redis.set("ключ", "значение")
+check("запись и чтение через REST", redis.get("ключ"), "значение")
+truthy("токен уходит в заголовке Authorization",
+       bool(FakeRedis.auth) and FakeRedis.auth[0] == "Bearer test-token-abc123",
+       FakeRedis.auth[0] if FakeRedis.auth else "заголовка нет")
+
+redis.set("срок", "в", ttl=60)
+truthy("срок жизни передаётся командой EX", "EX" in FakeRedis.commands[-1],
+       str(FakeRedis.commands[-1]))
+
+redis.delete("ключ")
+check("удаление", redis.get("ключ"), None)
+check("несуществующий ключ", redis.get("нет"), None)
+
+# Партия должна переживать «перезапуск»: читаем её через новый объект
+chess_game.set_store(redis)
+redis_game = chess_game.create_game({"id": 1, "name": "Тест"})
+reborn = chess_game.load_game(redis_game["id"])
+truthy("партия легла в Redis, а не в память", reborn is not None)
+check("идентификатор тот же", reborn["id"] if reborn else None, redis_game["id"])
+
+# И сам выбор хранилища по переменным окружения
+os.environ["UPSTASH_REDIS_REST_URL"] = f"http://127.0.0.1:{port}"
+os.environ["UPSTASH_REDIS_REST_TOKEN"] = "test-token-abc123"
+chess_game.set_store(None)
+chosen = chess_game.get_store()
+truthy("при заданных переменных выбирается Redis",
+       isinstance(chosen, chess_game.RedisStore), type(chosen).__name__)
+
+# Без переменных — снова память, приложение не падает
+del os.environ["UPSTASH_REDIS_REST_URL"]
+del os.environ["UPSTASH_REDIS_REST_TOKEN"]
+chess_game.set_store(None)
+fallback = chess_game.get_store()
+truthy("без переменных — память", isinstance(fallback, chess_game.MemoryStore),
+       type(fallback).__name__)
+
+server.shutdown()
+
+
+# =========================
 print(
     "\n✅ Все проверки пройдены"
     if failed == 0
