@@ -26,6 +26,7 @@ import telebot
 from flask import Flask, jsonify, request
 from telebot import types
 
+import parser
 from parser import format_schedule, get_today, get_tomorrow, get_week, parse_schedule
 
 # =========================
@@ -61,6 +62,9 @@ app = Flask(__name__)
 ERROR_LOGS = []
 broadcast_mode = set()
 
+# Кэш имени бота: чтобы health-check не дёргал Telegram API каждый раз
+_bot_username = None
+
 
 # =========================
 # WEBHOOK
@@ -95,21 +99,42 @@ def webhook():
 @app.route("/", methods=["GET"])
 @app.route("/health", methods=["GET"])
 def health():
-    """Проверка живости сервиса и расписания."""
-    try:
-        username = bot.get_me().username
-    except Exception:
-        username = None
+    """
+    Проверка живости сервиса.
 
-    schedule = parse_schedule()
+    Специально не ходит на guide.herzen.spb.ru: Render вызывает этот адрес
+    для проверки сервиса, и недоступность сайта университета не должна
+    выглядеть как падение бота. Состояние расписания берётся из кэша.
+
+    Чтобы принудительно обновить расписание, добавьте ?deep=1.
+    """
+    deep = request.args.get("deep") == "1"
+
+    schedule = parse_schedule() if deep else parser.cached_schedule()
+
     return jsonify({
         "status": "ok",
-        "bot": username,
+        "bot": bot_username(),
+        "ready": parser.cache_age() is not None,
+        "cache_age": parser.cache_age(),
         "dates": len(schedule),
         "lessons": sum(len(v) for v in schedule.values()),
         "users": len(load_users()),
         "errors": len(ERROR_LOGS),
     })
+
+
+def bot_username():
+    """Имя бота для диагностики. Без сети, если уже выяснили."""
+    global _bot_username
+
+    if _bot_username is None:
+        try:
+            _bot_username = bot.get_me().username
+        except Exception:
+            return None
+
+    return _bot_username
 
 
 def register_webhook():

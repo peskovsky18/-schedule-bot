@@ -533,3 +533,24 @@ def get_upcoming():
     schedule = parse_schedule()
     today = _today_iso()
     return {iso: lessons for iso, lessons in schedule.items() if iso >= today}
+
+
+# =========================
+# СОСТОЯНИЕ КЭША
+# =========================
+def cached_schedule():
+    """
+    Возвращает расписание из кэша, НЕ обращаясь к сайту.
+
+    Нужно для проверки живости сервиса. Если health-check будет ходить
+    на guide.herzen.spb.ru, то при недоступности сайта Render сочтёт
+    сервис сломанным и начнёт его перезапускать.
+    """
+    return _cached_schedule or {}
+
+
+def cache_age():
+    """Сколько секунд назад расписание обновлялось. None — кэша ещё нет."""
+    if not _cached_time:
+        return None
+    return int(time.time() - _cached_time)
