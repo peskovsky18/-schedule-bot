@@ -21,6 +21,7 @@
 import json
 import os
 import traceback
+from datetime import date, timedelta
 
 import telebot
 from flask import Flask, jsonify, request
@@ -48,6 +49,10 @@ WEBHOOK_URL = (
 # Необязательный секрет: Telegram будет присылать его в заголовке,
 # и мы сможем отбросить поддельные запросы.
 TELEGRAM_SECRET = (os.getenv("TELEGRAM_SECRET") or "").strip()
+
+# Адрес мини-приложения (Netlify). Если задан, бот поставит кнопку меню,
+# которая открывает расписание в виде приложения.
+MINIAPP_URL = (os.getenv("MINIAPP_URL") or "").strip().rstrip("/")
 
 USE_POLLING = os.getenv("USE_POLLING") == "1"
 
@@ -137,6 +142,72 @@ def bot_username():
     return _bot_username
 
 
+# =========================
+# JSON API ДЛЯ МИНИ-ПРИЛОЖЕНИЯ
+# =========================
+# Мини-приложение живёт на Netlify, а API — здесь, поэтому нужен CORS.
+# Доступ по умолчанию открыт всем: данные о расписании публичные,
+# запись через API невозможна. Чтобы ограничить домен, задайте
+# ALLOWED_ORIGINS, например: https://my-miniapp.netlify.app
+ALLOWED_ORIGINS = (os.getenv("ALLOWED_ORIGINS") or "*").strip()
+
+
+@app.after_request
+def add_cors_headers(response):
+    """CORS только для /api/* — вебхук трогать не нужно."""
+    if request.path.startswith("/api/"):
+        response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGINS
+        response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        response.headers["Vary"] = "Origin"
+    return response
+
+
+@app.route("/api/schedule", methods=["GET", "OPTIONS"])
+def api_schedule():
+    """
+    Расписание в JSON для мини-приложения.
+
+    Отдаёт только предстоящие дни, начиная с сегодняшнего (по Москве).
+    """
+    if request.method == "OPTIONS":
+        return "", 204
+
+    try:
+        schedule = parse_schedule()
+    except Exception as e:
+        ERROR_LOGS.append(str(e))
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": "Не удалось получить расписание"}), 502
+
+    today = parser.now_msk().date()
+    today_iso = today.isoformat()
+
+    days = []
+    for iso in sorted(schedule):
+        if iso < today_iso:
+            continue
+
+        days.append({
+            "date": iso,
+            "weekday": parser.WEEKDAYS[date.fromisoformat(iso).weekday()],
+            "human": parser.human_date(iso),
+            "lessons": schedule[iso],
+        })
+
+    return jsonify({
+        "ok": True,
+        "group": parser.group_info(),
+        "today": today_iso,
+        "tomorrow": (today + timedelta(days=1)).isoformat(),
+        "timezone": "Europe/Moscow",
+        "cache_age": parser.cache_age(),
+        "groups_total": len(days),
+        "lessons_total": sum(len(d["lessons"]) for d in days),
+        "days": days,
+    })
+
+
 def register_webhook():
     """Регистрирует webhook в Telegram. Безопасно вызывать повторно."""
     if not WEBHOOK_URL:
@@ -153,6 +224,30 @@ def register_webhook():
         print(f"[WEBHOOK] зарегистрирован: {WEBHOOK_URL}")
     except Exception as e:
         print("[WEBHOOK] не удалось зарегистрировать:", e)
+
+
+def register_menu_button():
+    """
+    Ставит кнопку меню, открывающую мини-приложение.
+
+    Без MINIAPP_URL ничего не делает, поэтому задеплоить бота можно
+    раньше, чем мини-приложение.
+    """
+    if not MINIAPP_URL:
+        print("[MENU] MINIAPP_URL не задан — кнопка мини-приложения пропущена")
+        return
+
+    try:
+        bot.set_chat_menu_button(
+            menu_button=types.MenuButtonWebApp(
+                type="web_app",
+                text="Расписание",
+                web_app=types.WebAppInfo(url=MINIAPP_URL),
+            )
+        )
+        print(f"[MENU] кнопка мини-приложения: {MINIAPP_URL}")
+    except Exception as e:
+        print("[MENU] не удалось поставить кнопку меню:", e)
 
 
 # =========================
@@ -374,9 +469,11 @@ def handle(message):
 # START SERVER
 # =========================
 # При запуске через gunicorn блок __main__ не выполняется, поэтому webhook
-# регистрируем на уровне модуля.
+# и кнопку мини-приложения регистрируем на уровне модуля.
 if not USE_POLLING:
     register_webhook()
+
+register_menu_button()
 
 
 if __name__ == "__main__":

@@ -61,6 +61,12 @@ WEEKDAYS = [
     "пятница", "суббота", "воскресенье",
 ]
 
+# Для интерфейса мини-приложения: «6 октября»
+MONTHS_GENITIVE = [
+    "января", "февраля", "марта", "апреля", "мая", "июня",
+    "июля", "августа", "сентября", "октября", "ноября", "декабря",
+]
+
 # Как читаются коды типов занятий с сайта
 LESSON_TYPES = {
     "лекц": "лекция",
@@ -83,6 +89,8 @@ _cached_schedule = None
 _cached_time = 0
 _cached_group = None
 _cached_group_time = 0
+_cached_group_info = {}
+_resolved_group_id = None
 
 
 # =========================
@@ -174,6 +182,8 @@ def find_group_id(name):
 
 def group_url():
     """Актуальный адрес страницы «По датам» для нужной группы."""
+    global _resolved_group_id
+
     group_id = GROUP_ID
 
     if GROUP_NAME:
@@ -181,7 +191,24 @@ def group_url():
         if found:
             group_id = found
 
+    _resolved_group_id = group_id
+
     return f"{BASE}/schedule/{group_id}/by-dates"
+
+
+def group_info():
+    """
+    Сведения о группе: название, институт, направление.
+
+    Нужны для шапки мини-приложения. Данные берутся из того же снимка,
+    что и расписание, поэтому заполняются после первого разбора.
+    """
+    info = dict(_cached_group_info)
+    info.setdefault("id", _resolved_group_id or GROUP_ID)
+    info.setdefault("name", "")
+    info.setdefault("institute", "")
+    info.setdefault("program", "")
+    return info
 
 
 # =========================
@@ -244,6 +271,24 @@ def _norm_type(raw):
     return LESSON_TYPES.get(str(raw).strip().lower(), str(raw).strip())
 
 
+def _remember_group(slot):
+    """Запоминает сведения о группе из первого же слота расписания."""
+    global _cached_group_info
+
+    if _cached_group_info:
+        return
+
+    name = (slot.get("NAMEGROUP") or "").strip()
+    if not name:
+        return
+
+    _cached_group_info = {
+        "name": name,
+        "institute": (slot.get("NAME_ROD") or "").strip(),
+        "program": (slot.get("PNAME") or slot.get("SNAME") or "").strip(),
+    }
+
+
 def parse_from_snapshot(page):
     """
     Собирает расписание из Livewire-снимка.
@@ -266,6 +311,8 @@ def parse_from_snapshot(page):
     seen = set()
 
     for slot in slots:
+        _remember_group(slot)
+
         date_iso = str(slot.get("SCHEDULE_DATE") or "").strip()
         if not date_iso:
             continue
@@ -442,6 +489,15 @@ def format_date(iso):
     except ValueError:
         return iso
     return f"{d.strftime('%d.%m.%Y')}, {WEEKDAYS[d.weekday()]}"
+
+
+def human_date(iso):
+    """'2026-10-06' → '6 октября, вторник' — для мини-приложения."""
+    try:
+        d = date.fromisoformat(iso)
+    except ValueError:
+        return iso
+    return f"{d.day} {MONTHS_GENITIVE[d.month - 1]}, {WEEKDAYS[d.weekday()]}"
 
 
 def format_schedule(schedule, compact=False):

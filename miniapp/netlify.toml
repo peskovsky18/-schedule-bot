@@ -1,0 +1,30 @@
+# Netlify: публикуем статику мини-приложения.
+#
+# Важно: base directory в настройках сайта нужно указать как `miniapp`.
+# Тогда Netlify возьмёт этот файл и опубликует содержимое папки.
+
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Заголовки X-Frame-Options и frame-ancestors здесь намеренно НЕ задаются.
+# Telegram Web (web.telegram.org) открывает мини-приложения внутри iframe,
+# и запрет на встраивание сломал бы приложение в веб-версии.
+
+# Ассеты кэшируем, index.html — нет: Telegram агрессивно кэширует
+# мини-приложения, и старый HTML может «залипнуть» после обновления.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"

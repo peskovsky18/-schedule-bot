@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru" data-scheme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0e1116">
+  <title>Расписание</title>
+  <meta name="description" content="Расписание занятий группы — Telegram Mini App">
+
+  <link rel="stylesheet" href="assets/css/styles.css">
+
+  <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+
+  <div class="app">
+
+    <header class="appbar">
+      <div class="appbar__titles">
+        <h1 class="appbar__group" id="group">Расписание</h1>
+        <div class="appbar__sub" id="groupSub" hidden></div>
+      </div>
+
+      <button class="icon-btn" id="refresh" type="button" title="Обновить" aria-label="Обновить расписание">
+        <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true">
+          <path fill="currentColor" d="M12 5V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/>
+        </svg>
+      </button>
+    </header>
+
+    <nav class="segmented" id="segments" aria-label="Период"></nav>
+
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+
+    <main class="days" id="days"></main>
+
+  </div>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/core.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

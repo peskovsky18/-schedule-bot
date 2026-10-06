@@ -1,0 +1,16 @@
+# Заголовки Netlify. Дублируют netlify.toml специально: этот файл
+# работает и при деплое перетаскиванием папки (Netlify Drop),
+# где netlify.toml не применяется.
+#
+# X-Frame-Options и frame-ancestors намеренно не задаются: Telegram Web
+# открывает мини-приложения внутри iframe, и запрет сломал бы их.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/assets/*
+  Cache-Control: public, max-age=3600
+
+/index.html
+  Cache-Control: no-cache, must-revalidate
