@@ -32,6 +32,7 @@ from telebot import types
 
 import chess_api
 import chess_game
+import music_api
 import parser
 from parser import format_schedule, get_today, get_tomorrow, get_week, parse_schedule
 
@@ -88,6 +89,12 @@ if not TOKEN:
 
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
+
+# Потолок на размер запроса. Загрузка музыки идёт файлом, и без этого
+# Flask прочитает в память сколько угодно — а на бесплатном Render
+# всего 512 МБ. Восемь мегабайт покрывают файл в 6 МБ с запасом
+# на обвязку multipart.
+app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
 
 # Раздел шахмат /api/chess подключается ниже — после того, как объявлена
 # функция уведомлений: в Python имя должно существовать в момент вызова.
@@ -493,6 +500,9 @@ def notify_chess_move(game, game_id, mover_id, resigned=False):
 # Токен нужен, чтобы проверять подпись Telegram и понимать, кто ходит.
 # notify связывает ходы с сообщениями в боте.
 chess_api.init_app(app, TOKEN, notify=notify_chess_move, mini_app_url=MINIAPP_URL)
+
+# Музыка: раздел /api/music. Администратор может удалять чужие треки.
+music_api.init_app(app, admin_id=ADMIN_ID)
 
 
 def accept_chess_invite(message, game_id):

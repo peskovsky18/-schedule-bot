@@ -465,7 +465,9 @@
 
     if (!box || cfg.enabled !== true) return;
 
-    var tracks = playerTracks(cfg);
+    var builtin = playerTracks(cfg);
+    var tracks = builtin.slice(); // дополняется треками из приложения
+
     if (!tracks.length) return;
 
     var index = 0;
@@ -498,13 +500,23 @@
       rows = [];
 
       tracks.forEach(function (track, i) {
-        var row = el("button", "track");
-        row.type = "button";
+        // Строка — не кнопка, а контейнер с role="button": внутрь кнопки
+        // нельзя вложить кнопку удаления, это неверная разметка
+        var row = el("div", "track");
+        row.setAttribute("role", "button");
+        row.setAttribute("tabindex", "0");
 
         row.appendChild(el("span", "track__num", String(i + 1)));
 
         var body = el("span", "track__body");
-        body.appendChild(el("span", "track__name", track.title));
+
+        if (track.custom) {
+          body.appendChild(el("span", "track__name", track.title));
+          body.appendChild(el("span", "track__author",
+            "добавил " + (track.author || "кто-то")));
+        } else {
+          body.appendChild(el("span", "track__name", track.title));
+        }
 
         var bar = el("span", "track__bar");
         var progress = el("span", "track__progress");
@@ -519,14 +531,33 @@
         icon.appendChild(playIcon("icon-pause"));
         row.appendChild(icon);
 
-        row.addEventListener("click", function () {
+        function activate() {
           if (i === index) {
             toggle();
             return;
           }
           // Другой трек — переключаемся и сразу играем
           select(i, true);
+        }
+
+        row.addEventListener("click", activate);
+        row.addEventListener("keydown", function (event) {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            activate();
+          }
         });
+
+        if (track.canDelete) {
+          var remove = el("button", "track__remove", "✕");
+          remove.type = "button";
+          remove.setAttribute("aria-label", "Удалить трек «" + track.title + "»");
+          remove.addEventListener("click", function (event) {
+            event.stopPropagation();
+            requestDelete(track);
+          });
+          row.appendChild(remove);
+        }
 
         box.appendChild(row);
         rows.push({ row: row, progress: progress, time: body.querySelector(".track__time") });
@@ -622,6 +653,228 @@
     audio.addEventListener("error", function () {
       console.warn("[tracks] не удалось загрузить трек:", current().src);
     });
+
+    /* ---- треки, добавленные через приложение ---- */
+
+    /** Путь с сервера превращаем в полный адрес. */
+    function withApiBase(src) {
+      return src && src.charAt(0) === "/" ? (apiBase || "") + src : src;
+    }
+
+    function loadCustom() {
+      return fetch((apiBase || "") + "/api/music")
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (!data || data.ok !== true) return;
+
+          if (data.maxUploadBytes) musicMaxBytes = data.maxUploadBytes;
+
+          var added = (data.tracks || []).map(function (track) {
+            return {
+              id: track.id,
+              title: track.title,
+              src: withApiBase(track.src),
+              custom: true,
+              author: track.addedBy,
+              canDelete: track.canDelete,
+            };
+          });
+
+          tracks = builtin.concat(added);
+          build();
+          render();
+        })
+        .catch(function (error) {
+          console.warn("[music] добавленные треки не загрузились:", error && error.message);
+        });
+    }
+
+    // Форма добавления живёт отдельно, но после успешной загрузки
+    // ей нужно обновить этот список
+    reloadCustomTracks = loadCustom;
+
+    /**
+     * Удаление в два нажатия.
+     *
+     * Первое нажатие показывает предупреждение, второе удаляет.
+     * Так обходимся без системного окна подтверждения: в WebView
+     * Telegram оно может не показаться вовсе, и удаление просто
+     * не сработает.
+     */
+    function requestDelete(track) {
+      if (pendingDelete === track.id) {
+        clearTimeout(pendingTimer);
+        pendingDelete = null;
+        removeTrack(track);
+        return;
+      }
+
+      pendingDelete = track.id;
+      showMusicNote("Нажмите ✕ ещё раз, чтобы удалить «" + track.title + "»");
+
+      clearTimeout(pendingTimer);
+      pendingTimer = setTimeout(function () {
+        pendingDelete = null;
+        showMusicNote("");
+      }, 5000);
+    }
+
+    function removeTrack(track) {
+      showMusicNote("Удаляю…");
+
+      fetch((apiBase || "") + "/api/music/" + encodeURIComponent(track.id) + "/delete", {
+        method: "POST",
+        headers: chessHeaders(),
+      })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (!data || data.ok !== true) {
+            throw new Error((data && data.error) || "Не получилось удалить");
+          }
+
+          showMusicNote("Трек удалён", "is-done");
+          return loadCustom();
+        })
+        .catch(function (error) {
+          showMusicNote(error.message, "is-error");
+        });
+    }
+  }
+
+  /* ---------- Добавление музыки ---------- */
+
+  // Обновление списка добавленных треков. Ставит initTracks.
+  var reloadCustomTracks = null;
+
+  // Отметка о треке, который ждёт подтверждения удаления
+  var pendingDelete = null;
+  var pendingTimer = null;
+
+  // Предел размера файла. Значение приходит с сервера вместе со списком,
+  // чтобы не держать одно и то же число в двух местах.
+  var musicMaxBytes = 6 * 1024 * 1024;
+
+  function showMusicNote(text, tone) {
+    var note = document.getElementById("musicNote");
+    if (!note) return;
+
+    note.textContent = text || "";
+    note.className = "music__note" + (tone ? " " + tone : "");
+  }
+
+  /**
+   * Форма добавления трека.
+   *
+   * Файл уходит на сервер и хранится в Redis: мини-приложение
+   * статическое, файлы ему хранить негде.
+   */
+  function initMusic() {
+    var cfg = window.PLAYER || {};
+    var box = document.getElementById("music");
+
+    if (!box || cfg.enabled !== true) return;
+
+    var addBtn = document.getElementById("musicAdd");
+    var form = document.getElementById("musicForm");
+    var titleInput = document.getElementById("musicTitle");
+    var fileInput = document.getElementById("musicFile");
+    var urlInput = document.getElementById("musicUrl");
+    var submitBtn = document.getElementById("musicSubmit");
+    var cancelBtn = document.getElementById("musicCancel");
+
+    if (!addBtn || !form || !titleInput || !fileInput || !submitBtn) return;
+
+    function openForm() {
+      form.hidden = false;
+      addBtn.hidden = true;
+      showMusicNote("");
+      titleInput.focus();
+    }
+
+    function closeForm() {
+      form.hidden = true;
+      addBtn.hidden = false;
+      form.reset();
+      showMusicNote("");
+    }
+
+    addBtn.addEventListener("click", openForm);
+    if (cancelBtn) cancelBtn.addEventListener("click", closeForm);
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      upload();
+    });
+
+    function upload() {
+      var title = titleInput.value.trim();
+      var file = fileInput.files && fileInput.files[0];
+      var url = urlInput ? urlInput.value.trim() : "";
+
+      if (!title) {
+        showMusicNote("Укажите название трека", "is-error");
+        return;
+      }
+
+      if (!file && !url) {
+        showMusicNote("Выберите файл или вставьте ссылку", "is-error");
+        return;
+      }
+
+      if (file && file.size > musicMaxBytes) {
+        showMusicNote("Файл больше " + Math.round(musicMaxBytes / 1024 / 1024) +
+          " МБ — выберите поменьше", "is-error");
+        return;
+      }
+
+      var data = new FormData();
+      data.append("title", title);
+      if (file) data.append("audio", file);
+      else data.append("url", url);
+
+      // XHR, а не fetch: только он умеет сообщать о ходе загрузки,
+      // а несколько мегабайт по мобильной сети идут заметное время
+      var request = new XMLHttpRequest();
+      request.open("POST", (apiBase || "") + "/api/music");
+
+      var initData = telegramInitData();
+      if (initData) request.setRequestHeader("X-Telegram-Init-Data", initData);
+      // Content-Type не задаём: браузер сам добавит границу multipart
+
+      submitBtn.disabled = true;
+      showMusicNote("Загружаю…");
+
+      request.upload.onprogress = function (event) {
+        if (!event.lengthComputable) return;
+        showMusicNote("Загружаю: " + Math.round((event.loaded / event.total) * 100) + "%");
+      };
+
+      request.onload = function () {
+        submitBtn.disabled = false;
+
+        var answer = null;
+        try {
+          answer = JSON.parse(request.responseText);
+        } catch (e) {}
+
+        if (request.status !== 200 || !answer || answer.ok !== true) {
+          showMusicNote((answer && answer.error) || ("Сервер ответил " + request.status), "is-error");
+          return;
+        }
+
+        closeForm();
+        showMusicNote("Трек добавлен", "is-done");
+
+        if (typeof reloadCustomTracks === "function") reloadCustomTracks();
+      };
+
+      request.onerror = function () {
+        submitBtn.disabled = false;
+        showMusicNote("Сеть недоступна — попробуйте ещё раз", "is-error");
+      };
+
+      request.send(data);
+    }
   }
 
   /* ---------- Рулетка ---------- */
@@ -733,10 +986,15 @@
   var CHESS_POLL_MS = 2500; // ждём хода соперника — опрашиваем часто
   var CHESS_IDLE_MS = 8000; // наш ход — менять состояние можем только мы
 
+  /** Подпись Telegram для заголовка запроса. Вне Telegram пусто. */
+  function telegramInitData() {
+    return inTelegram && tg && tg.initData ? tg.initData : "";
+  }
+
   /** Заголовки с подписью Telegram: по ней сервер понимает, кто ходит. */
   function chessHeaders() {
     var headers = { "Content-Type": "application/json" };
-    var initData = inTelegram && tg && tg.initData ? tg.initData : "";
+    var initData = telegramInitData();
 
     if (initData) headers["X-Telegram-Init-Data"] = initData;
     return headers;
@@ -1488,6 +1746,11 @@
     initChess();
     initRoulette();
     initTracks();
+    initMusic();
+
+    // Список треков из config.js уже нарисован; дополняем его тем,
+    // что добавлено через приложение
+    if (typeof reloadCustomTracks === "function") reloadCustomTracks();
 
     fetchSchedule();
   }

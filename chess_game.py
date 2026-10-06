@@ -11,12 +11,15 @@
 """
 
 import json
-import os
 import secrets
 import time
 
 import chess
-import requests
+
+# Хранилище вынесено в общий модуль: им пользуются и шахматы, и музыка.
+# Имена переэкспортируем, чтобы обращаться к ним по-прежнему можно было
+# через chess_game.
+from store import MemoryStore, RedisStore, get_store, set_store  # noqa: F401
 
 # Партия живёт неделю: бесплатный тариф Upstash не бесконечный,
 # а брошенные партии копятся
@@ -29,114 +32,6 @@ ID_LENGTH = 10
 
 # =========================
 # ХРАНИЛИЩЕ
-# =========================
-class MemoryStore:
-    """
-    Хранилище в памяти процесса.
-
-    Годится для тестов и локального запуска. В проде не подходит:
-    у Render диск эфемерный, и партия исчезнет при первом же перезапуске.
-    """
-
-    def __init__(self):
-        self._data = {}
-        self._expires = {}
-
-    def get(self, key):
-        expires = self._expires.get(key)
-        if expires and expires < time.time():
-            self._data.pop(key, None)
-            self._expires.pop(key, None)
-            return None
-        return self._data.get(key)
-
-    def set(self, key, value, ttl=None):
-        self._data[key] = value
-        if ttl:
-            self._expires[key] = time.time() + ttl
-        else:
-            self._expires.pop(key, None)
-
-    def delete(self, key):
-        self._data.pop(key, None)
-        self._expires.pop(key, None)
-
-    def clear(self):
-        self._data.clear()
-        self._expires.clear()
-
-
-class RedisStore:
-    """
-    Upstash Redis через REST.
-
-    Команда передаётся массивом в теле POST-запроса, ответ приходит
-    в поле result. Так работает REST-API Upstash, отдельный клиент
-    Redis не нужен.
-    """
-
-    def __init__(self, url, token):
-        self.url = url.rstrip("/")
-        self.token = token
-
-    def _command(self, *args):
-        response = requests.post(
-            self.url,
-            json=list(args),
-            headers={"Authorization": f"Bearer {self.token}"},
-            timeout=10,
-        )
-        response.raise_for_status()
-        return response.json().get("result")
-
-    def get(self, key):
-        return self._command("GET", key)
-
-    def set(self, key, value, ttl=None):
-        if ttl:
-            return self._command("SET", key, value, "EX", int(ttl))
-        return self._command("SET", key, value)
-
-    def delete(self, key):
-        return self._command("DEL", key)
-
-
-_store = None
-
-
-def get_store():
-    """
-    Выбирает хранилище по переменным окружения.
-
-    UPSTASH_REDIS_REST_URL и UPSTASH_REDIS_REST_TOKEN задаются в панели
-    Render. Без них работает память — приложение не падает, просто
-    партии не переживут перезапуск.
-    """
-    global _store
-
-    if _store is not None:
-        return _store
-
-    url = (os.getenv("UPSTASH_REDIS_REST_URL") or "").strip()
-    token = (os.getenv("UPSTASH_REDIS_REST_TOKEN") or "").strip()
-
-    if url and token:
-        print("[CHESS] хранение: Upstash Redis")
-        _store = RedisStore(url, token)
-    else:
-        print("[CHESS] хранение: память (партии не переживут перезапуск)")
-        _store = MemoryStore()
-
-    return _store
-
-
-def set_store(store):
-    """Подменяет хранилище. Нужно тестам и локальным прогонам."""
-    global _store
-    _store = store
-    return store
-
-
 # =========================
 # ПАРТИИ
 # =========================
