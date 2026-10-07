@@ -1386,3 +1386,81 @@ body.has-netlify-badge .app {
   line-height: 1.4;
   color: var(--hint);
 }
+
+/* ---------- Секретный пароль ---------- */
+
+/*
+  Кнопка нарочно почти невидимая: это секрет, а не раздел меню.
+  Кто знает — найдёт, кто нет — не ткнёт случайно.
+*/
+.support__secret {
+  display: block;
+  width: 26px;
+  height: 26px;
+  margin: 2px auto 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--hint);
+  opacity: 0.16;
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.support__secret::before { content: "•"; }
+.support__secret:active { opacity: 0.9; }
+
+.promo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 320px;
+  margin: 12px auto 0;
+}
+
+.promo__input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+}
+
+.promo__input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.promo__submit {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.promo__submit:disabled { opacity: 0.55; cursor: default; }
+
+.promo__note {
+  flex-basis: 100%;
+  min-height: 17px;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--hint);
+}
+
+.promo__note.is-error { color: #ff7a72; }
+.promo__note.is-done { color: #45c48c; }

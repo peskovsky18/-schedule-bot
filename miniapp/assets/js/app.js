@@ -2038,6 +2038,84 @@
     loadState();
   }
 
+  /* ---------- Секретный пароль ---------- */
+
+  /**
+   * Точка под кнопкой техподдержки: пароль даёт монеты в казино.
+   *
+   * Проверяет пароль сервер. Если бы сверял браузер, любой посмотрел бы
+   * исходники и получил монеты без пароля — а в них ещё и лежит сам
+   * ответ, что сводит секрет к нулю.
+   */
+  function initPromo() {
+    var button = document.getElementById("promoBtn");
+    var form = document.getElementById("promoForm");
+    var input = document.getElementById("promoInput");
+    var submit = document.getElementById("promoSubmit");
+    var note = document.getElementById("promoNote");
+
+    if (!button || !form || !input || !submit || !note) return;
+
+    function showNote(text, tone) {
+      note.textContent = text || "";
+      note.className = "promo__note" + (tone ? " " + tone : "");
+    }
+
+    button.addEventListener("click", function () {
+      form.hidden = !form.hidden;
+
+      if (!form.hidden) {
+        showNote("");
+        input.focus();
+      }
+    });
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+
+      var password = input.value.trim();
+      if (!password) {
+        showNote("Введите пароль", "is-error");
+        return;
+      }
+
+      submit.disabled = true;
+      showNote("Проверяю…");
+
+      fetch((apiBase || "") + "/api/casino/promo", {
+        method: "POST",
+        headers: chessHeaders(),
+        body: JSON.stringify({ password: password }),
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { data: data };
+          });
+        })
+        .then(function (result) {
+          submit.disabled = false;
+
+          if (!result.data || result.data.ok !== true) {
+            showNote((result.data && result.data.error) || "Не получилось", "is-error");
+            return;
+          }
+
+          showNote("+" + result.data.gained + " монет на счёт", "is-done");
+          input.value = "";
+
+          // Баланс в казино изменился — покажем это сразу
+          if (result.data.player && typeof casinoRender === "function") {
+            casinoPlayer = result.data.player;
+            casinoRender();
+          }
+        })
+        .catch(function () {
+          submit.disabled = false;
+          showNote("Сеть недоступна — попробуйте ещё раз", "is-error");
+        });
+    });
+  }
+
   function start() {
     initTelegram();
     watchNetlifyBadge();
@@ -2061,6 +2139,7 @@
     initTracks();
     initMusic();
     initCasino();
+    initPromo();
 
     // Список треков из config.js уже нарисован; дополняем его тем,
     // что добавлено через приложение

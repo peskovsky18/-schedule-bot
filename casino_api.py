@@ -61,6 +61,34 @@ def api_claim():
     })
 
 
+@bp.route("/api/casino/promo", methods=["POST"])
+def api_promo():
+    """
+    Секретный пароль из раздела техподдержки.
+
+    Проверка только здесь: если сверять пароль в браузере, любой
+    посмотрит исходники и получит монеты без него.
+    """
+    user, failure = _player()
+    if failure:
+        return failure
+
+    payload = request.get_json(silent=True) or {}
+    record, gained, error = casino.check_promo(user["id"], payload.get("password"))
+
+    if error:
+        # Неверный пароль и «уже получали» — разные случаи: первый
+        # человек может исправить, второй бессмысленно повторять
+        status = 429 if "уже" in error else 403
+        return jsonify({"ok": False, "error": error}), status
+
+    return jsonify({
+        "ok": True,
+        "gained": gained,
+        "player": casino.serialize(user["id"]),
+    })
+
+
 @bp.route("/api/casino/spin", methods=["POST"])
 def api_spin():
     """Прокрут барабанов."""

@@ -125,6 +125,66 @@ check("серия через границу месяца", record["streak"], 2)
 
 
 # =========================
+print("\n=== Секретный пароль ===")
+
+PROMO = "ялюблюмиюбойко"
+
+truthy("верный пароль принят", casino.password_matches(PROMO))
+truthy("регистр не важен", casino.password_matches("ЯЛЮБЛЮМИЮБОЙКО"))
+truthy("пробелы по краям не мешают", casino.password_matches("  " + PROMO + "  "))
+truthy("неверный пароль отклонён", not casino.password_matches("неверный"))
+truthy("пустой пароль отклонён", not casino.password_matches(""))
+truthy("None отклонён", not casino.password_matches(None))
+
+# Сам пароль не должен лежать в исходниках: репозиторий публичный
+import inspect
+
+source = inspect.getsource(casino)
+truthy("пароля нет открытым текстом в коде", PROMO not in source,
+       "иначе его увидит любой, кто откроет репозиторий")
+truthy("а хеш есть", len(casino.PROMO_HASH) == 64, casino.PROMO_HASH)
+
+store.get_store().clear()
+
+record, gained, error = casino.check_promo(701, PROMO)
+check("за пароль начислено", gained, casino.PROMO_COINS)
+check("ошибки нет", error, None)
+check("баланс", record["balance"], 100)
+
+record, gained, error = casino.check_promo(701, PROMO)
+check("повторно в тот же день ничего", gained, 0)
+truthy("и это объяснено", error is not None and "уже" in error, error)
+
+record, gained, error = casino.check_promo(701, "неверный")
+check("неверный пароль ничего не даёт", gained, 0)
+truthy("сказано, что пароль неверный", error is not None and "Неверный" in error, error)
+
+# На следующий день пароль снова работает
+record, gained, _ = casino.check_promo(701, PROMO, today="2027-01-02")
+check("на следующий день снова даёт", gained, casino.PROMO_COINS)
+
+# Переменная окружения важнее встроенного хеша
+os.environ["PROMO_PASSWORD"] = "другойпароль"
+truthy("своя переменная принимается", casino.password_matches("другойпароль"))
+truthy("старый пароль при ней не работает", not casino.password_matches(PROMO))
+
+store.get_store().clear()
+_, gained, _ = casino.check_promo(702, "другойпароль")
+check("и монеты дают по своему паролю", gained, casino.PROMO_COINS)
+
+del os.environ["PROMO_PASSWORD"]
+truthy("без переменной снова встроенный", casino.password_matches(PROMO))
+
+# Клиент получает размер награды и отметку об использовании
+store.get_store().clear()
+fresh = casino.serialize(703)
+check("размер награды за пароль", fresh["promoCoins"], 100)
+check("сегодня ещё не использован", fresh["promoUsedToday"], False)
+casino.check_promo(703, PROMO)
+check("после использования отмечено", casino.serialize(703)["promoUsedToday"], True)
+
+
+# =========================
 print("\n=== Начисления со стороны (победа в шахматах) ===")
 store.get_store().clear()
 
@@ -315,6 +375,42 @@ check("огромная ставка приводится к наибольше�
 response = client.post("/api/casino/spin", headers=ALICE, json={"bet": "абракадабра"})
 check("нечисловая ставка — по умолчанию",
       response.get_json()["result"]["bet"], casino.DEFAULT_BET)
+
+print("\n=== Секретный пароль через API ===")
+store.get_store().clear()
+
+CAROL = {"X-Dev-User-Id": "503", "X-Dev-User-Name": "Карol"}
+
+response = client.post("/api/casino/promo", json={"password": "ялюблюмиюбойко"})
+check("без авторизации пароль не проверить", response.status_code, 401)
+
+response = client.post("/api/casino/promo", headers=CAROL, json={"password": "неверный"})
+check("неверный пароль отклонён", response.status_code, 403)
+truthy("и сказано почему", "Неверный" in response.get_json().get("error", ""),
+       response.get_json().get("error", ""))
+
+response = client.post("/api/casino/promo", headers=CAROL, json={})
+check("без пароля отклонено", response.status_code, 403)
+check("баланс не изменился",
+      client.get("/api/casino", headers=CAROL).get_json()["player"]["balance"], 0)
+
+response = client.post("/api/casino/promo", headers=CAROL, json={"password": "ялюблюмиюбойко"})
+check("верный пароль принят", response.status_code, 200)
+check("начислено 100", response.get_json()["gained"], 100)
+check("баланс", response.get_json()["player"]["balance"], 100)
+
+response = client.post("/api/casino/promo", headers=CAROL, json={"password": "ялюблюмиюбойко"})
+check("повторно в тот же день — отказ", response.status_code, 429)
+check("счёт не вырос",
+      client.get("/api/casino", headers=CAROL).get_json()["player"]["balance"], 100)
+
+check("клиент видит отметку об использовании",
+      client.get("/api/casino", headers=CAROL).get_json()["player"]["promoUsedToday"], True)
+
+# У другого игрока свой счётчик
+response = client.post("/api/casino/promo", headers=ALICE,
+                       json={"password": "ялюблюмиюбойко"})
+check("другому пароль ещё работает", response.status_code, 200)
 
 # Чужие монеты не видны
 response = client.get("/api/casino", headers=BOB)

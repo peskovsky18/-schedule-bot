@@ -12,7 +12,9 @@
 начинался бы через десять минут.
 """
 
+import hashlib
 import json
+import os
 import secrets
 import threading
 from datetime import datetime, timedelta
@@ -33,6 +35,13 @@ SUNDAY_BONUS_STREAK = 7
 
 # Награда за победу в шахматах
 CHESS_WIN_COINS = 300
+
+# Секретный пароль из раздела техподдержки: даёт монеты раз в сутки.
+# В коде лежит только хеш, а не сам пароль: репозиторий публичный,
+# и открытый текст увидел бы любой. Если задать PROMO_PASSWORD
+# в переменных окружения, он важнее — тогда пароля нет и в хеше.
+PROMO_HASH = "6042fca4be818e5b111f48692701b0be083400284fe7ef7a789cf0cc23bd01c0"
+PROMO_COINS = 100
 
 # Ставки, доступные игроку
 BETS = [10, 25, 50, 100]
@@ -185,8 +194,57 @@ def claim(user_id, today=None):
 
 
 # =========================
-# НАЧИСЛЕНИЯ СО СТОРОНЫ
+# СЕКРЕТНЫЙ ПАРОЛЬ
 # =========================
+def password_matches(password):
+    """Сверяет пароль. Регистр и лишние пробелы не важны."""
+    given = (password or "").strip().lower()
+
+    if not given:
+        return False
+
+    from_env = (os.getenv("PROMO_PASSWORD") or "").strip().lower()
+    if from_env:
+        # Сравниваем байтами: compare_digest не принимает строки
+        # с не-ASCII символами и падает с TypeError — а пароль
+        # кириллический
+        return secrets.compare_digest(given.encode("utf-8"), from_env.encode("utf-8"))
+
+    digest = hashlib.sha256(given.encode("utf-8")).hexdigest()
+    return secrets.compare_digest(digest, PROMO_HASH)
+
+
+def check_promo(user_id, password, today=None):
+    """
+    Секретный пароль: раз в сутки даёт монеты.
+
+    Возвращает (запись, начислено, ошибка). Ограничение на сутки нужно
+    не из вредности: без него пароль, который знают несколько человек,
+    превращается в бесконечный источник монет.
+    """
+    today = today or today_msk()
+
+    if not password_matches(password):
+        return None, 0, "Неверный пароль"
+
+    with _lock_for(user_id):
+        record = load(user_id)
+
+        if record.get("lastPromo") == today:
+            return record, 0, "Сегодня по паролю уже получали"
+
+        record["balance"] = int(record.get("balance") or 0) + PROMO_COINS
+        record["lastPromo"] = today
+        record["best"] = max(int(record.get("best") or 0), record["balance"])
+
+        save(user_id, record)
+
+        return record, PROMO_COINS, None
+
+
+# =========================
+# НАЧИСЛЕНИЯ СО СТОРОНЫ
+# ========================
 def add_coins(user_id, amount):
     """
     Начисляет монеты вне ежедневного входа.
@@ -341,6 +399,8 @@ def serialize(user_id, today=None):
         "dailyCoins": DAILY_COINS,
         "sundayBonus": SUNDAY_BONUS,
         "chessWin": CHESS_WIN_COINS,
+        "promoCoins": PROMO_COINS,
+        "promoUsedToday": record.get("lastPromo") == today,
         "streakForBonus": SUNDAY_BONUS_STREAK,
         "bets": BETS,
         "symbols": [{"key": s["key"], "emoji": s["emoji"]} for s in SYMBOLS],
