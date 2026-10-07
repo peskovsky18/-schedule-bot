@@ -2150,6 +2150,58 @@
     });
   }
 
+  /* ---------- Окно «что нового» ---------- */
+
+  // Ключ с версией: чтобы показать следующий анонс, достаточно поднять
+  // номер — отметка о прежнем не помешает
+  var WHATS_NEW_KEY = "app.whatsnew.v1";
+
+  /**
+   * Окно с рассказом об обновлении.
+   *
+   * Показывается один раз. Рассылку в боте сделать нельзя: список
+   * пользователей лежит на эфемерном диске Render и теряется при
+   * каждом перезапуске, так что писать было бы некому. Окно в
+   * приложении надёжнее — его увидят все, кто зайдёт.
+   */
+  function initWhatsNew() {
+    var box = document.getElementById("whatsNew");
+    var close = document.getElementById("whatsNewClose");
+
+    if (!box || !close) return;
+
+    var seen = false;
+    try {
+      seen = localStorage.getItem(WHATS_NEW_KEY) === "1";
+    } catch (e) {}
+
+    if (seen) return;
+
+    function hide() {
+      box.hidden = true;
+      try {
+        localStorage.setItem(WHATS_NEW_KEY, "1");
+      } catch (e) {}
+    }
+
+    close.addEventListener("click", hide);
+
+    // Тап по затемнению и Escape закрывают — привычно для окна
+    box.addEventListener("click", function (event) {
+      if (event.target === box) hide();
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !box.hidden) hide();
+    });
+
+    // Небольшая задержка: пусть сначала отрисуется расписание,
+    // иначе окно накроет пустой экран
+    setTimeout(function () {
+      box.hidden = false;
+    }, 700);
+  }
+
   function start() {
     initTelegram();
     watchNetlifyBadge();
@@ -2174,6 +2226,7 @@
     initMusic();
     initCasino();
     initPromo();
+    initWhatsNew();
 
     // Список треков из config.js уже нарисован; дополняем его тем,
     // что добавлено через приложение

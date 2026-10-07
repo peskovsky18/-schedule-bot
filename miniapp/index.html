@@ -13,7 +13,7 @@
     и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
     поднимайте номер: иначе Telegram покажет старую версию.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=16">
+  <link rel="stylesheet" href="assets/css/styles.css?v=17">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -255,9 +255,75 @@
     </div>
   </aside>
 
-  <script src="assets/js/config.js?v=16"></script>
-  <script src="assets/js/core.js?v=16"></script>
-  <script src="assets/js/chess.js?v=16"></script>
-  <script src="assets/js/app.js?v=16"></script>
+  <!--
+    Окно «что нового». Показывается один раз: отметка в localStorage
+    под ключом с версией. Для следующего анонса достаточно поднять
+    номер в WHATS_NEW_KEY.
+  -->
+  <div class="whatsnew" id="whatsNew" hidden>
+    <div class="whatsnew__card" role="dialog" aria-modal="true"
+         aria-labelledby="whatsNewTitle">
+      <div class="whatsnew__head">
+        <h2 class="whatsnew__title" id="whatsNewTitle">🎓 Что нового</h2>
+        <button class="whatsnew__close" id="whatsNewClose" type="button"
+                aria-label="Закрыть">✕</button>
+      </div>
+
+      <div class="whatsnew__body">
+        <p class="whatsnew__lead">Приложение заметно выросло. Коротко о главном.</p>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">📅 Расписание</div>
+          <p>Три вкладки сверху: «Сегодня», «Завтра» и «Следующая неделя».
+             Последняя теперь считается от понедельника — как настоящая
+             учебная неделя. Неделя целиком и всё расписание — в меню,
+             кнопка справа вверху.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">🎲 Приколы</div>
+          <p>Новый раздел в меню, по умолчанию свёрнут — разверните,
+             там всё несрочное.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">♟ Шахматы с одногруппником</div>
+          <p>Создаёте партию, нажимаете «Пригласить» и отправляете ссылку.
+             Соперник получает кнопку «Открыть доску». Ходы проверяет
+             сервер, так что схитрить не выйдет. Уйдёте из приложения —
+             бот напишет, когда ваш ход. За победу — 300 тугриков.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">🎰 Казино</div>
+          <p>Однорукий бандит на тугрики. Ставка 10, 25, 50 или 100.
+             100 тугриков за вход каждый день, плюс 300 в воскресенье —
+             если заходили всю неделю без пропусков.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">🎵 ППРСД music</div>
+          <p>Треки теперь можно добавлять самим! Отправьте боту mp3 прямо
+             в чат — он появится в списке у всех. Можно и через приложение:
+             файлом или ссылкой.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">🌀 Рулетка</div>
+          <p>«Идти на пары или не идти». Честный жребий, если сомневаетесь.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">🛠 Техподдержка</div>
+          <p>Внизу главной страницы. Работает ровно так, как и ожидается.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/config.js?v=17"></script>
+  <script src="assets/js/core.js?v=17"></script>
+  <script src="assets/js/chess.js?v=17"></script>
+  <script src="assets/js/app.js?v=17"></script>
 </body>
 </html>
