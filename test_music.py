@@ -92,6 +92,46 @@ _, error = music.add_file(ALICE, "Огромный", big, "audio/mpeg")
 truthy("слишком большой файл отклонён", error is not None, error)
 truthy("в ошибке сказано про размер", "МБ" in (error or ""), error)
 
+print("\n=== Определение типа файла ===")
+
+# Телефон нередко отдаёт вместо типа общий application/octet-stream —
+# по одному MIME такие файлы не принять, спасает расширение
+check("обычный MIME", music.guess_type("audio/mpeg"), "audio/mpeg")
+check("MIME с параметрами", music.guess_type("audio/mpeg; charset=binary"), "audio/mpeg")
+check("MIME с регистром", music.guess_type("AUDIO/MPEG"), "audio/mpeg")
+
+check("общий тип + mp3", music.guess_type("application/octet-stream", "song.mp3"), "audio/mpeg")
+check("пустой тип + m4a", music.guess_type("", "track.m4a"), "audio/mp4")
+check("пустой тип + wav", music.guess_type(None, "sound.wav"), "audio/wav")
+check("расширение в верхнем регистре", music.guess_type("", "TRACK.MP3"), "audio/mpeg")
+check("путь целиком", music.guess_type("", "/storage/emulated/0/Download/Песня.mp3"), "audio/mpeg")
+
+check("картинка отклонена", music.guess_type("image/jpeg", "photo.jpg"), None)
+check("видео отклонено", music.guess_type("video/mp4", "clip.mp4"), None)
+check("неизвестное расширение", music.guess_type("", "file.xyz"), None)
+check("мусор", music.guess_type("чепуха", "файл"), None)
+
+truthy("is_audio согласован", music.is_audio("application/octet-stream", "a.mp3"))
+truthy("is_audio для картинки ложь", not music.is_audio("image/png", "a.png"))
+
+# Файл с общим типом, но правильным расширением должен приниматься.
+# Чистить хранилище целиком нельзя: выше уже лежит трек, и дальше
+# проверки считают его в списке — убираем только то, что добавили здесь.
+odd, error = music.add_file(
+    {"id": 900, "name": "Телефон"}, "С телефона", fake_audio(16),
+    "application/octet-stream", "track.mp3",
+)
+check("файл с общим типом принят", error, None)
+check("тип определён по расширению", odd["contentType"] if odd else None, "audio/mpeg")
+
+# А теперь настоящая картинка — отказ
+_, error = music.add_file(
+    {"id": 901, "name": "Телефон"}, "Картинка", fake_audio(4), "image/jpeg", "photo.jpg",
+)
+truthy("картинка отклонена", error is not None, error)
+
+music.remove(odd["id"], 900, None)
+
 print("\n=== Добавление ссылкой ===")
 link, error = music.add_link(BOB, "Трек по ссылке", "https://example.com/song.mp3")
 check("ссылка принята", error, None)

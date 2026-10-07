@@ -783,6 +783,8 @@
     var urlInput = document.getElementById("musicUrl");
     var submitBtn = document.getElementById("musicSubmit");
     var cancelBtn = document.getElementById("musicCancel");
+    var pickText = document.getElementById("musicPickText");
+    var pickLabel = box.querySelector(".music__pick");
 
     if (!addBtn || !form || !titleInput || !fileInput || !submitBtn) return;
 
@@ -798,10 +800,28 @@
       addBtn.hidden = false;
       form.reset();
       showMusicNote("");
+      showPickedFile();
+    }
+
+    /** Подписываем кнопку выбранным файлом, чтобы выбор был виден. */
+    function showPickedFile() {
+      var file = fileInput.files && fileInput.files[0];
+
+      if (pickText) {
+        pickText.textContent = file
+          ? file.name
+          : "Выбрать файл на телефоне";
+      }
+
+      if (pickLabel) {
+        pickLabel.classList.toggle("is-chosen", !!file);
+      }
     }
 
     addBtn.addEventListener("click", openForm);
     if (cancelBtn) cancelBtn.addEventListener("click", closeForm);
+
+    fileInput.addEventListener("change", showPickedFile);
 
     form.addEventListener("submit", function (event) {
       event.preventDefault();
@@ -1184,7 +1204,18 @@
       if (game.status === "waiting") {
         turnEl.textContent = "Ждём соперника — пригласите его";
       } else if (game.status === "finished") {
-        turnEl.textContent = chess.resultText(game.result, game.you) || "Партия закончена";
+        var outcome = chess.resultText(game.result, game.you) || "Партия закончена";
+
+        // За победу начисляют монеты в казино — скажем об этом здесь,
+        // чтобы человек не узнавал о награде только из баланса
+        var won = game.result === "1-0" && game.you === "white" ||
+          game.result === "0-1" && game.you === "black";
+
+        if (won && game.reward) {
+          outcome += " · +" + game.reward + " монет";
+        }
+
+        turnEl.textContent = outcome;
       } else if (game.turn === game.you) {
         turnEl.textContent = game.inCheck ? "Ваш ход, вам шах!" : "Ваш ход";
       } else {

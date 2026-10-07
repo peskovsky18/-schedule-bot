@@ -390,6 +390,79 @@ bot.MINIAPP_URL = saved_url
 
 
 # =========================
+print("\n=== Монеты за победу ===")
+
+import casino
+
+# Мат в один ход: побеждают белые
+store.clear()
+coins = chess_game.create_game(alice)
+coins, _ = chess_game.join_game(coins, bob)
+
+for who, frm, to in [(101, "e2", "e4"), (202, "e7", "e5"), (101, "f1", "c4"),
+                     (202, "b8", "c6"), (101, "d1", "h5"), (202, "g8", "f6"),
+                     (101, "h5", "f7")]:
+    coins, err = chess_game.apply_move(coins, who, frm, to)
+    if err:
+        print("    ошибка:", err)
+        break
+
+check("партия кончилась матом", coins["status"], "finished")
+check("до начисления у белых пусто", casino.load(101)["balance"], 0)
+
+# Начисляет HTTP-слой, поэтому зовём его так же, как он
+winner = chess_api._award_winner(coins)
+check("победитель определён", winner, 101)
+check("белым начислено", casino.load(101)["balance"], casino.CHESS_WIN_COINS)
+check("чёрным ничего", casino.load(202)["balance"], 0)
+
+# Повторный вызов не должен начислить дважды: партия уже закончена,
+# но защищаемся и здесь
+chess_api._award_winner(coins)
+check("дважды не начисляют", casino.load(101)["balance"], casino.CHESS_WIN_COINS)
+
+# Сдача: побеждает соперник
+store.clear()
+casino.save(101, casino.default_record())
+casino.save(202, casino.default_record())
+
+resign_game = chess_game.create_game(alice)
+resign_game, _ = chess_game.join_game(resign_game, bob)
+
+# Сдаётся Боб — монеты Алисе
+winner = chess_api._award_winner(resign_game)
+check("незаконченная партия никому не даёт монет", winner, None)
+
+resign_game, _ = chess_game.resign(resign_game, 202)
+winner = chess_api._award_winner(resign_game)
+check("при сдаче побеждает соперник", winner, 101)
+check("монеты у победителя", casino.load(101)["balance"], casino.CHESS_WIN_COINS)
+check("сдавшийся без монет", casino.load(202)["balance"], 0)
+
+# Ничья не даёт никому
+store.clear()
+casino.save(101, casino.default_record())
+casino.save(202, casino.default_record())
+
+draw = chess_game.create_game(alice)
+draw, _ = chess_game.join_game(draw, bob)
+draw["status"] = "finished"
+draw["result"] = "1/2-1/2"
+
+winner = chess_api._award_winner(draw)
+check("за ничью монет нет", winner, None)
+check("белым ничего", casino.load(101)["balance"], 0)
+check("чёрным ничего", casino.load(202)["balance"], 0)
+
+# И в ответе API награда указана
+store.clear()
+state = chess_game.create_game(alice)
+serialized = chess_api._state(state, 101)
+check("награда указана в состоянии партии",
+      serialized["reward"], casino.CHESS_WIN_COINS)
+
+
+# =========================
 print("\n=== Уведомления о ходах ===")
 
 import time as time_module

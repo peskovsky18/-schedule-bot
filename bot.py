@@ -31,8 +31,10 @@ from flask import Flask, jsonify, request
 from telebot import types
 
 import casino_api
+import casino
 import chess_api
 import chess_game
+import music
 import music_api
 import parser
 from parser import format_schedule, get_today, get_tomorrow, get_week, parse_schedule
@@ -446,9 +448,9 @@ def start(message):
     )
 
 
-def notify_chess_move(game, game_id, mover_id, resigned=False):
+def notify_chess_move(game, game_id, mover_id, resigned=False, reward=None):
     """
-    Пишет сопернику, что сделан ход.
+    Пишет сопернику, что сделан ход, а победителю — про монеты.
 
     Вызывается из обработчика HTTP, поэтому отправка уходит в отдельный
     поток: ответ на ход не должен ждать Telegram, иначе доска будет
@@ -463,37 +465,52 @@ def notify_chess_move(game, game_id, mover_id, resigned=False):
     if not opponent:
         return
 
-    # Соперник сейчас смотрит на доску — он увидит ход сам через пару
-    # секунд, и сообщение только дёрнет телефон зря
-    if chess_api.seen_recently(game_id, opponent["id"]):
+    coins = f" +{casino.CHESS_WIN_COINS} монет в казино"
+
+    # Кому и что пишем. Сообщение смотрящему на доску не нужно: он
+    # увидит всё сам через пару секунд, а телефон дёрнется зря.
+    outgoing = []
+
+    if not chess_api.seen_recently(game_id, opponent["id"]):
+        if resigned:
+            won = reward == opponent["id"]
+            text = "♟ Соперник сдался. Вы победили!" + (coins + "!" if won else "")
+        else:
+            board = chess_game.board_of(game)
+            if board.is_checkmate():
+                text = "♟ Мат! Партия закончена."
+            elif board.is_check():
+                text = "♟ Шах! Ваш ход."
+            else:
+                text = "♟ Ваш ход."
+
+        outgoing.append((opponent["id"], text))
+
+    # Мат поставил тот, кто ходил: он и победитель, и ему про монеты
+    # отдельно — сообщение выше ушло сопернику
+    if reward and reward != opponent["id"] and not chess_api.seen_recently(game_id, reward):
+        outgoing.append((reward, "♟ Вы победили!" + coins + "."))
+
+    if not outgoing:
         return
 
-    if resigned:
-        text = "♟ Соперник сдался. Вы победили!"
-    else:
-        board = chess_game.board_of(game)
-        if board.is_checkmate():
-            text = "♟ Мат! Партия закончена."
-        elif board.is_check():
-            text = "♟ Шах! Ваш ход."
-        else:
-            text = "♟ Ваш ход."
-
     def work():
-        try:
-            markup = None
+        markup = None
 
-            if MINIAPP_URL:
-                markup = types.InlineKeyboardMarkup()
-                markup.add(types.InlineKeyboardButton(
-                    "Открыть доску",
-                    web_app=types.WebAppInfo(url=f"{MINIAPP_URL}/?game={game_id}"),
-                ))
+        if MINIAPP_URL:
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton(
+                "Открыть доску",
+                web_app=types.WebAppInfo(url=f"{MINIAPP_URL}/?game={game_id}"),
+            ))
 
-            bot.send_message(opponent["id"], text, reply_markup=markup)
-        except Exception as e:
-            # Соперник мог не начать чат с ботом — это не повод ронять ход
-            print("[CHESS] не удалось сообщить о ходе:", e)
+        for chat_id, text in outgoing:
+            try:
+                bot.send_message(chat_id, text, reply_markup=markup)
+            except Exception as e:
+                # Соперник мог не начать чат с ботом — это не повод
+                # ронять ход
+                print("[CHESS] не удалось отправить сообщение:", e)
 
     threading.Thread(target=work, daemon=True, name="chess-notify").start()
 
@@ -576,6 +593,74 @@ def accept_chess_invite(message, game_id):
 # =========================
 # ADMIN PANEL
 # =========================
+@bot.message_handler(content_types=["audio", "voice", "document"])
+def handle_music_upload(message):
+    """
+    Принимает трек, отправленный боту, и кладёт его в общий список.
+
+    Это основной способ добавить музыку: системный выбор файла внутри
+    Telegram WebView открывается не на всех телефонах, а отправка файла
+    боту работает всегда — это родная для Telegram механика.
+    """
+    info = message.audio or message.voice or message.document
+
+    if not info:
+        return
+
+    mime = getattr(info, "mime_type", "") or ""
+    name = getattr(info, "file_name", "") or ""
+
+    if not music.is_audio(mime, name):
+        bot.reply_to(
+            message,
+            "🎵 Это не похоже на аудиофайл.\n\n"
+            "Пришлите mp3, m4a, ogg или wav — и трек появится "
+            "в разделе «ППРСД music».",
+        )
+        return
+
+    size = getattr(info, "file_size", 0) or 0
+    if size > music.MAX_UPLOAD_BYTES:
+        limit = music.MAX_UPLOAD_BYTES // (1024 * 1024)
+        bot.reply_to(message, f"🎵 Файл больше {limit} МБ — пришлите поменьше.")
+        return
+
+    try:
+        file_info = bot.get_file(info.file_id)
+        data = bot.download_file(file_info.file_path)
+    except Exception as e:
+        print("[MUSIC] не удалось скачать файл:", e)
+        bot.reply_to(message, "🎵 Не получилось скачать файл. Попробуйте ещё раз.")
+        return
+
+    player = {
+        "id": message.from_user.id,
+        "name": message.from_user.first_name or "Кто-то",
+    }
+
+    title = (
+        getattr(info, "title", None)
+        or getattr(info, "performer", None)
+        or name
+        or "Трек из Telegram"
+    )
+
+    track, error = music.add_file(player, title, data, mime or "audio/mpeg", name)
+
+    if error:
+        bot.reply_to(message, f"🎵 {error}")
+        return
+
+    print(f"[MUSIC] {player['name']} добавил «{track['title']}» "
+          f"({track['size']} байт)")
+
+    bot.reply_to(
+        message,
+        f"🎵 Добавил «{track['title']}» в раздел «ППРСД music».\n\n"
+        "Откройте приложение, чтобы послушать.",
+    )
+
+
 @bot.message_handler(commands=["admin"])
 def admin(message):
 

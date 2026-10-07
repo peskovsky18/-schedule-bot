@@ -125,6 +125,40 @@ check("серия через границу месяца", record["streak"], 2)
 
 
 # =========================
+print("\n=== Начисления со стороны (победа в шахматах) ===")
+store.get_store().clear()
+
+bad = casino.add_coins(601, 300)
+check("начислено за победу", bad["balance"], 300)
+check("записано на счёт", casino.load(601)["balance"], 300)
+
+casino.add_coins(601, 300)
+check("начисления складываются", casino.load(601)["balance"], 600)
+
+casino.add_coins(601, 0)
+check("ноль ничего не меняет", casino.load(601)["balance"], 600)
+
+casino.add_coins(601, -100)
+check("отрицательное не списывает", casino.load(601)["balance"], 600)
+
+# Серия и отметка о входе при этом не трогаются
+record = casino.load(601)
+check("серия не появилась", record["streak"], 0)
+check("отметки о входе нет", record["lastClaim"], None)
+
+# Победа даёт ровно столько, сколько обещано
+check("размер награды", casino.CHESS_WIN_COINS, 300)
+store.get_store().clear()
+casino.award_chess_win(602)
+check("победа в шахматах", casino.load(602)["balance"], 300)
+
+# Награду видно клиенту
+truthy("размер награды приходит клиенту",
+       casino.serialize(602)["chessWin"] == 300,
+       str(casino.serialize(602).get("chessWin")))
+
+
+# =========================
 print("\n=== Выплаты ===")
 check("три вишни", casino.payout_for(["cherry"] * 3), casino.TRIPLE["cherry"])
 check("три семёрки", casino.payout_for(["seven"] * 3), casino.TRIPLE["seven"])

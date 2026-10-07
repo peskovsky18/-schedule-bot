@@ -82,7 +82,9 @@ def api_add():
         except Exception as e:
             return jsonify({"ok": False, "error": f"Не удалось прочитать файл: {e}"}), 400
 
-        track, error = music.add_file(user, title, data, upload.mimetype)
+        # Имя файла важно: телефон нередко отдаёт вместо типа
+        # application/octet-stream, и тогда тип определяем по расширению
+        track, error = music.add_file(user, title, data, upload.mimetype, upload.filename)
     else:
         payload = request.get_json(silent=True) or {}
         track, error = music.add_link(

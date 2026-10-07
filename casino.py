@@ -31,6 +31,9 @@ SUNDAY_BONUS_STREAK = 7
 # Серия дней, после которой дают бонус в воскресенье:
 # семь дней — это понедельник…воскресенье без пропусков
 
+# Награда за победу в шахматах
+CHESS_WIN_COINS = 300
+
 # Ставки, доступные игроку
 BETS = [10, 25, 50, 100]
 DEFAULT_BET = 10
@@ -182,8 +185,39 @@ def claim(user_id, today=None):
 
 
 # =========================
-# ПРОКРУТ
+# НАЧИСЛЕНИЯ СО СТОРОНЫ
 # =========================
+def add_coins(user_id, amount):
+    """
+    Начисляет монеты вне ежедневного входа.
+
+    Нужно шахматам: за победу дают монеты в казино. Замок тот же, что
+    и у прокрута, иначе победа и одновременный прокрут могли бы
+    перезаписать друг друга.
+    """
+    amount = int(amount)
+
+    if amount <= 0:
+        return load(user_id)
+
+    with _lock_for(user_id):
+        record = load(user_id)
+        record["balance"] = int(record.get("balance") or 0) + amount
+        record["best"] = max(int(record.get("best") or 0), record["balance"])
+
+        save(user_id, record)
+
+        return record
+
+
+def award_chess_win(user_id):
+    """Победа в шахматах — монеты в казино."""
+    return add_coins(user_id, CHESS_WIN_COINS)
+
+
+# =========================
+# ПРОКРУТ
+# ========================
 def _total_weight():
     return sum(s["weight"] for s in SYMBOLS)
 
@@ -306,6 +340,7 @@ def serialize(user_id, today=None):
         "claimedToday": record.get("lastClaim") == today,
         "dailyCoins": DAILY_COINS,
         "sundayBonus": SUNDAY_BONUS,
+        "chessWin": CHESS_WIN_COINS,
         "streakForBonus": SUNDAY_BONUS_STREAK,
         "bets": BETS,
         "symbols": [{"key": s["key"], "emoji": s["emoji"]} for s in SYMBOLS],

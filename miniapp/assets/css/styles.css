@@ -1339,3 +1339,50 @@ body.has-netlify-badge .app {
 @media (prefers-reduced-motion: reduce) {
   .reel.is-spinning .reel__symbol { animation: none; }
 }
+
+/* ---------- Выбор файла музыки ---------- */
+
+/*
+  Системный input выглядит как мелкая надпись «Выберите файл», по ней
+  трудно попасть пальцем, а на части телефонов она и вовсе не читается
+  как кнопка. Поэтому прячем сам input, а нажимаем на большой label.
+*/
+.music__pick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  color: var(--text);
+  font-size: 13.5px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.music__pick:active { border-color: var(--accent); }
+
+.music__pick.is-chosen {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Прячем, но оставляем доступным с клавиатуры */
+.music__file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.music__hint {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--hint);
+}

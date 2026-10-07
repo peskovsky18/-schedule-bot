@@ -13,6 +13,7 @@ import time
 from flask import Blueprint, jsonify, request
 
 import auth
+import casino
 import chess_game
 
 # Проверка подписи вынесена в общий модуль: её используют и шахматы,
@@ -79,7 +80,61 @@ def init_app(app, bot_token, notify=None, mini_app_url=""):
     app.register_blueprint(bp)
 
 
-def _tell_opponent(game, game_id, user_id, resigned=False):
+def _state(game, user_id):
+    """Состояние партии плюс размер награды за победу."""
+    data = chess_game.serialize(game, user_id)
+    data["reward"] = casino.CHESS_WIN_COINS
+    return data
+
+
+def _award_winner(game):
+    """
+    Начисляет монеты победителю.
+
+    Зовётся после каждого хода и после сдачи. Ничья не приносит монет
+    никому.
+
+    Партия помечается как оплаченная. Формально повторный вызов
+    недостижим: законченная партия отклоняет и ход, и повторную сдачу.
+    Но начисление денег не должно держаться на условии в другом месте —
+    если однажды появится второй путь к этой функции, монеты не
+    удвоятся.
+    """
+    if game.get("status") != "finished":
+        return None
+
+    if game.get("rewarded"):
+        return None
+
+    result = game.get("result")
+
+    if result == "1-0":
+        winner = (game.get("white") or {}).get("id")
+    elif result == "0-1":
+        winner = (game.get("black") or {}).get("id")
+    else:
+        # Ничья — награды нет
+        return None
+
+    if not winner:
+        return None
+
+    try:
+        casino.award_chess_win(winner)
+        print(f"[CHESS] победитель {winner} получил {casino.CHESS_WIN_COINS} монет")
+    except Exception as error:
+        # Монеты — приятный довесок, а не причина ронять ход
+        print("[CHESS] монеты за победу не начислены:", error)
+        return None
+
+    # Отмечаем в самой партии, что за неё уже заплатили
+    game["rewarded"] = winner
+    chess_game.save_game(game)
+
+    return winner
+
+
+def _tell_opponent(game, game_id, user_id, resigned=False, reward=None):
     """
     Просит бота предупредить соперника.
 
@@ -91,7 +146,7 @@ def _tell_opponent(game, game_id, user_id, resigned=False):
         return
 
     try:
-        _notify(game, game_id, user_id, resigned)
+        _notify(game, game_id, user_id, resigned, reward)
     except Exception as error:
         print("[CHESS] уведомление не ушло:", error)
 
@@ -110,7 +165,7 @@ def api_new():
 
     return jsonify({
         "ok": True,
-        "game": chess_game.serialize(game, user["id"]),
+        "game": _state(game, user["id"]),
     })
 
 
@@ -129,7 +184,7 @@ def api_join(game_id):
     if error:
         return jsonify({"ok": False, "error": error}), 409
 
-    return jsonify({"ok": True, "game": chess_game.serialize(game, user["id"])})
+    return jsonify({"ok": True, "game": _state(game, user["id"])})
 
 
 @bp.route("/<game_id>", methods=["GET"])
@@ -155,7 +210,7 @@ def api_state(game_id):
 
     return jsonify({
         "ok": True,
-        "game": chess_game.serialize(game, user["id"] if user else None),
+        "game": _state(game, user["id"] if user else None),
     })
 
 
@@ -182,9 +237,10 @@ def api_move(game_id):
     if error:
         return jsonify({"ok": False, "error": error}), 409
 
-    _tell_opponent(game, game_id, user["id"])
+    winner = _award_winner(game)
+    _tell_opponent(game, game_id, user["id"], reward=winner)
 
-    return jsonify({"ok": True, "game": chess_game.serialize(game, user["id"])})
+    return jsonify({"ok": True, "game": _state(game, user["id"])})
 
 
 @bp.route("/<game_id>/cancel", methods=["POST"])
@@ -220,9 +276,10 @@ def api_resign(game_id):
     if error:
         return jsonify({"ok": False, "error": error}), 409
 
-    _tell_opponent(game, game_id, user["id"], resigned=True)
+    winner = _award_winner(game)
+    _tell_opponent(game, game_id, user["id"], resigned=True, reward=winner)
 
-    return jsonify({"ok": True, "game": chess_game.serialize(game, user["id"])})
+    return jsonify({"ok": True, "game": _state(game, user["id"])})
 
 
 @bp.route("/status", methods=["GET"])

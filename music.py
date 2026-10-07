@@ -12,6 +12,7 @@
 
 import base64
 import json
+import os
 import time
 
 import store
@@ -35,6 +36,20 @@ ALLOWED_TYPES = {
     "audio/wav": "wav",
     "audio/x-wav": "wav",
     "audio/webm": "webm",
+}
+
+# Расширения на случай, когда телефон не сообщил тип файла.
+# Android нередко отдаёт application/octet-stream даже для mp3 —
+# по одному MIME такие файлы не принять.
+EXTENSIONS = {
+    ".mp3": "audio/mpeg",
+    ".m4a": "audio/mp4",
+    ".aac": "audio/aac",
+    ".ogg": "audio/ogg",
+    ".oga": "audio/ogg",
+    ".opus": "audio/ogg",
+    ".wav": "audio/wav",
+    ".webm": "audio/webm",
 }
 
 ID_ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789"
@@ -81,7 +96,34 @@ def total_bytes():
 # =========================
 # ДОБАВЛЕНИЕ
 # =========================
-def add_file(player, title, audio_bytes, content_type):
+def guess_type(content_type, filename=""):
+    """
+    Определяет тип файла по MIME, а если он бесполезен — по расширению.
+
+    Возвращает нормализованный тип из ALLOWED_TYPES или None.
+    """
+    clean = (content_type or "").split(";")[0].strip().lower()
+
+    if clean in ALLOWED_TYPES:
+        return clean
+
+    # Если тип прямо говорит «не аудио», верим ему, а не расширению:
+    # иначе видео в контейнере mp4 прошло бы как музыка
+    if clean and clean != "application/octet-stream" and not clean.startswith("audio/"):
+        return None
+
+    suffix = os.path.splitext(filename or "")[1].lower()
+    if suffix in EXTENSIONS:
+        return EXTENSIONS[suffix]
+
+    return None
+
+
+def is_audio(content_type, filename=""):
+    return guess_type(content_type, filename) is not None
+
+
+def add_file(player, title, audio_bytes, content_type, filename=""):
     """
     Добавляет загруженный файл.
 
@@ -99,7 +141,7 @@ def add_file(player, title, audio_bytes, content_type):
         limit = MAX_UPLOAD_BYTES // (1024 * 1024)
         return None, f"Файл больше {limit} МБ — выберите поменьше"
 
-    kind = ALLOWED_TYPES.get((content_type or "").split(";")[0].strip().lower())
+    kind = guess_type(content_type, filename)
     if not kind:
         return None, "Это не похоже на аудиофайл. Подойдут mp3, m4a, ogg, wav"
 
@@ -112,7 +154,7 @@ def add_file(player, title, audio_bytes, content_type):
         "id": store.build_id(ID_ALPHABET, ID_LENGTH),
         "title": title[:80],
         "kind": "file",
-        "contentType": content_type.split(";")[0].strip().lower(),
+        "contentType": kind,
         "size": len(audio_bytes),
         "addedBy": player.get("name") or "Кто-то",
         "addedById": player.get("id"),
