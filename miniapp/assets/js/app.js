@@ -1206,13 +1206,13 @@
       } else if (game.status === "finished") {
         var outcome = chess.resultText(game.result, game.you) || "Партия закончена";
 
-        // За победу начисляют монеты в казино — скажем об этом здесь,
+        // За победу начисляют тугрики в казино — скажем об этом здесь,
         // чтобы человек не узнавал о награде только из баланса
         var won = game.result === "1-0" && game.you === "white" ||
           game.result === "0-1" && game.you === "black";
 
         if (won && game.reward) {
-          outcome += " · +" + game.reward + " монет";
+          outcome += " · +" + tugriks(game.reward);
         }
 
         turnEl.textContent = outcome;
@@ -1774,6 +1774,17 @@
 
   /* ---------- Казино ---------- */
 
+  /**
+   * «100 тугриков», «3 тугрика» — числительное с верным окончанием.
+   *
+   * Просто подставить слово нельзя: 1 тугрик, 2 тугрика, 5 тугриков.
+   */
+  function tugriks(n) {
+    var value = Number(n) || 0;
+    return value + " " + core.plural(value, "тугрик", "тугрика", "тугриков");
+  }
+
+
   var CASINO_BET_KEY = "casino.bet";
   var CASINO_CYCLE_MS = 70;
   var CASINO_MIN_SPIN_MS = 1500;
@@ -1782,7 +1793,7 @@
   var casinoPlayer = null;
   var casinoWelcome = null;
 
-  // Перерисовку ставит initCasino: монеты за вход могут прийти как
+  // Перерисовку ставит initCasino: тугрики за вход могут прийти как
   // до, так и после того, как раздел построен
   var casinoRender = null;
 
@@ -1811,7 +1822,7 @@
         if (typeof casinoRender === "function") casinoRender();
       })
       .catch(function (error) {
-        console.warn("[casino] монеты за вход не начислены:", error && error.message);
+        console.warn("[casino] тугрики за вход не начислены:", error && error.message);
       });
   }
 
@@ -1820,6 +1831,7 @@
     if (!box) return;
 
     var balanceEl = document.getElementById("casinoBalance");
+    var unitEl = document.getElementById("casinoUnit");
     var streakEl = document.getElementById("casinoStreak");
     var reelsBox = document.getElementById("casinoReels");
     var resultEl = document.getElementById("casinoResult");
@@ -1833,6 +1845,7 @@
     var bet = 10;
     var spinning = false;
     var cycleTimer = null;
+    var reelsFilled = false;
 
     try {
       var saved = parseInt(localStorage.getItem(CASINO_BET_KEY), 10);
@@ -1865,7 +1878,8 @@
       var need = player.streakForBonus - player.streak;
 
       if (player.streak > 0 && need <= 0) {
-        return "Серия " + player.streak + " дн. · в воскресенье бонус " + player.sundayBonus;
+        return "Серия " + player.streak + " дн. · в воскресенье бонус " +
+          tugriks(player.sundayBonus);
       }
 
       if (player.streak > 0) {
@@ -1874,7 +1888,8 @@
           " · до бонуса " + need;
       }
 
-      return "Заходите каждый день · за неделю без пропусков бонус " + player.sundayBonus;
+      return "Заходите каждый день · за неделю без пропусков бонус " +
+        tugriks(player.sundayBonus);
     }
 
     function renderBets() {
@@ -1909,7 +1924,26 @@
       renderBets();
 
       balanceEl.textContent = casinoPlayer.balance;
+
+      // Окончание зависит от числа: 1 тугрик, 2 тугрика, 5 тугриков
+      if (unitEl) {
+        unitEl.textContent = core.plural(
+          casinoPlayer.balance, "тугрик", "тугрика", "тугриков");
+      }
+
       streakEl.textContent = streakText(casinoPlayer);
+
+      // Пока не крутили, на барабанах стоит заглушка из разметки.
+      // Заменяем её символами из набора сервера: иначе на автомате
+      // висел бы символ, которого в игре нет. Берём разные, чтобы
+      // это не выглядело выигрышной линией.
+      if (!reelsFilled) {
+        reelEls.forEach(function (reel, i) {
+          var symbol = casinoPlayer.symbols[i % casinoPlayer.symbols.length];
+          reel.querySelector(".reel__symbol").textContent = symbol.emoji;
+        });
+        reelsFilled = true;
+      }
 
       Array.prototype.forEach.call(betsBox.children, function (button) {
         button.classList.toggle("is-active", Number(button.dataset.bet) === bet);
@@ -1918,13 +1952,13 @@
 
       var enough = casinoPlayer.balance >= bet;
       spinBtn.disabled = spinning || !enough;
-      spinBtn.textContent = spinning ? "Крутится…" : (enough ? "Крутить" : "Не хватает монет");
+      spinBtn.textContent = spinning ? "Крутится…" : (enough ? "Крутить" : "Не хватает тугриков");
 
       // Приветствие за вход показываем один раз и до результата
       if (casinoWelcome && !spinning) {
-        var text = "+" + casinoWelcome.gained + " монет за вход";
+        var text = "+" + tugriks(casinoWelcome.gained) + " за вход";
         if (casinoWelcome.bonus) {
-          text += " · бонус за неделю +" + casinoWelcome.bonus;
+          text += " · бонус за неделю +" + tugriks(casinoWelcome.bonus);
         }
         showNote(text, "is-win");
         casinoWelcome = null;
@@ -1942,9 +1976,9 @@
 
     function showResult(result) {
       if (result.multiplier >= 10) {
-        showNote("Джекпот! +" + result.win + " монет", "is-jackpot");
+        showNote("Джекпот! +" + tugriks(result.win), "is-jackpot");
       } else if (result.multiplier > 1) {
-        showNote("Выигрыш +" + result.win + " монет", "is-win");
+        showNote("Выигрыш +" + tugriks(result.win), "is-win");
       } else if (result.multiplier === 1) {
         showNote("Ставка вернулась", "is-lose");
       } else {
@@ -1956,7 +1990,7 @@
       if (spinning || !casinoPlayer) return;
 
       if (casinoPlayer.balance < bet) {
-        showNote("Не хватает монет — заходите завтра за новыми", "is-error");
+        showNote("Не хватает тугриков — заходите завтра за новыми", "is-error");
         return;
       }
 
@@ -2041,10 +2075,10 @@
   /* ---------- Секретный пароль ---------- */
 
   /**
-   * Точка под кнопкой техподдержки: пароль даёт монеты в казино.
+   * Точка под кнопкой техподдержки: пароль даёт тугрики в казино.
    *
    * Проверяет пароль сервер. Если бы сверял браузер, любой посмотрел бы
-   * исходники и получил монеты без пароля — а в них ещё и лежит сам
+   * исходники и получил тугрики без пароля — а в них ещё и лежит сам
    * ответ, что сводит секрет к нулю.
    */
   function initPromo() {
@@ -2100,7 +2134,7 @@
             return;
           }
 
-          showNote("+" + result.data.gained + " монет на счёт", "is-done");
+          showNote("+" + tugriks(result.data.gained) + " на счёт", "is-done");
           input.value = "";
 
           // Баланс в казино изменился — покажем это сразу

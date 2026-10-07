@@ -390,7 +390,7 @@ bot.MINIAPP_URL = saved_url
 
 
 # =========================
-print("\n=== Монеты за победу ===")
+print("\n=== Тугрики за победу ===")
 
 import casino
 
@@ -429,15 +429,15 @@ casino.save(202, casino.default_record())
 resign_game = chess_game.create_game(alice)
 resign_game, _ = chess_game.join_game(resign_game, bob)
 
-# Сдаётся Боб — монеты Алисе
+# Сдаётся Боб — тугрики Алисе
 winner = chess_api._award_winner(resign_game)
-check("незаконченная партия никому не даёт монет", winner, None)
+check("незаконченная партия никому не даёт тугриков", winner, None)
 
 resign_game, _ = chess_game.resign(resign_game, 202)
 winner = chess_api._award_winner(resign_game)
 check("при сдаче побеждает соперник", winner, 101)
-check("монеты у победителя", casino.load(101)["balance"], casino.CHESS_WIN_COINS)
-check("сдавшийся без монет", casino.load(202)["balance"], 0)
+check("тугрики у победителя", casino.load(101)["balance"], casino.CHESS_WIN_COINS)
+check("сдавшийся без тугриков", casino.load(202)["balance"], 0)
 
 # Ничья не даёт никому
 store.clear()
@@ -450,7 +450,7 @@ draw["status"] = "finished"
 draw["result"] = "1/2-1/2"
 
 winner = chess_api._award_winner(draw)
-check("за ничью монет нет", winner, None)
+check("за ничью тугриков нет", winner, None)
 check("белым ничего", casino.load(101)["balance"], 0)
 check("чёрным ничего", casino.load(202)["balance"], 0)
 

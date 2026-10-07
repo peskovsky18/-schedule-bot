@@ -13,7 +13,7 @@
     и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
     поднимайте номер: иначе Telegram покажет старую версию.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=15">
+  <link rel="stylesheet" href="assets/css/styles.css?v=16">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -62,7 +62,7 @@
       <button class="support__btn" id="supportBtn" type="button">Техподдержка</button>
 
       <!--
-        Секрет: кто знает пароль, получает монеты в казино. Кнопка
+        Секрет: кто знает пароль, получает тугрики в казино. Кнопка
         нарочно неприметная — маленькая точка под текстом.
       -->
       <button class="support__secret" id="promoBtn" type="button"
@@ -185,7 +185,7 @@
           <div class="casino__panel">
             <div class="casino__money">
               <span class="casino__coins" id="casinoBalance">0</span>
-              <span class="casino__coins-label">монет</span>
+              <span class="casino__coins-label" id="casinoUnit">тугриков</span>
             </div>
             <div class="casino__streak" id="casinoStreak"></div>
           </div>
@@ -193,9 +193,9 @@
           <!-- Однорукий бандит: три барабана и линия выплаты -->
           <div class="machine" id="casinoMachine">
             <div class="machine__reels" id="casinoReels" aria-label="Барабаны автомата">
-              <div class="reel"><span class="reel__symbol">🍒</span></div>
-              <div class="reel"><span class="reel__symbol">🍒</span></div>
-              <div class="reel"><span class="reel__symbol">🍒</span></div>
+              <div class="reel"><span class="reel__symbol">🥔</span></div>
+              <div class="reel"><span class="reel__symbol">🥒</span></div>
+              <div class="reel"><span class="reel__symbol">🧦</span></div>
             </div>
             <div class="machine__payline" aria-hidden="true"></div>
           </div>
@@ -255,9 +255,9 @@
     </div>
   </aside>
 
-  <script src="assets/js/config.js?v=15"></script>
-  <script src="assets/js/core.js?v=15"></script>
-  <script src="assets/js/chess.js?v=15"></script>
-  <script src="assets/js/app.js?v=15"></script>
+  <script src="assets/js/config.js?v=16"></script>
+  <script src="assets/js/core.js?v=16"></script>
+  <script src="assets/js/chess.js?v=16"></script>
+  <script src="assets/js/app.js?v=16"></script>
 </body>
 </html>

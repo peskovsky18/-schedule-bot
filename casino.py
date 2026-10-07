@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Казино на бесплатные монеты.
+Казино на бесплатные тугрики.
 
 Деньги ненастоящие, но считать их всё равно обязан сервер. Если баланс
 и результат прокрута определять в браузере, любой откроет консоль
-и нарисует себе сколько угодно монет — а смысл игры в том, что выигрыш
+и нарисует себе сколько угодно тугриков — а смысл игры в том, что выигрыш
 случаен.
 
 Монеты начисляются за ежедневный вход, поэтому сутки считаются
@@ -24,7 +24,7 @@ from parser import now_msk
 # Ключ в хранилище
 KEY_PREFIX = "casino:user:"
 
-# Сколько монет дают за вход и сколько — за неделю без пропусков
+# Сколько тугриков дают за вход и сколько — за неделю без пропусков
 START_BALANCE = 0
 DAILY_COINS = 100
 SUNDAY_BONUS = 300
@@ -36,7 +36,8 @@ SUNDAY_BONUS_STREAK = 7
 # Награда за победу в шахматах
 CHESS_WIN_COINS = 300
 
-# Секретный пароль из раздела техподдержки: даёт монеты раз в сутки.
+# Секретный пароль из раздела техподдержки: даёт тугрики,
+# сколько угодно раз.
 # В коде лежит только хеш, а не сам пароль: репозиторий публичный,
 # и открытый текст увидел бы любой. Если задать PROMO_PASSWORD
 # в переменных окружения, он важнее — тогда пароля нет и в хеше.
@@ -48,23 +49,27 @@ BETS = [10, 25, 50, 100]
 DEFAULT_BET = 10
 
 # Барабаны. Вес — относительная частота выпадения символа.
+#
+# Набор шуточный, но порядок сохранён как у настоящих автоматов:
+# частые символы платят мало, редкие — много. Иначе джекпот выпадал бы
+# так же часто, как пустышка, и смысл редкости пропал.
 SYMBOLS = [
-    {"key": "cherry", "emoji": "🍒", "weight": 30},
-    {"key": "lemon", "emoji": "🍋", "weight": 25},
-    {"key": "bell", "emoji": "🔔", "weight": 20},
-    {"key": "star", "emoji": "⭐", "weight": 15},
-    {"key": "diamond", "emoji": "💎", "weight": 7},
-    {"key": "seven", "emoji": "7️⃣", "weight": 3},
+    {"key": "potato", "emoji": "🥔", "weight": 30},
+    {"key": "cucumber", "emoji": "🥒", "weight": 25},
+    {"key": "sock", "emoji": "🧦", "weight": 20},
+    {"key": "frog", "emoji": "🐸", "weight": 15},
+    {"key": "toilet", "emoji": "🚽", "weight": 7},
+    {"key": "poop", "emoji": "💩", "weight": 3},
 ]
 
 # Выплата за три одинаковых, в ставках
 TRIPLE = {
-    "cherry": 4,
-    "lemon": 6,
-    "bell": 10,
-    "star": 18,
-    "diamond": 35,
-    "seven": 80,
+    "potato": 4,
+    "cucumber": 6,
+    "sock": 10,
+    "frog": 18,
+    "toilet": 35,
+    "poop": 80,
 }
 
 # За две одинаковые возвращаем ставку
@@ -101,11 +106,12 @@ def default_record():
         "bet": DEFAULT_BET,
         "spins": 0,
         "wins": 0,
+        "promoUses": 0,
     }
 
 
 def load(user_id):
-    """Запись игрока. Незнакомого заводим с нулём — монеты дадут за вход."""
+    """Запись игрока. Незнакомого заводим с нулём — тугрики дадут за вход."""
     import store
 
     raw = store.get_store().get(_key(user_id))
@@ -160,7 +166,7 @@ def yesterday_of(iso):
 # =========================
 def claim(user_id, today=None):
     """
-    Начисляет монеты за сегодняшний вход.
+    Начисляет тугрики за сегодняшний вход.
 
     Возвращает (запись, начислено, бонус, ошибка). Повторный вызов
     в тот же день ничего не начисляет и ошибкой не считается: приложение
@@ -214,27 +220,23 @@ def password_matches(password):
     return secrets.compare_digest(digest, PROMO_HASH)
 
 
-def check_promo(user_id, password, today=None):
+def check_promo(user_id, password):
     """
-    Секретный пароль: раз в сутки даёт монеты.
+    Секретный пароль даёт тугрики — сколько угодно раз.
 
-    Возвращает (запись, начислено, ошибка). Ограничение на сутки нужно
-    не из вредности: без него пароль, который знают несколько человек,
-    превращается в бесконечный источник монет.
+    Ограничения на сутки нет: пароль знают свои, и это шутка. Считаем
+    только, сколько раз им воспользовались, — чтобы было видно, что
+    им вообще пользуются.
+
+    Возвращает (запись, начислено, ошибка).
     """
-    today = today or today_msk()
-
     if not password_matches(password):
         return None, 0, "Неверный пароль"
 
     with _lock_for(user_id):
         record = load(user_id)
-
-        if record.get("lastPromo") == today:
-            return record, 0, "Сегодня по паролю уже получали"
-
         record["balance"] = int(record.get("balance") or 0) + PROMO_COINS
-        record["lastPromo"] = today
+        record["promoUses"] = int(record.get("promoUses") or 0) + 1
         record["best"] = max(int(record.get("best") or 0), record["balance"])
 
         save(user_id, record)
@@ -247,9 +249,9 @@ def check_promo(user_id, password, today=None):
 # ========================
 def add_coins(user_id, amount):
     """
-    Начисляет монеты вне ежедневного входа.
+    Начисляет тугрики вне ежедневного входа.
 
-    Нужно шахматам: за победу дают монеты в казино. Замок тот же, что
+    Нужно шахматам: за победу дают тугрики в казино. Замок тот же, что
     и у прокрута, иначе победа и одновременный прокрут могли бы
     перезаписать друг друга.
     """
@@ -269,7 +271,7 @@ def add_coins(user_id, amount):
 
 
 def award_chess_win(user_id):
-    """Победа в шахматах — монеты в казино."""
+    """Победа в шахматах — тугрики в казино."""
     return add_coins(user_id, CHESS_WIN_COINS)
 
 
@@ -349,7 +351,7 @@ def spin(user_id, bet=None):
         balance = int(record.get("balance") or 0)
 
         if balance < bet:
-            return None, f"Не хватает монет: нужно {bet}, на счету {balance}"
+            return None, f"Не хватает тугриков: нужно {bet}, на счету {balance}"
 
         reels = pick_reels()
         multiplier = payout_for(reels)
@@ -400,7 +402,7 @@ def serialize(user_id, today=None):
         "sundayBonus": SUNDAY_BONUS,
         "chessWin": CHESS_WIN_COINS,
         "promoCoins": PROMO_COINS,
-        "promoUsedToday": record.get("lastPromo") == today,
+        "promoUses": int(record.get("promoUses") or 0),
         "streakForBonus": SUNDAY_BONUS_STREAK,
         "bets": BETS,
         "symbols": [{"key": s["key"], "emoji": s["emoji"]} for s in SYMBOLS],

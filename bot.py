@@ -450,7 +450,7 @@ def start(message):
 
 def notify_chess_move(game, game_id, mover_id, resigned=False, reward=None):
     """
-    Пишет сопернику, что сделан ход, а победителю — про монеты.
+    Пишет сопернику, что сделан ход, а победителю — про тугрики.
 
     Вызывается из обработчика HTTP, поэтому отправка уходит в отдельный
     поток: ответ на ход не должен ждать Telegram, иначе доска будет
@@ -465,7 +465,7 @@ def notify_chess_move(game, game_id, mover_id, resigned=False, reward=None):
     if not opponent:
         return
 
-    coins = f" +{casino.CHESS_WIN_COINS} монет в казино"
+    coins = f" +{casino.CHESS_WIN_COINS} тугриков в казино"
 
     # Кому и что пишем. Сообщение смотрящему на доску не нужно: он
     # увидит всё сам через пару секунд, а телефон дёрнется зря.
@@ -486,7 +486,7 @@ def notify_chess_move(game, game_id, mover_id, resigned=False, reward=None):
 
         outgoing.append((opponent["id"], text))
 
-    # Мат поставил тот, кто ходил: он и победитель, и ему про монеты
+    # Мат поставил тот, кто ходил: он и победитель, и ему про тугрики
     # отдельно — сообщение выше ушло сопернику
     if reward and reward != opponent["id"] and not chess_api.seen_recently(game_id, reward):
         outgoing.append((reward, "♟ Вы победили!" + coins + "."))

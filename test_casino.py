@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Тесты казино: монеты за вход, серия, бонус воскресенья, прокрут, выплаты.
+Тесты казино: тугрики за вход, серия, бонус воскресенья, прокрут, выплаты.
 
 Запуск (нужен виртуальный интерпретатор проекта):
 
@@ -151,17 +151,22 @@ check("за пароль начислено", gained, casino.PROMO_COINS)
 check("ошибки нет", error, None)
 check("баланс", record["balance"], 100)
 
+# Ограничения на количество раз нет: пароль можно вводить сколько угодно
 record, gained, error = casino.check_promo(701, PROMO)
-check("повторно в тот же день ничего", gained, 0)
-truthy("и это объяснено", error is not None and "уже" in error, error)
+check("повторно снова начислено", gained, casino.PROMO_COINS)
+check("ошибки нет", error, None)
+check("баланс удвоился", record["balance"], 200)
+check("счётчик применений", record["promoUses"], 2)
+
+for _ in range(3):
+    record, _, _ = casino.check_promo(701, PROMO)
+check("можно применять много раз", record["balance"], 500)
+check("счётчик посчитал все", record["promoUses"], 5)
 
 record, gained, error = casino.check_promo(701, "неверный")
 check("неверный пароль ничего не даёт", gained, 0)
 truthy("сказано, что пароль неверный", error is not None and "Неверный" in error, error)
-
-# На следующий день пароль снова работает
-record, gained, _ = casino.check_promo(701, PROMO, today="2027-01-02")
-check("на следующий день снова даёт", gained, casino.PROMO_COINS)
+check("баланс при неверном не меняется", record, None)
 
 # Переменная окружения важнее встроенного хеша
 os.environ["PROMO_PASSWORD"] = "другойпароль"
@@ -170,7 +175,7 @@ truthy("старый пароль при ней не работает", not casi
 
 store.get_store().clear()
 _, gained, _ = casino.check_promo(702, "другойпароль")
-check("и монеты дают по своему паролю", gained, casino.PROMO_COINS)
+check("и тугрики дают по своему паролю", gained, casino.PROMO_COINS)
 
 del os.environ["PROMO_PASSWORD"]
 truthy("без переменной снова встроенный", casino.password_matches(PROMO))
@@ -179,9 +184,10 @@ truthy("без переменной снова встроенный", casino.pas
 store.get_store().clear()
 fresh = casino.serialize(703)
 check("размер награды за пароль", fresh["promoCoins"], 100)
-check("сегодня ещё не использован", fresh["promoUsedToday"], False)
+check("ещё не применялся", fresh["promoUses"], 0)
 casino.check_promo(703, PROMO)
-check("после использования отмечено", casino.serialize(703)["promoUsedToday"], True)
+casino.check_promo(703, PROMO)
+check("счётчик применений растёт", casino.serialize(703)["promoUses"], 2)
 
 
 # =========================
@@ -220,21 +226,34 @@ truthy("размер награды приходит клиенту",
 
 # =========================
 print("\n=== Выплаты ===")
-check("три вишни", casino.payout_for(["cherry"] * 3), casino.TRIPLE["cherry"])
-check("три семёрки", casino.payout_for(["seven"] * 3), casino.TRIPLE["seven"])
-check("три алмаза", casino.payout_for(["diamond"] * 3), casino.TRIPLE["diamond"])
-check("две вишни и лимон", casino.payout_for(["cherry", "cherry", "lemon"]), casino.PAIR)
-check("две семёрки", casino.payout_for(["seven", "bell", "seven"]), casino.PAIR)
-check("все разные", casino.payout_for(["cherry", "lemon", "bell"]), 0)
+check("три картошки", casino.payout_for(["potato"] * 3), casino.TRIPLE["potato"])
+check("три какашки", casino.payout_for(["poop"] * 3), casino.TRIPLE["poop"])
+check("три унитаза", casino.payout_for(["toilet"] * 3), casino.TRIPLE["toilet"])
+check("две картошки и огурец",
+      casino.payout_for(["potato", "potato", "cucumber"]), casino.PAIR)
+check("две какашки", casino.payout_for(["poop", "sock", "poop"]), casino.PAIR)
+check("все разные", casino.payout_for(["potato", "cucumber", "sock"]), 0)
 check("пустой набор", casino.payout_for([]), 0)
 
 # Дороже символ — больше платит
 truthy("редкий платит больше частого",
-       casino.TRIPLE["seven"] > casino.TRIPLE["cherry"])
+       casino.TRIPLE["poop"] > casino.TRIPLE["potato"])
 
 
 # =========================
 print("\n=== Ставки ===")
+# Набор шуточный, но порядок как у автоматов: частые дешёвые, редкие дорогие
+emojis = [s["emoji"] for s in casino.SYMBOLS]
+check("символов шесть", len(emojis), 6)
+check("набор смешной", emojis, ["🥔", "🥒", "🧦", "🐸", "🚽", "💩"])
+check("веса в сумме сто", sum(s["weight"] for s in casino.SYMBOLS), 100)
+truthy("самый частый платит меньше всех",
+       casino.TRIPLE[casino.SYMBOLS[0]["key"]] == min(casino.TRIPLE.values()))
+truthy("самый редкий платит больше всех",
+       casino.TRIPLE[casino.SYMBOLS[-1]["key"]] == max(casino.TRIPLE.values()))
+truthy("каждому символу назначена выплата",
+       all(s["key"] in casino.TRIPLE for s in casino.SYMBOLS))
+
 check("допустимая ставка", casino.normalize_bet(50), 50)
 check("нечисловая — по умолчанию", casino.normalize_bet("абракадабра"), casino.DEFAULT_BET)
 check("пустая — по умолчанию", casino.normalize_bet(None), casino.DEFAULT_BET)
@@ -246,7 +265,7 @@ check("меньше минимальной — минимальная", casino.n
 # =========================
 print("\n=== Прокрут ===")
 store.get_store().clear()
-casino.claim(401, today="2026-10-05")   # 100 монет
+casino.claim(401, today="2026-10-05")   # 100 тугриков
 
 result, error = casino.spin(401, 10)
 check("прокрут прошёл", error, None)
@@ -265,8 +284,8 @@ for _ in range(200):
     result, error = casino.spin(402, 100)
     if error:
         break
-truthy("без монет крутить нельзя", error is not None, error or "")
-truthy("в ошибке сказано, сколько нужно", "монет" in (error or ""), error or "")
+truthy("без тугриков крутить нельзя", error is not None, error or "")
+truthy("в ошибке сказано, сколько нужно", "тугриков" in (error or ""), error or "")
 balance = casino.load(402)["balance"]
 truthy("баланс не отрицательный", balance >= 0, str(balance))
 
@@ -362,7 +381,7 @@ check("ставка дошла", data["result"]["bet"], 25)
 check("баланс в ответе совпадает с состоянием",
       data["player"]["balance"], data["result"]["balance"])
 
-# Кладём достаточно монет, иначе прокрут отклонится по балансу
+# Кладём достаточно тугриков, иначе прокрут отклонится по балансу
 rich = casino.load(501)
 rich["balance"] = 1000
 casino.save(501, rich)
@@ -400,19 +419,20 @@ check("начислено 100", response.get_json()["gained"], 100)
 check("баланс", response.get_json()["player"]["balance"], 100)
 
 response = client.post("/api/casino/promo", headers=CAROL, json={"password": "ялюблюмиюбойко"})
-check("повторно в тот же день — отказ", response.status_code, 429)
-check("счёт не вырос",
-      client.get("/api/casino", headers=CAROL).get_json()["player"]["balance"], 100)
+check("повтор через API тоже работает", response.status_code, 200)
+check("начислено ещё 100", response.get_json()["gained"], 100)
+check("счёт вырос",
+      client.get("/api/casino", headers=CAROL).get_json()["player"]["balance"], 200)
 
-check("клиент видит отметку об использовании",
-      client.get("/api/casino", headers=CAROL).get_json()["player"]["promoUsedToday"], True)
+check("клиент видит счётчик применений",
+      client.get("/api/casino", headers=CAROL).get_json()["player"]["promoUses"], 2)
 
 # У другого игрока свой счётчик
 response = client.post("/api/casino/promo", headers=ALICE,
                        json={"password": "ялюблюмиюбойко"})
-check("другому пароль ещё работает", response.status_code, 200)
+check("другому пароль тоже работает", response.status_code, 200)
 
-# Чужие монеты не видны
+# Чужие тугрики не видны
 response = client.get("/api/casino", headers=BOB)
 check("у второго игрока свой баланс", response.get_json()["player"]["balance"], 0)
 
