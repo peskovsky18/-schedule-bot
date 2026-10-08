@@ -49,13 +49,13 @@ store.get_store().clear()
 record, gained, bonus, error = casino.claim(101, today=WEEK[0])
 check("ошибки нет", error, None)
 check("начислено за вход", gained, casino.DAILY_COINS)
-check("баланс", record["balance"], 100)
+check("баланс", record["balance"], casino.DAILY_COINS)
 check("серия — один день", record["streak"], 1)
 check("бонуса нет", bonus, 0)
 
 record, gained, bonus, error = casino.claim(101, today=WEEK[0])
 check("повторно в тот же день ничего", gained, 0)
-check("баланс не изменился", record["balance"], 100)
+check("баланс не изменился", record["balance"], casino.DAILY_COINS)
 check("повтор — не ошибка", error, None)
 
 
@@ -66,14 +66,14 @@ for day in WEEK[1:6]:
     check(f"за {day} начислено", gained, casino.DAILY_COINS)
 
 check("серия выросла до шести", record["streak"], 6)
-check("баланс за шесть дней", record["balance"], 600)
+check("баланс за шесть дней", record["balance"], casino.DAILY_COINS * 6)
 
 # Воскресенье седьмого дня — бонус
 record, gained, bonus, error = casino.claim(101, today=WEEK[6])
 check("в воскресенье — обычные 100", gained, casino.DAILY_COINS)
 check("и бонус за неделю", bonus, casino.SUNDAY_BONUS)
 check("серия — семь дней", record["streak"], 7)
-check("баланс с бонусом", record["balance"], 100 * 7 + casino.SUNDAY_BONUS)
+check("баланс с бонусом", record["balance"], casino.DAILY_COINS * 7 + casino.SUNDAY_BONUS)
 
 
 # =========================
@@ -149,7 +149,7 @@ store.get_store().clear()
 record, gained, error = casino.check_promo(701, PROMO)
 check("за пароль начислено", gained, casino.PROMO_COINS)
 check("ошибки нет", error, None)
-check("баланс", record["balance"], 100)
+check("баланс", record["balance"], casino.PROMO_COINS)
 
 # Ограничения на количество раз нет: пароль можно вводить сколько угодно
 record, gained, error = casino.check_promo(701, PROMO)
@@ -191,6 +191,38 @@ check("счётчик применений растёт", casino.serialize(703)[
 
 
 # =========================
+print("\n=== Разовый подарок ===")
+
+store.get_store().clear()
+
+check("размер подарка", casino.GIFT_COINS, 1111)
+truthy("текст подарка задан", "тугрик" in casino.GIFT_TEXT, casino.GIFT_TEXT)
+
+record, gained, bonus, error = casino.claim(801)
+check("за вход начислено", gained, casino.DAILY_COINS)
+
+gift = casino.grant_gift(801)
+truthy("подарок выдан", gift is not None)
+check("размер выданного подарка", gift["amount"], casino.GIFT_COINS)
+check("текст передан клиенту", gift["text"], casino.GIFT_TEXT)
+check("баланс со подарком", gift["balance"], casino.DAILY_COINS + casino.GIFT_COINS)
+
+check("повторно подарок не дают", casino.grant_gift(801), None)
+check("баланс не вырос", casino.load(801)["balance"], casino.DAILY_COINS + casino.GIFT_COINS)
+
+# Новый игрок подарок получает
+gift = casino.grant_gift(802)
+truthy("новому игроку подарок", gift is not None)
+check("и сразу начислен", casino.load(802)["balance"], casino.GIFT_COINS)
+
+# Отметка видна клиенту
+check("клиент видит отметку о подарке", casino.serialize(802)["giftTaken"], True)
+check("клиент видит размер подарка", casino.serialize(802)["giftCoins"], 1111)
+
+# Размеры бонусов
+check("за вход теперь 500", casino.DAILY_COINS, 500)
+check("за неделю теперь 3000", casino.SUNDAY_BONUS, 3000)
+
 print("\n=== Начисления со стороны (победа в шахматах) ===")
 store.get_store().clear()
 
@@ -265,7 +297,7 @@ check("меньше минимальной — минимальная", casino.n
 # =========================
 print("\n=== Прокрут ===")
 store.get_store().clear()
-casino.claim(401, today="2026-10-05")   # 100 тугриков
+casino.claim(401, today="2026-10-05")
 
 result, error = casino.spin(401, 10)
 check("прокрут прошёл", error, None)
@@ -275,7 +307,8 @@ truthy("символы известные",
        all(r in [s["key"] for s in casino.SYMBOLS] for r in result["reels"]),
        str(result["reels"]))
 check("выигрыш = множитель на ставку", result["win"], result["multiplier"] * 10)
-check("баланс пересчитан", result["balance"], 100 - 10 + result["win"])
+check("баланс пересчитан", result["balance"],
+      casino.DAILY_COINS - 10 + result["win"])
 check("счётчик прокрутов", result["spins"], 1)
 
 # Баланс никогда не уходит в минус
@@ -367,12 +400,21 @@ truthy("таблица выплат передана", bool(player["payouts"]))
 
 response = client.post("/api/casino/claim", headers=ALICE)
 check("вход засчитан", response.status_code, 200)
-check("начислено 100", response.get_json()["gained"], 100)
-check("баланс", response.get_json()["player"]["balance"], 100)
+check("начислено за вход", response.get_json()["gained"], casino.DAILY_COINS)
+check("баланс", response.get_json()["player"]["balance"],
+      casino.DAILY_COINS + casino.GIFT_COINS)
+
+# Заодно проверяем сам подарок: он приходит в этом же ответе
+gift = response.get_json().get("gift")
+truthy("подарок пришёл в ответе", gift is not None)
+check("размер подарка в ответе", gift["amount"], casino.GIFT_COINS)
+check("текст подарка в ответе", gift["text"], casino.GIFT_TEXT)
 
 response = client.post("/api/casino/claim", headers=ALICE)
 check("повторно ничего", response.get_json()["gained"], 0)
-check("баланс тот же", response.get_json()["player"]["balance"], 100)
+check("и подарка больше нет", response.get_json().get("gift"), None)
+check("баланс тот же", response.get_json()["player"]["balance"],
+      casino.DAILY_COINS + casino.GIFT_COINS)
 
 response = client.post("/api/casino/spin", headers=ALICE, json={"bet": 25})
 check("прокрут через API", response.status_code, 200)
@@ -415,8 +457,8 @@ check("баланс не изменился",
 
 response = client.post("/api/casino/promo", headers=CAROL, json={"password": "ялюблюмиюбойко"})
 check("верный пароль принят", response.status_code, 200)
-check("начислено 100", response.get_json()["gained"], 100)
-check("баланс", response.get_json()["player"]["balance"], 100)
+check("начислено за пароль", response.get_json()["gained"], casino.PROMO_COINS)
+check("баланс", response.get_json()["player"]["balance"], casino.PROMO_COINS)
 
 response = client.post("/api/casino/promo", headers=CAROL, json={"password": "ялюблюмиюбойко"})
 check("повтор через API тоже работает", response.status_code, 200)
@@ -438,8 +480,9 @@ check("у второго игрока свой баланс", response.get_json(
 
 # Счётчик дней у второго свой
 client.post("/api/casino/claim", headers=BOB)
-check("второй получил свои 100",
-      client.get("/api/casino", headers=BOB).get_json()["player"]["balance"], 100)
+check("второй получил свои",
+      client.get("/api/casino", headers=BOB).get_json()["player"]["balance"],
+      casino.DAILY_COINS + casino.GIFT_COINS)
 check("у первого баланс не изменился",
       client.get("/api/casino", headers=ALICE).get_json()["player"]["balance"] is not None, True)
 

@@ -1756,3 +1756,80 @@ body.has-netlify-badge .app {
     transition: none;
   }
 }
+
+/* ---------- Уведомление о подарке ---------- */
+
+.gift {
+  position: fixed;
+  inset: 0;
+  /* Выше окна обновления: если совпадут, подарок покажется первым */
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(150%);
+  animation: gift-in 0.3s var(--ease);
+}
+
+@keyframes gift-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.gift__card {
+  width: 100%;
+  max-width: 340px;
+  padding: 28px 22px 20px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.28), 0 28px 60px rgba(0, 0, 0, 0.42);
+  text-align: center;
+  animation: gift-card-in 0.34s var(--ease);
+}
+
+@keyframes gift-card-in {
+  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.gift__amount {
+  margin-bottom: 12px;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.gift__text {
+  margin: 0 0 22px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.gift__ok {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 15px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: transform 0.18s var(--ease);
+}
+
+.gift__ok:active { transform: scale(0.975); }
+
+@media (prefers-reduced-motion: reduce) {
+  .gift, .gift__card { animation: none; }
+}

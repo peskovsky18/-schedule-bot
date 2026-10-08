@@ -53,10 +53,15 @@ def api_claim():
     if error:
         return jsonify({"ok": False, "error": error}), 400
 
+    # Разовый подарок. Отметка ставится на сервере, поэтому второй
+    # заход его не повторит, а приложение получит None и промолчит
+    gift = casino.grant_gift(user["id"])
+
     return jsonify({
         "ok": True,
         "gained": gained,
         "bonus": bonus,
+        "gift": gift,
         "player": casino.serialize(user["id"]),
     })
 

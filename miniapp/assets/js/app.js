@@ -1937,6 +1937,38 @@
    * или нет, поэтому повторный вызов в тот же день безвреден — иначе
    * пришлось бы хранить отметку на клиенте, а её легко потерять.
    */
+  /**
+   * Показывает уведомление о подарке.
+   *
+   * Текст приходит с сервера: он же решает, положен ли подарок.
+   * Если сервер вернул null, сюда просто не заходят.
+   */
+  function showGift(gift) {
+    var box = document.getElementById("giftBox");
+    var amount = document.getElementById("giftAmount");
+    var text = document.getElementById("giftText");
+    var ok = document.getElementById("giftOk");
+
+    if (!box || !amount || !text || !ok) return;
+
+    amount.textContent = "+" + tugriks(gift.amount);
+    text.textContent = gift.text || "";
+    box.hidden = false;
+
+    function hide() {
+      box.hidden = true;
+      ok.removeEventListener("click", hide);
+      box.removeEventListener("click", onBackdrop);
+    }
+
+    function onBackdrop(event) {
+      if (event.target === box) hide();
+    }
+
+    ok.addEventListener("click", hide);
+    box.addEventListener("click", onBackdrop);
+  }
+
   function casinoClaimDaily() {
     fetchWithRetry((apiBase || "") + "/api/casino/claim", {
       method: "POST",
@@ -1947,6 +1979,10 @@
         if (!data || data.ok !== true) return;
 
         casinoPlayer = data.player;
+
+        // Сервер сам решает, положен ли подарок: приходит только
+        // при первом входе, дальше там null
+        if (data.gift) showGift(data.gift);
 
         if (data.gained > 0) {
           casinoWelcome = { gained: data.gained, bonus: data.bonus || 0 };

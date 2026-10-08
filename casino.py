@@ -26,8 +26,8 @@ KEY_PREFIX = "casino:user:"
 
 # Сколько тугриков дают за вход и сколько — за неделю без пропусков
 START_BALANCE = 0
-DAILY_COINS = 100
-SUNDAY_BONUS = 300
+DAILY_COINS = 500
+SUNDAY_BONUS = 3000
 SUNDAY_BONUS_STREAK = 7
 
 # Серия дней, после которой дают бонус в воскресенье:
@@ -35,6 +35,11 @@ SUNDAY_BONUS_STREAK = 7
 
 # Награда за победу в шахматах
 CHESS_WIN_COINS = 300
+
+# Разовый подарок всем игрокам. Выдаётся один раз: отметка giftTaken
+# в записи. Текст уведомления задан отдельно — его показывают на экране
+GIFT_COINS = 1111
+GIFT_TEXT = "Привет, вам один один один один тугрик за мой счет. Спасибо!"
 
 # Секретный пароль из раздела техподдержки: даёт тугрики,
 # сколько угодно раз.
@@ -107,6 +112,7 @@ def default_record():
         "spins": 0,
         "wins": 0,
         "promoUses": 0,
+        "giftTaken": False,
     }
 
 
@@ -270,6 +276,33 @@ def add_coins(user_id, amount):
         return record
 
 
+def grant_gift(user_id):
+    """
+    Разовый подарок: начисляется при следующем входе, один раз.
+
+    Возвращает описание для уведомления или None, если уже получал.
+    Отметка ставится до начисления, поэтому повторный заход подарок
+    не повторит.
+    """
+    with _lock_for(user_id):
+        record = load(user_id)
+
+        if record.get("giftTaken"):
+            return None
+
+        record["giftTaken"] = True
+        record["balance"] = int(record.get("balance") or 0) + GIFT_COINS
+        record["best"] = max(int(record.get("best") or 0), record["balance"])
+
+        save(user_id, record)
+
+        return {
+            "amount": GIFT_COINS,
+            "text": GIFT_TEXT,
+            "balance": record["balance"],
+        }
+
+
 def award_chess_win(user_id):
     """Победа в шахматах — тугрики в казино."""
     return add_coins(user_id, CHESS_WIN_COINS)
@@ -400,6 +433,8 @@ def serialize(user_id, today=None):
         "claimedToday": record.get("lastClaim") == today,
         "dailyCoins": DAILY_COINS,
         "sundayBonus": SUNDAY_BONUS,
+        "giftCoins": GIFT_COINS,
+        "giftTaken": bool(record.get("giftTaken")),
         "chessWin": CHESS_WIN_COINS,
         "promoCoins": PROMO_COINS,
         "promoUses": int(record.get("promoUses") or 0),
