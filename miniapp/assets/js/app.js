@@ -664,7 +664,7 @@
     function loadCustom() {
       // Подпись обязательна: по ней сервер решает, можно ли удалять
       // трек. Без неё свои же треки помечались как чужие.
-      return fetch((apiBase || "") + "/api/music", { headers: authHeaders() })
+      return fetchWithTimeout((apiBase || "") + "/api/music", { headers: authHeaders() })
         .then(function (response) { return response.json(); })
         .then(function (data) {
           if (!data || data.ok !== true) return;
@@ -724,7 +724,7 @@
     function removeTrack(track) {
       showMusicNote("Удаляю…");
 
-      fetch((apiBase || "") + "/api/music/" + encodeURIComponent(track.id) + "/delete", {
+      fetchWithTimeout((apiBase || "") + "/api/music/" + encodeURIComponent(track.id) + "/delete", {
         method: "POST",
         headers: authHeaders(),
       })
@@ -1027,6 +1027,41 @@
     return headers;
   }
 
+  /**
+   * Запрос с пределом ожидания.
+   *
+   * Бесплатный сервер засыпает без посетителей, и запрос может висеть
+   * сколько угодно. Без предела барабаны казино крутились бы вечно,
+   * а кнопки молчали бы — со стороны это неотличимо от поломки.
+   */
+  function fetchWithTimeout(url, options, timeoutMs) {
+    var request = options || {};
+    var timer = null;
+
+    if (typeof AbortController !== "undefined") {
+      var controller = new AbortController();
+      request.signal = controller.signal;
+      timer = setTimeout(function () { controller.abort(); }, timeoutMs || 50000);
+    }
+
+    function stop() {
+      if (timer) clearTimeout(timer);
+    }
+
+    return fetch(url, request).then(function (response) {
+      stop();
+      return response;
+    }, function (error) {
+      stop();
+
+      if (error && error.name === "AbortError") {
+        throw new Error("Сервер не отвечает. После простоя он просыпается — попробуйте ещё раз");
+      }
+
+      throw error;
+    });
+  }
+
   /** Заголовки с подписью Telegram: по ней сервер понимает, кто ходит. */
   function chessHeaders() {
     var headers = { "Content-Type": "application/json" };
@@ -1056,19 +1091,8 @@
     var request = options || {};
     request.headers = chessHeaders();
 
-    var timer = null;
-
-    if (typeof AbortController !== "undefined") {
-      var controller = new AbortController();
-      request.signal = controller.signal;
-      timer = setTimeout(function () { controller.abort(); }, CHESS_TIMEOUT_MS);
-    }
-
-    function stop() {
-      if (timer) clearTimeout(timer);
-    }
-
-    return fetch((apiBase || "") + "/api/chess" + path, request)
+    return fetchWithTimeout((apiBase || "") + "/api/chess" + path, request,
+                            CHESS_TIMEOUT_MS)
       .then(function (response) {
         return response.json().catch(function () {
           return { ok: false, error: "Сервер ответил кодом " + response.status };
@@ -1079,17 +1103,6 @@
           return data;
         });
       })
-      .catch(function (error) {
-        if (error && error.name === "AbortError") {
-          throw new Error(
-            "Сервер не ответил за минуту. После простоя он просыпается — " +
-            "нажмите ещё раз"
-          );
-        }
-        throw error;
-      })
-      .then(function (result) { stop(); return result; },
-            function (error) { stop(); throw error; });
   }
 
   function initChess() {
@@ -1845,7 +1858,7 @@
    * пришлось бы хранить отметку на клиенте, а её легко потерять.
    */
   function casinoClaimDaily() {
-    fetch((apiBase || "") + "/api/casino/claim", {
+    fetchWithTimeout((apiBase || "") + "/api/casino/claim", {
       method: "POST",
       headers: authHeaders(),
     })
@@ -2027,7 +2040,14 @@
     }
 
     function spin() {
-      if (spinning || !casinoPlayer) return;
+      if (spinning) return;
+
+      // Состояние ещё не пришло — молчать нельзя, иначе нажатие
+      // выглядит как поломка
+      if (!casinoPlayer) {
+        showNote("Ждём ответа сервера — попробуйте через пару секунд");
+        return;
+      }
 
       if (casinoPlayer.balance < bet) {
         showNote("Не хватает тугриков — заходите завтра за новыми", "is-error");
@@ -2048,7 +2068,13 @@
 
       var started = Date.now();
 
-      fetch((apiBase || "") + "/api/casino/spin", {
+      // Если сервер просыпается, барабаны крутятся долго и это
+      // выглядит как поломка — скажем словами, что происходит
+      var wakeTimer = setTimeout(function () {
+        if (spinning) showNote("Сервер просыпается — это может занять до минуты");
+      }, 5000);
+
+      fetchWithTimeout((apiBase || "") + "/api/casino/spin", {
         method: "POST",
         headers: chessHeaders(),
         body: JSON.stringify({ bet: bet }),
@@ -2067,6 +2093,7 @@
           var wait = Math.max(0, CASINO_MIN_SPIN_MS - (Date.now() - started));
 
           setTimeout(function () {
+            clearTimeout(wakeTimer);
             clearInterval(cycleTimer);
             cycleTimer = null;
 
@@ -2080,6 +2107,7 @@
           }, wait);
         })
         .catch(function (error) {
+          clearTimeout(wakeTimer);
           clearInterval(cycleTimer);
           cycleTimer = null;
 
@@ -2092,7 +2120,7 @@
     }
 
     function loadState() {
-      return fetch((apiBase || "") + "/api/casino", { headers: authHeaders() })
+      return fetchWithTimeout((apiBase || "") + "/api/casino", { headers: authHeaders() })
         .then(function (response) { return response.json(); })
         .then(function (data) {
           if (!data || data.ok !== true) return;
@@ -2156,7 +2184,7 @@
       submit.disabled = true;
       showNote("Проверяю…");
 
-      fetch((apiBase || "") + "/api/casino/promo", {
+      fetchWithTimeout((apiBase || "") + "/api/casino/promo", {
         method: "POST",
         headers: chessHeaders(),
         body: JSON.stringify({ password: password }),
