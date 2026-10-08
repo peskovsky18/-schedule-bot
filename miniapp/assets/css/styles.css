@@ -14,11 +14,16 @@
   --accent: var(--tg-button, #4c8dff);
   --accent-text: var(--tg-button-text, #ffffff);
   --line: rgba(255, 255, 255, 0.08);
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.24), 0 8px 24px rgba(0, 0, 0, 0.18);
+  --shadow: 0 1px 1px rgba(0, 0, 0, 0.14), 0 10px 30px rgba(0, 0, 0, 0.16);
 
-  --radius: 14px;
-  --radius-sm: 9px;
-  --gap: 12px;
+  --radius: 20px;
+  --radius-sm: 12px;
+  --gap: 14px;
+
+  /* Кривая, которой Apple пользуется в анимациях: быстро стартует
+     и мягко тормозит в конце */
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --glass: saturate(180%) blur(20px);
 
   --lecture: #7c6cff;
   --practice: #2fb27c;
@@ -53,10 +58,10 @@ html, body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
-    Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: "Helvetica Neue", Helvetica, "Helvetica CY", Arial, sans-serif;
   font-size: 15px;
-  line-height: 1.45;
+  line-height: 1.47;
+  letter-spacing: -0.011em;
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior-y: contain;
@@ -1561,4 +1566,193 @@ body.has-netlify-badge .app {
 
 @media (prefers-reduced-motion: reduce) {
   .whatsnew { animation: none; }
+}
+
+/* =========================================================
+   Оформление в духе Apple
+   ---------------------------------------------------------
+   Слой идёт последним и меняет форму, не трогая логику:
+   отступы, скругления, тени, размытие, типографику.
+   Цвета по-прежнему берутся из темы Telegram, поэтому
+   оформление подстраивается под пользователя.
+   ========================================================= */
+
+/* --- Типографика: плотные заголовки, ровные цифры --- */
+
+.appbar__group { font-weight: 700; letter-spacing: -0.022em; }
+.appbar__sub { font-size: 12px; letter-spacing: 0.01em; }
+
+.day__label { font-weight: 600; letter-spacing: -0.015em; }
+.day__date,
+.lesson__time,
+.casino__balance,
+.casino__bet { font-variant-numeric: tabular-nums; }
+
+.lesson__subject { font-weight: 600; letter-spacing: -0.012em; }
+
+/* Мелкие подписи — разрежённые и заглавные: так они читаются
+   как разделы, а не как обычный текст */
+.menu__caption,
+.menu__section,
+.whatsnew__what {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+/* --- Шапка: матовое стекло во всю ширину --- */
+
+.appbar {
+  margin: 0 -14px;
+  padding-left: 14px;
+  padding-right: 14px;
+  padding-top: calc(15px + env(safe-area-inset-top, 0px));
+  padding-bottom: 13px;
+  background: color-mix(in srgb, var(--bg) 68%, transparent);
+  -webkit-backdrop-filter: var(--glass);
+  backdrop-filter: var(--glass);
+  border-bottom: 1px solid var(--line);
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border-color: transparent;
+  background: var(--bg-soft);
+  transition: transform 0.22s var(--ease), background 0.22s ease;
+}
+
+.icon-btn:active {
+  transform: scale(0.9);
+  background: var(--line);
+}
+
+/* --- Переключатель вкладок --- */
+
+.segmented {
+  gap: 2px;
+  padding: 3px;
+  margin-bottom: 14px;
+  border: 0;
+  border-radius: 13px;
+  background: var(--bg-soft);
+}
+
+.segmented__btn {
+  border-radius: 10px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: background 0.24s var(--ease), color 0.24s ease;
+}
+
+.segmented__btn.is-active {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.26), 0 4px 12px rgba(0, 0, 0, 0.14);
+}
+
+/* --- Карточки дней --- */
+
+.days { gap: 14px; }
+
+.day {
+  padding: 16px 16px 6px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.day--today {
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent),
+              var(--shadow);
+}
+
+.lesson {
+  padding: 13px 0;
+  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+/* --- Кнопки: плотные, с мягким нажатием --- */
+
+.chess__btn,
+.casino__spin,
+.roulette__spin,
+.promo__submit {
+  border-radius: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: transform 0.18s var(--ease), opacity 0.18s ease;
+}
+
+.chess__btn:active,
+.casino__spin:active,
+.roulette__spin:active,
+.promo__submit:active {
+  transform: scale(0.975);
+}
+
+.chess__btn,
+.promo__submit { padding: 13px 16px; }
+
+.casino__spin {
+  padding: 15px 16px;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28),
+              0 8px 22px rgba(240, 169, 43, 0.2);
+}
+
+.roulette__spin { padding: 14px 16px; border-radius: 16px; }
+
+.casino__bet {
+  border-radius: 12px;
+  font-weight: 600;
+  transition: transform 0.18s var(--ease), background 0.2s ease;
+}
+
+.casino__bet:active { transform: scale(0.95); }
+
+/* --- Меню: матовое стекло --- */
+
+.menu {
+  background: color-mix(in srgb, var(--bg-soft) 86%, transparent);
+  -webkit-backdrop-filter: var(--glass);
+  backdrop-filter: var(--glass);
+}
+
+.menu__item {
+  border-radius: 14px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* --- Оверлеи --- */
+
+.whatsnew,
+.menu-backdrop {
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(150%);
+}
+
+.whatsnew__card {
+  border-radius: 22px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 24px 60px rgba(0, 0, 0, 0.4);
+}
+
+.promo__input,
+.music__input,
+.music__pick {
+  border-radius: 13px;
+}
+
+/* --- Уважение к системной настройке «меньше движения» --- */
+
+@media (prefers-reduced-motion: reduce) {
+  .appbar,
+  .icon-btn,
+  .segmented__btn,
+  .chess__btn,
+  .casino__spin,
+  .roulette__spin,
+  .promo__submit,
+  .casino__bet,
+  .menu__item {
+    transition: none;
+  }
 }
