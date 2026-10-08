@@ -10,7 +10,7 @@ Telegram  →  Netlify (этот каталог)      — HTML, CSS, JS
                     │
                     └── fetch  →  Render (bot.py)  — /api/schedule (JSON)
                                         │
-                                        └── guide.herzen.spb.ru
+                                        └── сайт учебного заведения
 ```
 
 Парсер расписания остаётся **один** — на Python, в `parser.py`. Мини-приложение

@@ -180,11 +180,11 @@ check("практика", core.typeClass("практика"), "practice");
 check("лабораторная", core.typeClass("лабораторная"), "lab");
 check("зачёт", core.typeClass("зачёт"), "other");
 check("пустой тип", core.typeClass(undefined), "other");
-check("http-ссылка отброшена", core.moodleLink({ moodle: "http://moodle.herzen.spb.ru" }), null);
+check("http-ссылка отброшена", core.moodleLink({ moodle: "http://moodle.example.ru" }), null);
 check(
   "https-ссылка принята",
-  core.moodleLink({ moodle: "https://moodle.herzen.spb.ru/course/view.php?id=1" }),
-  "https://moodle.herzen.spb.ru/course/view.php?id=1"
+  core.moodleLink({ moodle: "https://moodle.example.ru/course/view.php?id=1" }),
+  "https://moodle.example.ru/course/view.php?id=1"
 );
 check("без ссылки", core.moodleLink({}), null);
 

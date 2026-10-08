@@ -11,7 +11,7 @@
     WEBHOOK_URL   — публичный адрес сервиса, например
                     https://schedule-bot.onrender.com (для webhook)
     ADMIN_ID      — Telegram ID администратора (по умолчанию 439819918)
-    GROUP_ID      — ID группы на сайте guide.herzen.spb.ru
+    GROUP_ID      — ID группы на сайте расписания
     GROUP_NAME    — название группы; если задано, ID ищется автоматически
     TELEGRAM_SECRET — необязательный секрет для проверки, что запросы
                     действительно от Telegram
