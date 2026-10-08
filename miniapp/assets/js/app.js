@@ -149,6 +149,11 @@
 
   /* ---------- Сеть ---------- */
 
+  // Сколько раз подряд переспрашивали пустое расписание. Счётчик
+  // обязан жить снаружи функции: внутри он обнулялся бы при каждом
+  // вызове, и переспрос стал бы бесконечным.
+  var scheduleAttempts = 0;
+
   function fetchSchedule() {
     state.loading = true;
     state.error = null;
@@ -164,6 +169,19 @@
       .then(function (data) {
         if (!data || data.ok !== true) throw new Error("Некорректный ответ API");
 
+        // Сервис отдаёт кэш сразу, а расписание обновляет в фоне.
+        // Сразу после перезапуска кэш пуст, и первый ответ приходит
+        // без дней — тогда переспрашиваем через пару секунд, иначе
+        // человек увидит пустой экран и решит, что всё сломалось
+        var empty = !data.days || data.days.length === 0;
+
+        if (empty && scheduleAttempts < 3) {
+          scheduleAttempts += 1;
+          setTimeout(fetchSchedule, 2500);
+          return;
+        }
+
+        scheduleAttempts = 0;
         state.data = data;
         state.cached = false;
         state.loading = false;
@@ -172,6 +190,7 @@
       })
       .catch(function (err) {
         state.loading = false;
+        scheduleAttempts = 0;
         state.error = err && err.message ? err.message : "Нет связи";
 
         // Бесплатный Render засыпает, поэтому показываем последнее

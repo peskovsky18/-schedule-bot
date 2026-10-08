@@ -224,7 +224,11 @@ def api_schedule():
         return "", 204
 
     try:
-        schedule = parse_schedule()
+        # wait=False: отдаём кэш сразу, обновление уходит в фон. Ждать
+        # сайт вуза в запросе нельзя — запрос держит поток несколько
+        # секунд, потоки кончаются, и проверка живости Render решает,
+        # что сервис мёртв
+        schedule = parse_schedule(wait=False)
     except Exception as e:
         ERROR_LOGS.append(str(e))
         traceback.print_exc()
@@ -338,6 +342,24 @@ def setup_telegram():
 
         _setup_done = webhook_ok and menu_ok
         return _setup_done
+
+
+def start_schedule_warmup():
+    """
+    Прогревает кэш расписания сразу после старта, в фоне.
+
+    Без этого первый запрос после перезапуска получил бы пустое
+    расписание: разбор теперь не ждёт сайт, а кэша ещё нет.
+    """
+    def work():
+        try:
+            parser.parse_schedule(force=True)
+            print(f"[PARSE] расписание прогрето, пар: "
+                  f"{sum(len(v) for v in parser.cached_schedule().values())}")
+        except Exception as e:
+            print("[PARSE] прогрев расписания не удался:", e)
+
+    threading.Thread(target=work, daemon=True, name="schedule-warmup").start()
 
 
 def start_telegram_setup():
@@ -802,6 +824,8 @@ def handle(message):
 # Telegram запускаем на уровне модуля — но в фоне, чтобы не задерживать старт.
 if not USE_POLLING:
     start_telegram_setup()
+
+start_schedule_warmup()
 
 
 if __name__ == "__main__":

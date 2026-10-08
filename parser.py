@@ -16,6 +16,7 @@ import html as html_lib
 import json
 import os
 import re
+import threading
 import time
 from datetime import date, datetime, timedelta, timezone
 
@@ -450,15 +451,53 @@ def parse_from_html(page):
 # =========================
 # ОСНОВНАЯ ФУНКЦИЯ
 # =========================
-def parse_schedule(force=False):
+def refresh_in_background():
+    """
+    Обновляет расписание в отдельном потоке.
+
+    Разбор страницы вуза занимает несколько секунд чистого процессора,
+    и всё это время запрос держит поток — а потоков мало, и приложение
+    при открытии шлёт сразу несколько запросов. Потоки кончались,
+    проверка живости Render не укладывалась в свои 5 секунд, и сервис
+    перезапускался, теряя запросы в полёте. Поэтому ждать сайт в самом
+    запросе нельзя: отдаём что есть, а обновление идёт фоном.
+    """
+    global _refreshing
+
+    with _refresh_lock:
+        if _refreshing:
+            return
+        _refreshing = True
+
+    def work():
+        global _refreshing
+        try:
+            parse_schedule(force=True)
+        except Exception as e:
+            print("[PARSE] фоновое обновление не удалось:", e)
+        finally:
+            _refreshing = False
+
+    threading.Thread(target=work, daemon=True, name="schedule-refresh").start()
+
+
+def parse_schedule(force=False, wait=True):
     """
     Возвращает расписание: {"2026-10-06": [пары...], ...}
     Ключ — ISO-дата, внутри список пар, отсортированный по времени.
+
+    wait=False — не ждать похода на сайт: отдать то, что уже есть,
+    а обновление запустить в фоне. Так работают все запросы
+    приложения; ждать имеет смысл только при прогреве кэша.
     """
     global _cached_schedule, _cached_time
 
     if not force and _cached_schedule and (time.time() - _cached_time < CACHE_TTL):
         return _cached_schedule
+
+    if not wait:
+        refresh_in_background()
+        return _cached_schedule or {}
 
     page = fetch_html(group_url())
     if not page:
@@ -559,20 +598,20 @@ def _today_iso():
 def get_today():
     """Пары на сегодня (по московскому времени)."""
     today = _today_iso()
-    schedule = parse_schedule()
+    schedule = parse_schedule(wait=False)
     return {today: schedule[today]} if today in schedule else {}
 
 
 def get_tomorrow():
     """Пары на завтра (по московскому времени)."""
     tomorrow = (now_msk().date() + timedelta(days=1)).isoformat()
-    schedule = parse_schedule()
+    schedule = parse_schedule(wait=False)
     return {tomorrow: schedule[tomorrow]} if tomorrow in schedule else {}
 
 
 def get_week():
     """Пары на ближайшие 7 дней, начиная с сегодня."""
-    schedule = parse_schedule()
+    schedule = parse_schedule(wait=False)
     today = now_msk().date()
 
     week = {}
@@ -586,7 +625,7 @@ def get_week():
 
 def get_upcoming():
     """Всё, что ещё будет, без прошедших дат."""
-    schedule = parse_schedule()
+    schedule = parse_schedule(wait=False)
     today = _today_iso()
     return {iso: lessons for iso, lessons in schedule.items() if iso >= today}
 
@@ -594,6 +633,11 @@ def get_upcoming():
 # =========================
 # СОСТОЯНИЕ КЭША
 # =========================
+# Фоновое обновление: один поток на всех, повторные запуски не нужны
+_refreshing = False
+_refresh_lock = threading.Lock()
+
+
 def cached_schedule():
     """
     Возвращает расписание из кэша, НЕ обращаясь к сайту.
