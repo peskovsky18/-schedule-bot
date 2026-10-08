@@ -75,7 +75,12 @@ class RedisStore:
         # один быстрый и три упавших.
 
     def _command(self, *args, timeout=15):
-        response = self.session.post(self.url, json=list(args), timeout=timeout)
+        response = requests.post(
+            self.url,
+            json=list(args),
+            headers={"Authorization": f"Bearer {self.token}"},
+            timeout=timeout,
+        )
         response.raise_for_status()
         return response.json().get("result")
 

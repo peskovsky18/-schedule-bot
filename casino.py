@@ -276,6 +276,35 @@ def add_coins(user_id, amount):
         return record
 
 
+def grant_gift(user_id):
+    """
+    Разовый подарок отдельной операцией.
+
+    Приложению он не нужен: там начисление за вход и подарок делаются
+    вместе, за одно обращение к хранилищу (claim_with_gift). Эта
+    функция остаётся для бота и тестов, где важна раздельность.
+
+    Возвращает описание для уведомления или None, если уже получал.
+    """
+    with _lock_for(user_id):
+        record = load(user_id)
+
+        if record.get("giftTaken"):
+            return None
+
+        record["giftTaken"] = True
+        record["balance"] = int(record.get("balance") or 0) + GIFT_COINS
+        record["best"] = max(int(record.get("best") or 0), record["balance"])
+
+        save(user_id, record)
+
+        return {
+            "amount": GIFT_COINS,
+            "text": GIFT_TEXT,
+            "balance": record["balance"],
+        }
+
+
 def claim_with_gift(user_id, today=None):
     """
     Начисляет за вход и выдаёт разовый подарок — за одно обращение.
