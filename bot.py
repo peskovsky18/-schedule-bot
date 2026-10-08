@@ -168,6 +168,10 @@ def health():
         "lessons": sum(len(v) for v in schedule.values()),
         "users": len(load_users()),
         "errors": len(ERROR_LOGS),
+        # Состояние обновления расписания: видно, идёт ли оно, не
+        # сорвалось ли и с какой ошибкой. Без этого сбой разбора
+        # выглядит просто как пустой список дней
+        "refresh": parser.load_state(),
     })
 
 

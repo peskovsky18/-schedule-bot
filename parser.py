@@ -451,34 +451,76 @@ def parse_from_html(page):
 # =========================
 # ОСНОВНАЯ ФУНКЦИЯ
 # =========================
-def refresh_in_background():
+# Тормоз для обновлений. Без него пустой кэш приводил к закачке
+# на каждый запрос: приложение шлёт их пачкой, и сайт вуза отвечал
+# блокировкой по IP. После этого кэш не наполнялся уже никогда.
+REFRESH_COOLDOWN = 60          # обычная пауза между попытками
+REFRESH_COOLDOWN_AFTER_FAIL = 300   # пауза после неудачи
+_refresh_last = 0.0
+_refresh_failed = False
+_last_error = None
+
+
+def refresh_in_background(force=False):
     """
     Обновляет расписание в отдельном потоке.
 
-    Разбор страницы вуза занимает несколько секунд чистого процессора,
-    и всё это время запрос держит поток — а потоков мало, и приложение
-    при открытии шлёт сразу несколько запросов. Потоки кончались,
-    проверка живости Render не укладывалась в свои 5 секунд, и сервис
-    перезапускался, теряя запросы в полёте. Поэтому ждать сайт в самом
-    запросе нельзя: отдаём что есть, а обновление идёт фоном.
+    Разбор страницы вуза занимает секунды, и всё это время запрос
+    держал бы поток: потоки кончались, проверка живости Render не
+    укладывалась в свои 5 секунд, и сервис перезапускался, теряя
+    запросы. Поэтому ждать сайт в самом запросе нельзя: отдаём что
+    есть, а обновление идёт фоном.
+
+    Повторные запуски гасятся тормозом. Если обновление не удалось,
+    пауза увеличивается: иначе получается шторм запросов к сайту
+    вуза, а он отвечает блокировкой.
     """
-    global _refreshing
+    global _refreshing, _refresh_last
+
+    now = time.time()
 
     with _refresh_lock:
         if _refreshing:
             return
+
+        cooldown = REFRESH_COOLDOWN_AFTER_FAIL if _refresh_failed else REFRESH_COOLDOWN
+        if not force and now - _refresh_last < cooldown:
+            return
+
         _refreshing = True
+        _refresh_last = now
 
     def work():
-        global _refreshing
+        global _refreshing, _refresh_failed, _last_error
+
         try:
             parse_schedule(force=True)
+
+            if _cached_schedule:
+                _refresh_failed = False
+                _last_error = None
+            else:
+                _refresh_failed = True
+                _last_error = "сайт вернул пустое расписание"
+                print("[PARSE] обновление прошло, но расписание пустое")
         except Exception as e:
-            print("[PARSE] фоновое обновление не удалось:", e)
+            _refresh_failed = True
+            _last_error = f"{type(e).__name__}: {e}"
+            print("[PARSE] фоновое обновление не удалось:", _last_error)
         finally:
             _refreshing = False
 
     threading.Thread(target=work, daemon=True, name="schedule-refresh").start()
+
+
+def load_state():
+    """Что известно про обновление: для диагностики в /health."""
+    return {
+        "refreshing": _refreshing,
+        "failed": _refresh_failed,
+        "last_error": _last_error,
+        "since_attempt": int(time.time() - _refresh_last) if _refresh_last else None,
+    }
 
 
 def parse_schedule(force=False, wait=True):
