@@ -2085,7 +2085,7 @@
 
       var enough = casinoPlayer.balance >= bet;
       spinBtn.disabled = spinning || !enough;
-      spinBtn.textContent = spinning ? "Крутится…" : (enough ? "Крутить" : "Не хватает тугриков");
+      spinBtn.textContent = spinning ? "Дэпаем…" : (enough ? "Дэпнуть" : "Не хватает тугриков");
 
       // Приветствие за вход показываем один раз и до результата
       if (casinoWelcome && !spinning) {
