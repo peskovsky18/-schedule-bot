@@ -664,7 +664,8 @@
     function loadCustom() {
       // Подпись обязательна: по ней сервер решает, можно ли удалять
       // трек. Без неё свои же треки помечались как чужие.
-      return fetchWithTimeout((apiBase || "") + "/api/music", { headers: authHeaders() })
+      return fetchWithRetry((apiBase || "") + "/api/music", { headers: authHeaders() },
+                            LOAD_TIMEOUT_MS, 3)
         .then(function (response) { return response.json(); })
         .then(function (data) {
           if (!data || data.ok !== true) return;
@@ -1050,9 +1051,15 @@
 
     function explain(error) {
       if (error && error.name === "AbortError") {
-        return new Error(
+        var timeout = new Error(
           "Сервер не отвечает. После простоя он просыпается — попробуйте ещё раз"
         );
+
+        // Пометка для повтора: такое имеет смысл повторить, а вот
+        // ответ 401 или 403 повторять бессмысленно
+        timeout.isTimeout = true;
+
+        return timeout;
       }
 
       return error;
@@ -1074,6 +1081,45 @@
     }, function (error) {
       stop();
       throw explain(error);
+    });
+  }
+
+  /**
+   * Сколько ждём быстрые запросы — список треков, состояние казино,
+   * начисление за вход. Сервис теперь не засыпает, поэтому много
+   * времени им не нужно.
+   */
+  var LOAD_TIMEOUT_MS = 15000;
+
+  /**
+   * Повторяет запрос, если он не дошёл.
+   *
+   * Телефон иногда теряет запрос с подписью Telegram: предварительный
+   * OPTIONS проходит, а сам запрос не уходит, и обещание висит до
+   * предела ожидания. Новый запрос уходит по свежему соединению
+   * и обычно срабатывает.
+   *
+   * Повторяем только безопасное и только то, что имеет смысл повторять:
+   * обрыв связи или превышение времени. Ответ 401 или 403 повторять
+   * незачем — он не изменится.
+   *
+   * Прокрут и ходы в шахматы сюда не попадают: их повтор мог бы
+   * списать ставку дважды.
+   */
+  function fetchWithRetry(url, options, timeoutMs, tries) {
+    var left = tries || 3;
+
+    return fetchWithTimeout(url, options, timeoutMs).catch(function (error) {
+      var worthRetry = error && (error.isTimeout || error.name === "TypeError");
+
+      if (left <= 1 || !worthRetry) throw error;
+
+      // Небольшая пауза: если соединение подвисло, мгновенный повтор
+      // попадёт в то же место
+      return new Promise(function (resolve) { setTimeout(resolve, 1200); })
+        .then(function () {
+          return fetchWithRetry(url, options, timeoutMs, left - 1);
+        });
     });
   }
 
@@ -1873,10 +1919,10 @@
    * пришлось бы хранить отметку на клиенте, а её легко потерять.
    */
   function casinoClaimDaily() {
-    fetchWithTimeout((apiBase || "") + "/api/casino/claim", {
+    fetchWithRetry((apiBase || "") + "/api/casino/claim", {
       method: "POST",
       headers: authHeaders(),
-    })
+    }, LOAD_TIMEOUT_MS, 3)
       .then(function (response) { return response.json(); })
       .then(function (data) {
         if (!data || data.ok !== true) return;
@@ -2135,7 +2181,8 @@
     }
 
     function loadState() {
-      return fetchWithTimeout((apiBase || "") + "/api/casino", { headers: authHeaders() })
+      return fetchWithRetry((apiBase || "") + "/api/casino", { headers: authHeaders() },
+                            LOAD_TIMEOUT_MS, 3)
         .then(function (response) { return response.json(); })
         .then(function (data) {
           if (!data || data.ok !== true) return;
