@@ -1,1 +1,1 @@
-web: gunicorn bot:app --bind 0.0.0.0:$PORT --workers 1 --threads 8
+web: gunicorn bot:app --bind 0.0.0.0:$PORT --workers 2 --threads 8
