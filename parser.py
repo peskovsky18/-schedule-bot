@@ -23,6 +23,8 @@ from datetime import date, datetime, timedelta, timezone
 import requests
 from bs4 import BeautifulSoup
 
+import store
+
 # =========================
 # ЧАСОВОЙ ПОЯС
 # =========================
@@ -461,6 +463,38 @@ _refresh_failed = False
 _last_error = None
 
 
+# Расписание лежит ещё и в общем хранилище. Процессов теперь два,
+# у каждого свой кэш в памяти: без общего хранилища один отдавал
+# расписание, а второй пустоту, и человек видел то одно, то другое.
+# Заодно снимок переживает перезапуск — не нужно ждать разбора.
+SCHEDULE_KEY = "schedule:snapshot"
+
+
+def _save_shared(schedule):
+    """Кладёт расписание в общее хранилище. Ошибка не критична."""
+    try:
+        store.get_store().set(
+            SCHEDULE_KEY,
+            json.dumps(schedule, ensure_ascii=False),
+            ttl=CACHE_TTL * 4,
+        )
+    except Exception as e:
+        print("[PARSE] не удалось сохранить расписание в хранилище:", e)
+
+
+def _load_shared():
+    """Читает расписание из общего хранилища. Нет или ошибка — None."""
+    try:
+        raw = store.get_store().get(SCHEDULE_KEY)
+        if not raw:
+            return None
+        data = json.loads(raw)
+        return data if isinstance(data, dict) and data else None
+    except Exception as e:
+        print("[PARSE] не удалось прочитать расписание из хранилища:", e)
+        return None
+
+
 def refresh_in_background(force=False):
     """
     Обновляет расписание в отдельном потоке.
@@ -538,6 +572,15 @@ def parse_schedule(force=False, wait=True):
         return _cached_schedule
 
     if not wait:
+        # Своего кэша нет — возможно, его наполнил другой процесс.
+        # Лишний поход в хранилище бывает только в этом случае:
+        # когда кэш есть, мы сюда не доходим
+        shared = _load_shared()
+        if shared:
+            _cached_schedule = shared
+            _cached_time = time.time()
+            return shared
+
         refresh_in_background()
         return _cached_schedule or {}
 
@@ -556,6 +599,8 @@ def parse_schedule(force=False, wait=True):
 
     _cached_schedule = schedule
     _cached_time = time.time()
+
+    _save_shared(schedule)
 
     return schedule
 
