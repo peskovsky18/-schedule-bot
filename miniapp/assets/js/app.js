@@ -1042,20 +1042,54 @@
    * Адрес берём из того же config.js, что и расписание: мини-апп живёт
    * на Netlify, а API — на Render, это разные домены.
    */
+  /**
+   * Сколько ждём ответа шахматного API.
+   *
+   * Сервер на бесплатном тарифе засыпает без посетителей, и первый
+   * запрос может идти десятки секунд. Без ограничения кнопка осталась
+   * бы серой навсегда и без единого объяснения — именно так это
+   * и выглядело со стороны.
+   */
+  var CHESS_TIMEOUT_MS = 50000;
+
   function chessFetch(path, options) {
     var request = options || {};
     request.headers = chessHeaders();
 
-    return fetch((apiBase || "") + "/api/chess" + path, request).then(function (response) {
-      return response.json().catch(function () {
-        return { ok: false, error: "Сервер ответил кодом " + response.status };
-      }).then(function (data) {
-        if (!response.ok || data.ok === false) {
-          throw new Error(data.error || ("Ошибка " + response.status));
+    var timer = null;
+
+    if (typeof AbortController !== "undefined") {
+      var controller = new AbortController();
+      request.signal = controller.signal;
+      timer = setTimeout(function () { controller.abort(); }, CHESS_TIMEOUT_MS);
+    }
+
+    function stop() {
+      if (timer) clearTimeout(timer);
+    }
+
+    return fetch((apiBase || "") + "/api/chess" + path, request)
+      .then(function (response) {
+        return response.json().catch(function () {
+          return { ok: false, error: "Сервер ответил кодом " + response.status };
+        }).then(function (data) {
+          if (!response.ok || data.ok === false) {
+            throw new Error(data.error || ("Ошибка " + response.status));
+          }
+          return data;
+        });
+      })
+      .catch(function (error) {
+        if (error && error.name === "AbortError") {
+          throw new Error(
+            "Сервер не ответил за минуту. После простоя он просыпается — " +
+            "нажмите ещё раз"
+          );
         }
-        return data;
-      });
-    });
+        throw error;
+      })
+      .then(function (result) { stop(); return result; },
+            function (error) { stop(); throw error; });
   }
 
   function initChess() {
@@ -1349,6 +1383,11 @@
       busy = true;
       newBtn.disabled = true;
 
+      // Показываем, что нажатие принято: иначе на медленном сервере
+      // кажется, что кнопка не работает
+      newBtn.textContent = "Создаю партию…";
+      showError("");
+
       chessFetch("/new", { method: "POST" })
         .then(function (data) {
           remember(data.game.id);
@@ -1360,6 +1399,7 @@
         .then(function () {
           busy = false;
           newBtn.disabled = false;
+          newBtn.textContent = "Создать партию";
         });
     }
 
