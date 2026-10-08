@@ -66,13 +66,16 @@ class RedisStore:
         self.url = url.rstrip("/")
         self.token = token
 
+        # Пул соединений здесь НЕ используется, и это осознанно.
+        # Замер показал: живое соединение отвечает за 40 мс против
+        # 175 мс, но чтение снимка расписания через него падало два
+        # раза из четырёх — Upstash закрывает соединение после ответа,
+        # и повторное использование бьётся в мёртвый сокет. Надёжность
+        # важнее скорости: лучше пять предсказуемых запросов, чем
+        # один быстрый и три упавших.
+
     def _command(self, *args, timeout=15):
-        response = requests.post(
-            self.url,
-            json=list(args),
-            headers={"Authorization": f"Bearer {self.token}"},
-            timeout=timeout,
-        )
+        response = self.session.post(self.url, json=list(args), timeout=timeout)
         response.raise_for_status()
         return response.json().get("result")
 

@@ -49,20 +49,20 @@ def api_claim():
     if failure:
         return failure
 
-    record, gained, bonus, error = casino.claim(user["id"])
+    # Одно обращение к хранилищу вместо четырёх: начисление за вход
+    # и разовый подарок делаются вместе. Redis отсюда далеко, каждый
+    # поход стоит сотни миллисекунд, и запросы копились
+    record, gained, bonus, gift, error = casino.claim_with_gift(user["id"])
     if error:
         return jsonify({"ok": False, "error": error}), 400
 
-    # Разовый подарок. Отметка ставится на сервере, поэтому второй
-    # заход его не повторит, а приложение получит None и промолчит
-    gift = casino.grant_gift(user["id"])
-
+    # Запись уже на руках — лишний поход за ней не нужен
     return jsonify({
         "ok": True,
         "gained": gained,
         "bonus": bonus,
         "gift": gift,
-        "player": casino.serialize(user["id"]),
+        "player": casino.serialize(user["id"], record),
     })
 
 

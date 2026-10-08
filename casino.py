@@ -276,31 +276,57 @@ def add_coins(user_id, amount):
         return record
 
 
-def grant_gift(user_id):
+def claim_with_gift(user_id, today=None):
     """
-    Разовый подарок: начисляется при следующем входе, один раз.
+    Начисляет за вход и выдаёт разовый подарок — за одно обращение.
 
-    Возвращает описание для уведомления или None, если уже получал.
-    Отметка ставится до начисления, поэтому повторный заход подарок
-    не повторит.
+    Раньше это были две отдельные операции, и каждая читала и писала
+    запись: четыре похода в Redis вместо двух. Redis отсюда далеко,
+    каждый поход стоит сотни миллисекунд, и запросы копились —
+    проверка живости Render не укладывалась в свои пять секунд.
+
+    Возвращает (запись, начислено, бонус, подарок, ошибка).
+    Подарок равен None, если уже получали.
     """
+    today = today or today_msk()
+
     with _lock_for(user_id):
         record = load(user_id)
+        gained = 0
 
-        if record.get("giftTaken"):
-            return None
+        if record.get("lastClaim") != today:
+            # Серия растёт, только если вчера тоже заходили
+            if record.get("lastClaim") == yesterday_of(today):
+                record["streak"] = int(record.get("streak") or 0) + 1
+            else:
+                record["streak"] = 1
 
-        record["giftTaken"] = True
-        record["balance"] = int(record.get("balance") or 0) + GIFT_COINS
-        record["best"] = max(int(record.get("best") or 0), record["balance"])
+            gained = DAILY_COINS
+            if is_sunday(today) and record["streak"] >= SUNDAY_BONUS_STREAK:
+                gained += SUNDAY_BONUS
 
-        save(user_id, record)
+            record["lastClaim"] = today
 
-        return {
-            "amount": GIFT_COINS,
-            "text": GIFT_TEXT,
-            "balance": record["balance"],
-        }
+        gift = None
+        if not record.get("giftTaken"):
+            record["giftTaken"] = True
+            gift = {
+                "amount": GIFT_COINS,
+                "text": GIFT_TEXT,
+            }
+
+        if gained or gift:
+            record["balance"] = int(record.get("balance") or 0) + gained
+            if gift:
+                record["balance"] += GIFT_COINS
+            record["best"] = max(int(record.get("best") or 0), record["balance"])
+            save(user_id, record)
+
+        if gift:
+            gift["balance"] = record["balance"]
+
+        bonus = gained - DAILY_COINS if gained else 0
+        return record, gained - bonus, bonus, gift, None
 
 
 def award_chess_win(user_id):
@@ -416,10 +442,17 @@ def spin(user_id, bet=None):
 # =========================
 # ДЛЯ КЛИЕНТА
 # =========================
-def serialize(user_id, today=None):
-    """Состояние игрока для приложения."""
+def serialize(user_id, record=None, today=None):
+    """
+    Состояние игрока для приложения.
+
+    Запись можно передать готовой: после начисления она уже на руках,
+    и второй поход в хранилище за ней не нужен.
+    """
     today = today or today_msk()
-    record = load(user_id)
+
+    if record is None:
+        record = load(user_id)
 
     return {
         "balance": int(record.get("balance") or 0),
