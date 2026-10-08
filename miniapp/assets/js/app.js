@@ -1048,17 +1048,32 @@
       if (timer) clearTimeout(timer);
     }
 
+    function explain(error) {
+      if (error && error.name === "AbortError") {
+        return new Error(
+          "Сервер не отвечает. После простоя он просыпается — попробуйте ещё раз"
+        );
+      }
+
+      return error;
+    }
+
     return fetch(url, request).then(function (response) {
-      stop();
+      // Таймер НЕ гасим на заголовках. Сервер может отдать заголовки,
+      // а тело не прислать — тогда разбор ниже зависнет навсегда,
+      // и ни then, ни catch не сработают. Именно так барабаны казино
+      // крутились бесконечно во второй раз.
+      var parse = response.json.bind(response);
+
+      response.json = function () {
+        return parse().then(function (data) { stop(); return data; },
+                            function (error) { stop(); throw explain(error); });
+      };
+
       return response;
     }, function (error) {
       stop();
-
-      if (error && error.name === "AbortError") {
-        throw new Error("Сервер не отвечает. После простоя он просыпается — попробуйте ещё раз");
-      }
-
-      throw error;
+      throw explain(error);
     });
   }
 
