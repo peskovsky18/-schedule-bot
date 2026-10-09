@@ -127,9 +127,23 @@ check("серия через границу месяца", record["streak"], 2)
 # =========================
 print("\n=== Секретный пароль ===")
 
-PROMO = "ялюблюмиюбойко"
+# Проверяем механизм на своём пароле, а не на настоящем: репозиторий
+# публичный, и настоящие пароли в тестах светить нельзя. Добавляем
+# временную запись в список и убираем её в конце.
+import hashlib
+
+PROMO = "тестовый-пароль-для-проверки"
+TEST_HASH = hashlib.sha256(PROMO.encode("utf-8")).hexdigest()
+casino.PROMOS[TEST_HASH] = 100
+
+# Второй пароль — на другую сумму: механизм должен различать их
+PROMO_BIG = "тестовый-пароль-покрупнее"
+BIG_HASH = hashlib.sha256(PROMO_BIG.encode("utf-8")).hexdigest()
+casino.PROMOS[BIG_HASH] = 5000
 
 truthy("верный пароль принят", casino.password_matches(PROMO))
+truthy("второй пароль тоже принят", casino.password_matches(PROMO_BIG))
+check("у каждого пароля своя сумма", casino.promo_amount(PROMO_BIG), 5000)
 truthy("регистр не важен", casino.password_matches("ЯЛЮБЛЮМИЮБОЙКО"))
 truthy("пробелы по краям не мешают", casino.password_matches("  " + PROMO + "  "))
 truthy("неверный пароль отклонён", not casino.password_matches("неверный"))
@@ -140,9 +154,15 @@ truthy("None отклонён", not casino.password_matches(None))
 import inspect
 
 source = inspect.getsource(casino)
-truthy("пароля нет открытым текстом в коде", PROMO not in source,
-       "иначе его увидит любой, кто откроет репозиторий")
-truthy("а хеш есть", len(casino.PROMO_HASH) == 64, casino.PROMO_HASH)
+# Проверяем, что в коде лежат именно хеши, а не пароли. Сами пароли
+# при этом в тесте не упоминаются: иначе проверка «пароля нет в коде»
+# сама бы его туда и положила
+truthy("в списке только хеши, а не пароли",
+       all(len(h) == 64 and all(c in "0123456789abcdef" for c in h)
+           for h in casino.PROMOS),
+       ", ".join(h[:8] for h in casino.PROMOS))
+truthy("пароль не угадывается по подсказке",
+       all(not h.startswith("я") for h in casino.PROMOS))
 
 store.get_store().clear()
 
@@ -455,7 +475,7 @@ store.get_store().clear()
 
 CAROL = {"X-Dev-User-Id": "503", "X-Dev-User-Name": "Карol"}
 
-response = client.post("/api/casino/promo", json={"password": "ялюблюмиюбойко"})
+response = client.post("/api/casino/promo", json={"password": PROMO})
 check("без авторизации пароль не проверить", response.status_code, 401)
 
 response = client.post("/api/casino/promo", headers=CAROL, json={"password": "неверный"})
@@ -468,12 +488,12 @@ check("без пароля отклонено", response.status_code, 403)
 check("баланс не изменился",
       client.get("/api/casino", headers=CAROL).get_json()["player"]["balance"], 0)
 
-response = client.post("/api/casino/promo", headers=CAROL, json={"password": "ялюблюмиюбойко"})
+response = client.post("/api/casino/promo", headers=CAROL, json={"password": PROMO})
 check("верный пароль принят", response.status_code, 200)
 check("начислено за пароль", response.get_json()["gained"], casino.PROMO_COINS)
 check("баланс", response.get_json()["player"]["balance"], casino.PROMO_COINS)
 
-response = client.post("/api/casino/promo", headers=CAROL, json={"password": "ялюблюмиюбойко"})
+response = client.post("/api/casino/promo", headers=CAROL, json={"password": PROMO})
 check("повтор через API тоже работает", response.status_code, 200)
 check("начислено ещё 100", response.get_json()["gained"], 100)
 check("счёт вырос",
@@ -484,7 +504,7 @@ check("клиент видит счётчик применений",
 
 # У другого игрока свой счётчик
 response = client.post("/api/casino/promo", headers=ALICE,
-                       json={"password": "ялюблюмиюбойко"})
+                       json={"password": PROMO})
 check("другому пароль тоже работает", response.status_code, 200)
 
 # Чужие тугрики не видны

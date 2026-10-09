@@ -51,7 +51,19 @@ GIFT_TEXT = "Привет, вам две тысячи девять тугрик�
 # В коде лежит только хеш, а не сам пароль: репозиторий публичный,
 # и открытый текст увидел бы любой. Если задать PROMO_PASSWORD
 # в переменных окружения, он важнее — тогда пароля нет и в хеше.
-PROMO_HASH = "6042fca4be818e5b111f48692701b0be083400284fe7ef7a789cf0cc23bd01c0"
+#
+# Паролей может быть несколько, и каждый даёт свою сумму. Ключ —
+# SHA-256 от пароля в нижнем регистре: сам пароль в коде не лежит.
+# Чтобы добавить пароль, посчитайте хеш и допишите строку сюда.
+PROMOS = {
+    # первый пароль
+    "6042fca4be818e5b111f48692701b0be083400284fe7ef7a789cf0cc23bd01c0": 100,
+    # второй пароль
+    "bd730aea139d11b2bc985858a831feb8a4312943eac495ab963100d811a756af": 10000,
+}
+
+# Сколько даёт пароль из переменной окружения PROMO_PASSWORD.
+# Она важнее списка: так пароль можно держать вне публичного репозитория
 PROMO_COINS = 100
 
 # Ставки, доступные игроку
@@ -213,22 +225,40 @@ def claim(user_id, today=None):
 # =========================
 # СЕКРЕТНЫЙ ПАРОЛЬ
 # =========================
-def password_matches(password):
-    """Сверяет пароль. Регистр и лишние пробелы не важны."""
+def promo_amount(password):
+    """
+    Сколько тугриков даёт пароль. None — пароль не подошёл.
+
+    Регистр и лишние пробелы не важны. Сравниваем байтами:
+    compare_digest не принимает строки с не-ASCII символами
+    и падает с TypeError — а пароли кириллические.
+    """
     given = (password or "").strip().lower()
 
     if not given:
-        return False
+        return None
 
     from_env = (os.getenv("PROMO_PASSWORD") or "").strip().lower()
     if from_env:
-        # Сравниваем байтами: compare_digest не принимает строки
-        # с не-ASCII символами и падает с TypeError — а пароль
-        # кириллический
-        return secrets.compare_digest(given.encode("utf-8"), from_env.encode("utf-8"))
+        # Переменная окружения важнее списка: так пароль можно держать
+        # вне публичного репозитория. Если она задана, список не действует
+        if secrets.compare_digest(given.encode("utf-8"),
+                                  from_env.encode("utf-8")):
+            return PROMO_COINS
+        return None
 
     digest = hashlib.sha256(given.encode("utf-8")).hexdigest()
-    return secrets.compare_digest(digest, PROMO_HASH)
+
+    for known, amount in PROMOS.items():
+        if secrets.compare_digest(digest, known):
+            return amount
+
+    return None
+
+
+def password_matches(password):
+    """Подошёл ли пароль хоть какой-нибудь."""
+    return promo_amount(password) is not None
 
 
 def check_promo(user_id, password):
@@ -241,18 +271,19 @@ def check_promo(user_id, password):
 
     Возвращает (запись, начислено, ошибка).
     """
-    if not password_matches(password):
+    amount = promo_amount(password)
+    if amount is None:
         return None, 0, "Неверный пароль"
 
     with _lock_for(user_id):
         record = load(user_id)
-        record["balance"] = int(record.get("balance") or 0) + PROMO_COINS
+        record["balance"] = int(record.get("balance") or 0) + amount
         record["promoUses"] = int(record.get("promoUses") or 0) + 1
         record["best"] = max(int(record.get("best") or 0), record["balance"])
 
         save(user_id, record)
 
-        return record, PROMO_COINS, None
+        return record, amount, None
 
 
 # =========================
