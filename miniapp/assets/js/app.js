@@ -2010,12 +2010,11 @@
     var streakEl = document.getElementById("casinoStreak");
     var reelsBox = document.getElementById("casinoReels");
     var resultEl = document.getElementById("casinoResult");
-    var betsBox = document.getElementById("casinoBets");
     var ownInput = document.getElementById("casinoOwnBet");
     var ownOk = document.getElementById("casinoOwnOk");
     var spinBtn = document.getElementById("casinoSpin");
 
-    if (!balanceEl || !reelsBox || !betsBox || !spinBtn) return;
+    if (!balanceEl || !reelsBox || !spinBtn || !ownInput || !ownOk) return;
 
     var reelEls = Array.prototype.slice.call(reelsBox.querySelectorAll(".reel"));
     var glyphs = {};
@@ -2069,32 +2068,18 @@
         tugriks(player.sundayBonus);
     }
 
+    /**
+     * Настраивает поле ставки.
+     *
+     * Готовых сумм больше нет: сумму задаёт сам игрок. Границы берём
+     * с сервера, чтобы подсказка совпадала с тем, что он примет.
+     */
     function renderBets() {
-      if (!casinoPlayer || betsBox.childElementCount) return;
+      if (!casinoPlayer || !ownInput) return;
 
-      // В подсказке поля — границы, чтобы не угадывать их наугад
-      if (ownInput) {
-        ownInput.placeholder = "от " + (casinoPlayer.minBet || 10) +
-          " до " + (casinoPlayer.maxBet || 100000);
-        ownInput.value = String(bet);
-      }
-
-      casinoPlayer.bets.forEach(function (value) {
-        var button = el("button", "casino__bet", String(value));
-        button.type = "button";
-        button.dataset.bet = value;
-
-        button.addEventListener("click", function () {
-          if (spinning) return;
-          bet = value;
-          try {
-            localStorage.setItem(CASINO_BET_KEY, String(value));
-          } catch (e) {}
-          render();
-        });
-
-        betsBox.appendChild(button);
-      });
+      ownInput.placeholder = "от " + (casinoPlayer.minBet || 10) +
+        " до " + (casinoPlayer.maxBet || 100000);
+      ownInput.value = String(bet);
     }
 
     /**
@@ -2164,10 +2149,9 @@
         reelsFilled = true;
       }
 
-      Array.prototype.forEach.call(betsBox.children, function (button) {
-        button.classList.toggle("is-active", Number(button.dataset.bet) === bet);
-        button.disabled = spinning;
-      });
+      // Во время прокрута поле ставки недоступно, как и кнопка
+      if (ownInput) ownInput.disabled = spinning;
+      if (ownOk) ownOk.disabled = spinning;
 
       var enough = casinoPlayer.balance >= bet;
       spinBtn.disabled = spinning || !enough;
