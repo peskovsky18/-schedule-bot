@@ -616,7 +616,10 @@ body.has-netlify-badge .app {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  transition: transform 2.6s cubic-bezier(0.17, 0.67, 0.16, 1);
+  /* Длительность и кривую задаёт app.js из настройки spinMs, здесь —
+     запасные значения на случай, если скрипт не успел. Кривая та же:
+     быстрый разгон и долгий плавный подход к концу */
+  transition: transform 2.6s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform;
 }
 

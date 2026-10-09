@@ -959,11 +959,17 @@
     var spinMs = Number(cfg.spinMs);
     if (!isFinite(spinMs) || spinMs < 0) spinMs = 2600;
 
+    // Кривая колеса. Разгоняется быстро, а к концу подходит долго и
+    // плавно: последний сектор колесо доползает на глазах, вместо
+    // того чтобы щёлкнуть и встать. Это easeOutExpo — у него самый
+    // длинный «хвост» из распространённых кривых.
+    var WHEEL_EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
+
     if (prefersReducedMotion()) {
       wheel.style.transition = "none";
     } else {
       wheel.style.transitionDuration = (spinMs / 1000) + "s";
-      wheel.style.transitionTimingFunction = "cubic-bezier(0.17, 0.67, 0.16, 1)";
+      wheel.style.transitionTimingFunction = WHEEL_EASE;
     }
 
     // Секторы колеса
