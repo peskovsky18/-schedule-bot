@@ -38,8 +38,13 @@ CHESS_WIN_COINS = 300
 
 # Разовый подарок всем игрокам. Выдаётся один раз: отметка giftTaken
 # в записи. Текст уведомления задан отдельно — его показывают на экране
-GIFT_COINS = 1111
-GIFT_TEXT = "Привет, вам один один один один тугрик за мой счет. Спасибо!"
+#
+# GIFT_ID — это версия подарка. В записи хранится идентификатор
+# последнего полученного, поэтому стоит поменять его здесь, и подарок
+# выдаётся заново всем: и новым игрокам, и тем, кто брал прошлый.
+GIFT_ID = "2009"
+GIFT_COINS = 2009
+GIFT_TEXT = "Привет, вам две тысячи девять тугриков за мой счет. Спасибо!"
 
 # Секретный пароль из раздела техподдержки: даёт тугрики,
 # сколько угодно раз.
@@ -112,7 +117,7 @@ def default_record():
         "spins": 0,
         "wins": 0,
         "promoUses": 0,
-        "giftTaken": False,
+        "giftTaken": None,
     }
 
 
@@ -289,10 +294,10 @@ def grant_gift(user_id):
     with _lock_for(user_id):
         record = load(user_id)
 
-        if record.get("giftTaken"):
+        if record.get("giftTaken") == GIFT_ID:
             return None
 
-        record["giftTaken"] = True
+        record["giftTaken"] = GIFT_ID
         record["balance"] = int(record.get("balance") or 0) + GIFT_COINS
         record["best"] = max(int(record.get("best") or 0), record["balance"])
 
@@ -337,8 +342,8 @@ def claim_with_gift(user_id, today=None):
             record["lastClaim"] = today
 
         gift = None
-        if not record.get("giftTaken"):
-            record["giftTaken"] = True
+        if record.get("giftTaken") != GIFT_ID:
+            record["giftTaken"] = GIFT_ID
             gift = {
                 "amount": GIFT_COINS,
                 "text": GIFT_TEXT,
@@ -521,7 +526,8 @@ def serialize(user_id, record=None, today=None):
         "dailyCoins": DAILY_COINS,
         "sundayBonus": SUNDAY_BONUS,
         "giftCoins": GIFT_COINS,
-        "giftTaken": bool(record.get("giftTaken")),
+        "giftTaken": record.get("giftTaken") == GIFT_ID,
+        "giftId": GIFT_ID,
         "chessWin": CHESS_WIN_COINS,
         "promoCoins": PROMO_COINS,
         "promoUses": int(record.get("promoUses") or 0),

@@ -195,7 +195,8 @@ print("\n=== Разовый подарок ===")
 
 store.get_store().clear()
 
-check("размер подарка", casino.GIFT_COINS, 1111)
+check("размер подарка", casino.GIFT_COINS, 2009)
+truthy("у подарка есть версия", bool(casino.GIFT_ID), casino.GIFT_ID)
 truthy("текст подарка задан", "тугрик" in casino.GIFT_TEXT, casino.GIFT_TEXT)
 
 record, gained, bonus, error = casino.claim(801)
@@ -210,14 +211,26 @@ check("баланс со подарком", gift["balance"], casino.DAILY_COINS 
 check("повторно подарок не дают", casino.grant_gift(801), None)
 check("баланс не вырос", casino.load(801)["balance"], casino.DAILY_COINS + casino.GIFT_COINS)
 
+# Кто брал прошлый подарок — получает новый: версия другая
+store.get_store().clear()
+casino.save(803, dict(casino.default_record(), giftTaken=True, balance=1000))
+gift = casino.grant_gift(803)
+truthy("старая отметка не мешает новому подарку", gift is not None)
+check("новый подарок начислен", casino.load(803)["balance"], 1000 + casino.GIFT_COINS)
+check("отметка сменилась на новую версию", casino.load(803)["giftTaken"], casino.GIFT_ID)
+check("повторно уже не дают", casino.grant_gift(803), None)
+
 # Новый игрок подарок получает
+store.get_store().clear()
 gift = casino.grant_gift(802)
 truthy("новому игроку подарок", gift is not None)
 check("и сразу начислен", casino.load(802)["balance"], casino.GIFT_COINS)
 
 # Отметка видна клиенту
 check("клиент видит отметку о подарке", casino.serialize(802)["giftTaken"], True)
-check("клиент видит размер подарка", casino.serialize(802)["giftCoins"], 1111)
+check("клиент видит версию подарка", casino.serialize(802)["giftId"], casino.GIFT_ID)
+check("клиент видит размер подарка", casino.serialize(802)["giftCoins"],
+      casino.GIFT_COINS)
 
 # Размеры бонусов
 check("за вход теперь 500", casino.DAILY_COINS, 500)
