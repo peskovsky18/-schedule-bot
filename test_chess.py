@@ -429,15 +429,22 @@ casino.save(202, casino.default_record())
 resign_game = chess_game.create_game(alice)
 resign_game, _ = chess_game.join_game(resign_game, bob)
 
-# Сдаётся Боб — тугрики Алисе
+# Сдаётся Боб: победа есть, а тугриков за неё не дают никому
 winner = chess_api._award_winner(resign_game)
 check("незаконченная партия никому не даёт тугриков", winner, None)
 
 resign_game, _ = chess_game.resign(resign_game, 202)
+check("партия помечена сдачей", resign_game.get("endReason"), "resign")
+check("сдавшийся записан", resign_game.get("resignedBy"), 202)
+
 winner = chess_api._award_winner(resign_game)
-check("при сдаче побеждает соперник", winner, 101)
-check("тугрики у победителя", casino.load(101)["balance"], casino.CHESS_WIN_COINS)
+check("за сдачу награды нет никому", winner, None)
+check("победитель без тугриков", casino.load(101)["balance"], 0)
 check("сдавшийся без тугриков", casino.load(202)["balance"], 0)
+
+# И в ответе приложения награда не обещается
+check("награда не обещана в состоянии",
+      chess_api._state(resign_game, 101)["reward"], 0)
 
 # Ничья не даёт никому
 store.clear()
@@ -458,8 +465,8 @@ check("чёрным ничего", casino.load(202)["balance"], 0)
 store.clear()
 state = chess_game.create_game(alice)
 serialized = chess_api._state(state, 101)
-check("награда указана в состоянии партии",
-      serialized["reward"], casino.CHESS_WIN_COINS)
+# Награда в состоянии появляется только вместе с самой наградой
+check("без награды размер нулевой", serialized["reward"], 0)
 
 
 # =========================

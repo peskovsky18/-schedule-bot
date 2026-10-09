@@ -210,6 +210,11 @@ def resign(game, user_id):
     game["status"] = "finished"
     game["result"] = "0-1" if color == "white" else "1-0"
 
+    # Пометка, что партия кончилась сдачей. По ней награда не выдаётся:
+    # за сдачу тугрики не получает никто, и победитель тоже
+    game["endReason"] = "resign"
+    game["resignedBy"] = user_id
+
     return save_game(game), None
 
 

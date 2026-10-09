@@ -358,6 +358,31 @@ def claim_with_gift(user_id, today=None):
         return record, gained - bonus, bonus, gift, None
 
 
+def spend(user_id, amount):
+    """
+    Списывает тугрики. Возвращает (запись, ошибка).
+
+    Замок тот же, что у начислений: иначе покупка и одновременный
+    прокрут могли бы прочитать один баланс и записать разное.
+    """
+    amount = int(amount)
+
+    with _lock_for(user_id):
+        record = load(user_id)
+        balance = int(record.get("balance") or 0)
+
+        if amount <= 0:
+            return record, None
+
+        if balance < amount:
+            return record, f"Не хватает тугриков: нужно {amount}, на счету {balance}"
+
+        record["balance"] = balance - amount
+        save(user_id, record)
+
+        return record, None
+
+
 def award_chess_win(user_id):
     """Победа в шахматах — тугрики в казино."""
     return add_coins(user_id, CHESS_WIN_COINS)

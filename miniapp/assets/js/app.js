@@ -2387,6 +2387,172 @@
     }, 700);
   }
 
+  /* ---------- ППРСД shop ---------- */
+
+  /**
+   * Магазин: обмен тугриков на подарки.
+   *
+   * Товар и баланс приходят с сервера, покупка уходит туда же.
+   * Имя и контакт обязательны: без них заказ некому передать,
+   * поэтому проверяет и клиент, и сервер.
+   */
+  function initShop() {
+    var box = document.getElementById("shop");
+    var list = document.getElementById("shopList");
+    var form = document.getElementById("shopForm");
+    var nameInput = document.getElementById("shopName");
+    var contactInput = document.getElementById("shopContact");
+    var submitBtn = document.getElementById("shopSubmit");
+    var cancelBtn = document.getElementById("shopCancel");
+    var note = document.getElementById("shopNote");
+
+    if (!box || !list || !form || !nameInput || !contactInput || !submitBtn || !note) {
+      return;
+    }
+
+    var products = [];
+    var balance = 0;
+    var chosen = null;
+    var busy = false;
+
+    function showNote(text, tone) {
+      note.textContent = text || "";
+      note.className = "shop__note" + (tone ? " " + tone : "");
+    }
+
+    function render() {
+      list.textContent = "";
+
+      products.forEach(function (item) {
+        var card = document.createElement("div");
+        card.className = "shop__card";
+
+        var title = document.createElement("div");
+        title.className = "shop__title";
+        title.textContent = item.title;
+
+        var nominal = document.createElement("div");
+        nominal.className = "shop__nominal";
+        nominal.textContent = "Номинал " + item.nominal + " ₽ · " + (item.note || "");
+
+        var row = document.createElement("div");
+        row.className = "shop__price-row";
+
+        var price = document.createElement("span");
+        price.className = "shop__price";
+        price.textContent = tugriks(item.price);
+
+        var left = document.createElement("span");
+        left.className = "shop__balance";
+        left.textContent = "у вас " + tugriks(balance);
+
+        row.appendChild(price);
+        row.appendChild(left);
+
+        var buy = document.createElement("button");
+        buy.className = "shop__buy";
+        buy.type = "button";
+        buy.textContent = balance >= item.price ? "Купить" : "Не хватает тугриков";
+        buy.disabled = balance < item.price;
+        buy.addEventListener("click", function () { openForm(item); });
+
+        card.appendChild(title);
+        card.appendChild(nominal);
+        card.appendChild(row);
+        card.appendChild(buy);
+        list.appendChild(card);
+      });
+    }
+
+    function openForm(item) {
+      chosen = item;
+      form.hidden = false;
+      showNote("");
+      nameInput.focus();
+    }
+
+    function closeForm() {
+      chosen = null;
+      form.hidden = true;
+      form.reset();
+    }
+
+    function load() {
+      fetchWithRetry((apiBase || "") + "/api/shop", { headers: authHeaders() },
+                     LOAD_TIMEOUT_MS, 3)
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (!data || data.ok !== true) return;
+
+          products = data.products || [];
+          balance = data.balance || 0;
+          render();
+        })
+        .catch(function (error) {
+          showNote("Магазин не загрузился: " + (error && error.message ? error.message : "нет связи"), "is-error");
+        });
+    }
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+
+      if (busy || !chosen) return;
+
+      var name = nameInput.value.trim();
+      var contact = contactInput.value.trim();
+
+      if (!name) {
+        showNote("Укажите ваше имя", "is-error");
+        nameInput.focus();
+        return;
+      }
+
+      if (!contact) {
+        showNote("Укажите ваш ID или ник в Telegram", "is-error");
+        contactInput.focus();
+        return;
+      }
+
+      busy = true;
+      submitBtn.disabled = true;
+      showNote("Покупаем…", "is-hint");
+
+      fetchWithRetry((apiBase || "") + "/api/shop/buy", {
+        method: "POST",
+        headers: chessHeaders(),
+        body: JSON.stringify({
+          productId: chosen.id,
+          name: name,
+          contact: contact,
+        }),
+      }, LOAD_TIMEOUT_MS, 1)
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          busy = false;
+          submitBtn.disabled = false;
+
+          if (!data || data.ok !== true) {
+            showNote((data && data.error) || "Не получилось", "is-error");
+            return;
+          }
+
+          balance = data.player ? data.player.balance : balance;
+          closeForm();
+          render();
+          showNote("Готово! Заказ " + data.order.id + " принят, с вами свяжутся.", "is-done");
+        })
+        .catch(function (error) {
+          busy = false;
+          submitBtn.disabled = false;
+          showNote(error && error.message ? error.message : "Нет связи", "is-error");
+        });
+    });
+
+    if (cancelBtn) cancelBtn.addEventListener("click", closeForm);
+
+    load();
+  }
+
   function start() {
     initTelegram();
     watchNetlifyBadge();
@@ -2411,6 +2577,7 @@
     initMusic();
     initCasino();
     initPromo();
+    initShop();
     initWhatsNew();
 
     // Список треков из config.js уже нарисован; дополняем его тем,

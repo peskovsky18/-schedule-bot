@@ -83,7 +83,11 @@ def init_app(app, bot_token, notify=None, mini_app_url=""):
 def _state(game, user_id):
     """Состояние партии плюс размер награды за победу."""
     data = chess_game.serialize(game, user_id)
-    data["reward"] = casino.CHESS_WIN_COINS
+
+    # Размер награды показываем только когда её правда выдали: при
+    # сдаче победитель видит победу, но не «+300», которых не было
+    data["reward"] = casino.CHESS_WIN_COINS if game.get("rewarded") else 0
+
     return data
 
 
@@ -104,6 +108,11 @@ def _award_winner(game):
         return None
 
     if game.get("rewarded"):
+        return None
+
+    # Сдача наградой не считается: победитель получает победу,
+    # но не тугрики — так решил владелец приложения
+    if game.get("endReason") == "resign":
         return None
 
     result = game.get("result")

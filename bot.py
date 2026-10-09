@@ -36,6 +36,7 @@ import chess_api
 import chess_game
 import music
 import music_api
+import shop_api
 import parser
 from parser import format_schedule, get_today, get_tomorrow, get_week, parse_schedule
 
@@ -477,6 +478,39 @@ def start(message):
     )
 
 
+def notify_shop_order(order):
+    """
+    Сообщает администратору о покупке в магазине.
+
+    Отправка уходит в отдельный поток: ответ покупателю не должен
+    ждать Telegram. Заказ к этому моменту уже сохранён, поэтому
+    неудачная отправка ничего не теряет — её видно в списке заказов.
+    """
+    if not ADMIN_ID:
+        return
+
+    text = (
+        "🛍 Новая покупка в ППРСД shop\n\n"
+        f"Товар: {order.get('title')}\n"
+        f"Номинал: {order.get('nominal')} ₽\n"
+        f"Списано: {order.get('price')} тугриков\n\n"
+        f"Имя: {order.get('name')}\n"
+        f"Telegram: {order.get('contact')}\n"
+        f"Покупатель: {order.get('buyerName') or '—'} "
+        f"(id {order.get('buyerId')})\n"
+        f"Заказ: {order.get('id')}"
+    )
+
+    def work():
+        try:
+            bot.send_message(ADMIN_ID, text)
+            print(f"[SHOP] о покупке сообщено администратору")
+        except Exception as e:
+            print("[SHOP] не удалось сообщить о покупке:", e)
+
+    threading.Thread(target=work, daemon=True, name="shop-notify").start()
+
+
 def notify_chess_move(game, game_id, mover_id, resigned=False, reward=None):
     """
     Пишет сопернику, что сделан ход, а победителю — про тугрики.
@@ -502,8 +536,8 @@ def notify_chess_move(game, game_id, mover_id, resigned=False, reward=None):
 
     if not chess_api.seen_recently(game_id, opponent["id"]):
         if resigned:
-            won = reward == opponent["id"]
-            text = "♟ Соперник сдался. Вы победили!" + (coins + "!" if won else "")
+            # Тугриков за сдачу не дают никому, поэтому и обещать нечего
+            text = "♟ Соперник сдался. Вы победили!"
         else:
             board = chess_game.board_of(game)
             if board.is_checkmate():
@@ -550,6 +584,9 @@ chess_api.init_app(app, TOKEN, notify=notify_chess_move, mini_app_url=MINIAPP_UR
 
 # Музыка: раздел /api/music. Администратор может удалять чужие треки.
 music_api.init_app(app, admin_id=ADMIN_ID)
+
+# Магазин: тугрики уходят администратору, ему же и сообщение
+shop_api.init_app(app, admin_id=ADMIN_ID, notify=notify_shop_order)
 
 # Казино: раздел /api/casino. Монеты ненастоящие, но считает их сервер.
 casino_api.init_app(app)
