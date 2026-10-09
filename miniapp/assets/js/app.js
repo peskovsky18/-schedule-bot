@@ -2005,6 +2005,8 @@
     var reelsBox = document.getElementById("casinoReels");
     var resultEl = document.getElementById("casinoResult");
     var betsBox = document.getElementById("casinoBets");
+    var ownInput = document.getElementById("casinoOwnBet");
+    var ownOk = document.getElementById("casinoOwnOk");
     var spinBtn = document.getElementById("casinoSpin");
 
     if (!balanceEl || !reelsBox || !betsBox || !spinBtn) return;
@@ -2064,6 +2066,13 @@
     function renderBets() {
       if (!casinoPlayer || betsBox.childElementCount) return;
 
+      // В подсказке поля — границы, чтобы не угадывать их наугад
+      if (ownInput) {
+        ownInput.placeholder = "от " + (casinoPlayer.minBet || 10) +
+          " до " + (casinoPlayer.maxBet || 100000);
+        ownInput.value = String(bet);
+      }
+
       casinoPlayer.bets.forEach(function (value) {
         var button = el("button", "casino__bet", String(value));
         button.type = "button";
@@ -2080,6 +2089,41 @@
 
         betsBox.appendChild(button);
       });
+    }
+
+    /**
+     * Ставит свою сумму.
+     *
+     * Границы берём с сервера: он всё равно зажмёт ставку в них,
+     * но лучше показать человеку, что именно получилось, чем
+     * молча списать другое.
+     */
+    function applyOwnBet() {
+      if (spinning || !casinoPlayer || !ownInput) return;
+
+      var raw = (ownInput.value || "").replace(/[^0-9]/g, "");
+      if (!raw) {
+        showNote("Введите сумму ставки", "is-error");
+        return;
+      }
+
+      var wanted = parseInt(raw, 10);
+      var low = casinoPlayer.minBet || 10;
+      var high = casinoPlayer.maxBet || 100000;
+      var value = Math.max(low, Math.min(high, wanted));
+
+      bet = value;
+      try {
+        localStorage.setItem(CASINO_BET_KEY, String(value));
+      } catch (e) {}
+
+      ownInput.value = String(value);
+      showNote(value === wanted
+        ? "Ставка " + tugriks(value)
+        : "Ставка " + tugriks(value) + " — границы от " + low + " до " + high,
+        value === wanted ? "is-hint" : "is-error");
+
+      render();
     }
 
     function render() {
@@ -2250,6 +2294,18 @@
     }
 
     casinoRender = render;
+
+    // Своя сумма: по кнопке и по Enter в поле
+    if (ownOk) ownOk.addEventListener("click", applyOwnBet);
+
+    if (ownInput) {
+      ownInput.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          applyOwnBet();
+        }
+      });
+    }
 
     spinBtn.addEventListener("click", spin);
 

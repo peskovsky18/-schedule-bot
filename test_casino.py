@@ -319,12 +319,20 @@ truthy("самый редкий платит больше всех",
 truthy("каждому символу назначена выплата",
        all(s["key"] in casino.TRIPLE for s in casino.SYMBOLS))
 
-check("допустимая ставка", casino.normalize_bet(50), 50)
+# Ставку можно задать свою: она зажимается в границы, но не
+# подтягивается к готовым значениям
+check("готовая ставка", casino.normalize_bet(50), 50)
+check("своя сумма проходит как есть", casino.normalize_bet(60), 60)
+check("и такая, которой нет среди готовых", casino.normalize_bet(37), 37)
 check("нечисловая — по умолчанию", casino.normalize_bet("абракадабра"), casino.DEFAULT_BET)
 check("пустая — по умолчанию", casino.normalize_bet(None), casino.DEFAULT_BET)
-check("слишком большая — наибольшая допустимая", casino.normalize_bet(9999), max(casino.BETS))
-check("промежуточная — ближайшая снизу", casino.normalize_bet(60), 50)
-check("меньше минимальной — минимальная", casino.normalize_bet(1), min(casino.BETS))
+check("слишком большая зажата сверху", casino.normalize_bet(9999999), casino.MAX_BET)
+check("ровно верхняя граница", casino.normalize_bet(casino.MAX_BET), casino.MAX_BET)
+check("меньше минимальной — минимальная", casino.normalize_bet(1), casino.MIN_BET)
+check("ноль — минимальная", casino.normalize_bet(0), casino.MIN_BET)
+check("отрицательная — минимальная", casino.normalize_bet(-500), casino.MIN_BET)
+check("дробная округляется вниз", casino.normalize_bet(60.9), 60)
+check("границы отдаются клиенту", casino.serialize(101)["maxBet"], casino.MAX_BET)
 
 
 # =========================
@@ -456,15 +464,19 @@ check("ставка дошла", data["result"]["bet"], 25)
 check("баланс в ответе совпадает с состоянием",
       data["player"]["balance"], data["result"]["balance"])
 
-# Кладём достаточно тугриков, иначе прокрут отклонится по балансу
+# Кладём достаточно тугриков: ставку теперь можно задать свою,
+# и проверяем суммы вплоть до верхней границы
 rich = casino.load(501)
-rich["balance"] = 1000
+rich["balance"] = casino.MAX_BET * 2
 casino.save(501, rich)
 
 response = client.post("/api/casino/spin", headers=ALICE, json={"bet": 9999})
-check("прокрут с огромной ставкой проходит", response.status_code, 200)
-check("огромная ставка приводится к наибольшей допустимой",
-      response.get_json()["result"]["bet"], max(casino.BETS))
+check("прокрут со своей суммой проходит", response.status_code, 200)
+check("сумма принята как есть", response.get_json()["result"]["bet"], 9999)
+
+response = client.post("/api/casino/spin", headers=ALICE, json={"bet": 99999999})
+check("астрономическая зажата сверху", response.status_code, 200)
+check("и это верхняя граница", response.get_json()["result"]["bet"], casino.MAX_BET)
 
 response = client.post("/api/casino/spin", headers=ALICE, json={"bet": "абракадабра"})
 check("нечисловая ставка — по умолчанию",

@@ -67,7 +67,13 @@ PROMOS = {
 PROMO_COINS = 100
 
 # Ставки, доступные игроку
+# Готовые ставки: по ним рисуются кнопки быстрого выбора
 BETS = [10, 25, 50, 100]
+
+# А можно поставить свою сумму. Границы нужны, чтобы ставка не была
+# нулевой или астрономической: остальное ограничит баланс
+MIN_BET = 10
+MAX_BET = 100000
 DEFAULT_BET = 10
 
 # Барабаны. Вес — относительная частота выпадения символа.
@@ -473,18 +479,20 @@ def payout_for(reels):
 
 
 def normalize_bet(value):
-    """Ставка приводится к одной из разрешённых."""
+    """
+    Ставка приводится к допустимой.
+
+    Раньше разрешены были только четыре готовые суммы и любая другая
+    «прилипала» к ближайшей снизу. Теперь сумму можно задать свою:
+    она просто зажимается в границы, а сверх баланса её не пустит
+    сам прокрут.
+    """
     try:
         number = int(value)
     except (TypeError, ValueError):
         return DEFAULT_BET
 
-    if number in BETS:
-        return number
-
-    # Ближайшая допустимая снизу, чтобы не списать лишнего
-    suitable = [b for b in BETS if b <= number]
-    return max(suitable) if suitable else BETS[0]
+    return max(MIN_BET, min(MAX_BET, number))
 
 
 def spin(user_id, bet=None):
@@ -564,6 +572,8 @@ def serialize(user_id, record=None, today=None):
         "promoUses": int(record.get("promoUses") or 0),
         "streakForBonus": SUNDAY_BONUS_STREAK,
         "bets": BETS,
+        "minBet": MIN_BET,
+        "maxBet": MAX_BET,
         "symbols": [{"key": s["key"], "emoji": s["emoji"]} for s in SYMBOLS],
         "payouts": TRIPLE,
     }
