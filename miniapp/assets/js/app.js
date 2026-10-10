@@ -2481,6 +2481,13 @@
         nominal.className = "shop__nominal";
         nominal.textContent = "Номинал " + item.nominal + " ₽ · " + (item.note || "");
 
+        if (!item.available) {
+          var out = document.createElement("div");
+          out.className = "shop__out";
+          out.textContent = "Нет в наличии";
+          card.appendChild(out);
+        }
+
         var row = document.createElement("div");
         row.className = "shop__price-row";
 
@@ -2498,9 +2505,18 @@
         var buy = document.createElement("button");
         buy.className = "shop__buy";
         buy.type = "button";
-        buy.textContent = balance >= item.price ? "Купить" : "Не хватает тугриков";
-        buy.disabled = balance < item.price;
-        buy.addEventListener("click", function () { openForm(item); });
+
+        if (!item.available) {
+          // Товар показываем, но купить нельзя. Сервер отклонит
+          // покупку и в обход кнопки, здесь — чтобы не предлагать зря
+          buy.textContent = "Нет в наличии";
+          buy.disabled = true;
+          buy.classList.add("is-out");
+        } else {
+          buy.textContent = balance >= item.price ? "Купить" : "Не хватает тугриков";
+          buy.disabled = balance < item.price;
+          buy.addEventListener("click", function () { openForm(item); });
+        }
 
         card.appendChild(title);
         card.appendChild(nominal);

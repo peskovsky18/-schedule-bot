@@ -57,7 +57,20 @@ check("товары отданы", len(state["products"]), 1)
 check("баланс показан", state["balance"], 0)
 check("заказов пока нет", len(state["orders"]), 0)
 
-print("\n=== Проверки перед покупкой ===")
+print("\n=== Наличие ===")
+check("товар помечен отсутствующим", shop.PRODUCTS[0].get("available"), False)
+check("состояние сообщает о наличии", shop.get_state(101)["products"][0]["available"], False)
+
+casino.add_coins(101, 50000)
+check("покупка отклонена", shop.buy(101, "Алиса", "goldapple300", "Алиса", "@alice", ADMIN)[1],
+      "Товара нет в наличии")
+check("тугрики не списаны", casino.load(101)["balance"], 50000)
+check("заказ не создан", len(shop.orders_of(101)), 0)
+
+print("\n=== Проверки перед покупкой (товар вернули в продажу) ===")
+# Дальше проверяем остальные правила, поэтому временно включаем продажу
+shop.PRODUCTS[0]["available"] = True
+casino.save(101, dict(casino.default_record(), balance=0))
 check("без тугриков", shop.buy(101, "Алиса", "goldapple300", "Алиса", "@alice", ADMIN)[1],
       "Не хватает тугриков: нужно 30000, на счету 0")
 
@@ -149,6 +162,9 @@ response = client.post("/api/shop/buy", headers=H, json={
 check("повторно не хватает", response.status_code, 400)
 truthy("сказано почему", "тугриков" in response.get_json()["error"],
        response.get_json()["error"])
+
+# Возвращаем товар в исходное состояние, чтобы не влиять на другие проверки
+shop.PRODUCTS[0]["available"] = False
 
 print()
 if failed:

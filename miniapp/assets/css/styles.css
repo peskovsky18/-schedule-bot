@@ -2029,3 +2029,25 @@ body.has-netlify-badge .app {
 
 .casino__bet-ok:active { transform: scale(0.95); }
 .casino__bet-ok:disabled { opacity: 0.55; cursor: default; }
+
+/* ---------- Товар отсутствует ---------- */
+
+.shop__out {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #ff7a72 16%, transparent);
+  color: #ff7a72;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* Кнопка отсутствующего товара — не акцентная: нажимать нечего */
+.shop__buy.is-out {
+  background: var(--bg-soft);
+  color: var(--hint);
+  border: 1px solid var(--line);
+}

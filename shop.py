@@ -24,6 +24,11 @@ PRODUCTS = [
         "nominal": 300,
         "price": 30000,
         "note": "После покупки с вами свяжутся в Telegram.",
+
+        # Есть ли товар. Пока False, карточка показывается, но купить
+        # нельзя — и кнопка не нажимается, и сервер покупку отклонит.
+        # Достаточно поменять на True, чтобы продажа возобновилась
+        "available": False,
     },
 ]
 
@@ -52,6 +57,7 @@ def serialize_product(item):
         "nominal": item["nominal"],
         "price": item["price"],
         "note": item["note"],
+        "available": bool(item.get("available")),
     }
 
 
@@ -109,6 +115,11 @@ def buy(user_id, buyer_name, product_id, name, contact, admin_id=None):
     item = product(product_id)
     if not item:
         return None, "Такого товара нет"
+
+    # Наличие проверяет сервер, а не только кнопка в приложении:
+    # иначе покупку можно было бы провести запросом в обход
+    if not item.get("available"):
+        return None, "Товара нет в наличии"
 
     name = (name or "").strip()
     contact = (contact or "").strip()
