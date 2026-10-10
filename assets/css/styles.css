@@ -1,0 +1,2053 @@
+/* =========================================================
+   Расписание — Telegram Mini App
+   Цвета по умолчанию совпадают с тёмной темой Telegram;
+   если приложение открыто внутри Telegram, app.js подставит
+   реальные цвета темы пользователя.
+   ========================================================= */
+
+:root {
+  --bg: var(--tg-bg, #0e1116);
+  --bg-soft: var(--tg-secondary-bg, #171b22);
+  --card: var(--tg-section-bg, #1c2128);
+  --text: var(--tg-text, #e9edf2);
+  --hint: var(--tg-hint, #8b95a5);
+  --accent: var(--tg-button, #4c8dff);
+  --accent-text: var(--tg-button-text, #ffffff);
+  --line: rgba(255, 255, 255, 0.08);
+  --shadow: 0 1px 1px rgba(0, 0, 0, 0.14), 0 10px 30px rgba(0, 0, 0, 0.16);
+
+  --radius: 20px;
+  --radius-sm: 12px;
+  --gap: 14px;
+
+  /* Кривая, которой Apple пользуется в анимациях: быстро стартует
+     и мягко тормозит в конце */
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --glass: saturate(180%) blur(20px);
+
+  --lecture: #7c6cff;
+  --practice: #2fb27c;
+  --lab: #f0932b;
+  --other: #8b95a5;
+}
+
+html[data-scheme="light"] {
+  --bg: var(--tg-bg, #f2f4f7);
+  --bg-soft: var(--tg-secondary-bg, #ffffff);
+  --card: var(--tg-section-bg, #ffffff);
+  --text: var(--tg-text, #131720);
+  --hint: var(--tg-hint, #6b7280);
+  --line: rgba(0, 0, 0, 0.08);
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 20px rgba(16, 24, 40, 0.08);
+}
+
+* { box-sizing: border-box; }
+
+/*
+  Атрибут hidden прячет элемент только стилем браузера по умолчанию,
+  поэтому любое своё display (например, display: flex у меню) его
+  перебивает — и «скрытая» панель остаётся на экране. Фиксируем явно.
+*/
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-family: "Helvetica Neue", Helvetica, "Helvetica CY", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.47;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: contain;
+}
+
+.app {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 14px calc(28px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ---------- Шапка ---------- */
+
+.appbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 0 12px;
+  background: linear-gradient(var(--bg) 72%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.appbar__titles { flex: 1; min-width: 0; }
+
+.appbar__group {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.appbar__sub {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--hint);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.icon-btn {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.icon-btn:active { transform: scale(0.94); }
+
+.icon-btn svg { display: block; }
+
+.icon-btn.is-spinning svg { animation: spin 0.7s linear infinite; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .icon-btn.is-spinning svg { animation: none; }
+  * { transition: none !important; }
+}
+
+/* ---------- Переключатель ---------- */
+
+/*
+  Вкладок пять, и на узких экранах подписи могут не поместиться.
+  Поэтому flex с запретом сжатия: когда места хватает — кнопки
+  растягиваются поровну, когда нет — полоса прокручивается.
+*/
+.segmented {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 10px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.segmented::-webkit-scrollbar { display: none; }
+
+.segmented__btn {
+  flex: 1 0 auto;
+  white-space: nowrap;
+  padding: 9px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--hint);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.segmented__btn.is-active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* ---------- Строка состояния ---------- */
+
+.status {
+  min-height: 18px;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+  color: var(--hint);
+}
+
+.status--error { color: #ff6b6b; }
+
+.status__retry {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ---------- Дни ---------- */
+
+.days { display: flex; flex-direction: column; gap: var(--gap); }
+
+.day {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 13px 13px 5px;
+  box-shadow: var(--shadow);
+}
+
+.day--today { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+
+.day__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.day__label {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.day--today .day__label { color: var(--accent); }
+
+.day__date {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--hint);
+  text-transform: capitalize;
+}
+
+.day__count {
+  flex: none;
+  font-size: 12px;
+  color: var(--hint);
+  white-space: nowrap;
+}
+
+.day__empty {
+  padding: 6px 0 12px;
+  color: var(--hint);
+  font-size: 13.5px;
+}
+
+/* ---------- Пары ---------- */
+
+.lessons { display: flex; flex-direction: column; }
+
+.lesson {
+  display: flex;
+  gap: 11px;
+  padding: 11px 0;
+  border-top: 1px solid var(--line);
+}
+
+.lesson:first-child { border-top: 0; }
+
+.lesson__time {
+  flex: none;
+  width: 88px;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  padding-top: 1px;
+}
+
+.lesson__body { flex: 1; min-width: 0; }
+
+.lesson__subject {
+  margin: 0 0 6px;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.lesson__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 6px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.6;
+  background: rgba(139, 149, 165, 0.16);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.badge--lecture { background: rgba(124, 108, 255, 0.18); color: var(--lecture); }
+.badge--practice { background: rgba(47, 178, 124, 0.18); color: var(--practice); }
+.badge--lab { background: rgba(240, 147, 43, 0.18); color: var(--lab); }
+.badge--other { background: rgba(139, 149, 165, 0.16); color: var(--hint); }
+.badge--room { background: rgba(139, 149, 165, 0.12); color: var(--hint); font-weight: 500; }
+
+.lesson__teacher {
+  font-size: 13px;
+  color: var(--hint);
+}
+
+.lesson__note {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--hint);
+}
+
+.lesson__link {
+  display: inline-block;
+  margin-top: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.lesson__link:active { opacity: 0.7; }
+
+/* ---------- Заглушки ---------- */
+
+.empty {
+  padding: 42px 16px;
+  text-align: center;
+  color: var(--hint);
+  background: var(--card);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+}
+
+.empty__icon { font-size: 30px; margin-bottom: 8px; }
+.empty__text { font-size: 14px; }
+
+.skeleton { display: flex; flex-direction: column; gap: var(--gap); }
+
+.skeleton__row {
+  height: 92px;
+  border-radius: var(--radius);
+  background: linear-gradient(90deg, var(--card) 25%, var(--bg-soft) 50%, var(--card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton__row { animation: none; }
+}
+
+/* ---------- Мобильная вёрстка ---------- */
+
+@media (max-width: 420px) {
+  .lesson { gap: 9px; }
+  .lesson__time { width: 74px; font-size: 12.5px; }
+  .appbar__group { font-size: 19px; }
+
+  /* Пять вкладок на узком экране: подписи мельче, чтобы влезли целиком */
+  .segmented__btn { padding: 8px 6px; font-size: 12.5px; }
+}
+
+/* Экран слишком узкий для двух колонок — время уходит наверх */
+@media (max-width: 340px) {
+  .lesson { display: block; }
+  .lesson__time { width: auto; margin-bottom: 4px; }
+  .segmented__btn { font-size: 12px; padding: 8px 5px; }
+}
+
+/* ---------- Меню ---------- */
+
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.menu {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 71;
+
+  /*
+    На весь экран: разделов стало много, и в узкой колонке 330 px они
+    не помещались. На широком экране (например, в Telegram Web)
+    ограничиваем ширину, иначе панель растянется на весь монитор.
+  */
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border-left: 1px solid var(--line);
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.28);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  animation: menu-in 0.18s ease-out;
+}
+
+@keyframes menu-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu { animation: none; }
+}
+
+.menu__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.menu__caption {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--hint);
+}
+
+.menu__close {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--bg-soft);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.menu__close:active { transform: scale(0.92); }
+
+.menu__scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
+/*
+  Плашка Netlify висит поверх страницы в правом нижнем углу, и последние
+  пункты меню оказывались под ней — по ним нельзя было нажать.
+  Оставляем под содержимым место на её высоту (её измеряет app.js).
+*/
+body.has-netlify-badge .menu__scroll {
+  padding-bottom: calc(12px + var(--badge-offset, 0px));
+}
+
+.menu__section {
+  padding: 16px 16px 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--hint);
+}
+
+.menu__nav { display: flex; flex-direction: column; }
+
+.menu__item {
+  padding: 13px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu__item:active { background: var(--bg-soft); }
+
+/* Подсвечиваем раздел, который сейчас открыт на экране */
+.menu__item.is-active { color: var(--accent); font-weight: 600; }
+
+/* ---------- Треки ---------- */
+
+.tracks { display: flex; flex-direction: column; }
+
+.track {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.track:active { background: var(--bg-soft); }
+
+.track__num {
+  flex: none;
+  width: 18px;
+  font-size: 12px;
+  color: var(--hint);
+  text-align: center;
+}
+
+.track.is-current .track__num { color: var(--accent); }
+
+.track__body { flex: 1; min-width: 0; }
+
+.track__name {
+  display: block;
+  font-size: 13.5px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.track.is-current .track__name { color: var(--accent); font-weight: 600; }
+
+/* Полоса и время — только у трека, который сейчас в плеере */
+.track__bar {
+  position: relative;
+  display: none;
+  height: 3px;
+  margin-top: 7px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.track__progress {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.track__time {
+  display: none;
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: var(--hint);
+  font-variant-numeric: tabular-nums;
+}
+
+.track.is-current .track__bar,
+.track.is-current .track__time { display: block; }
+
+.track__icon {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--text);
+}
+
+.track.is-current .track__icon {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.track__icon svg { display: block; }
+.track__icon .icon-play { display: block; }
+.track__icon .icon-pause { display: none; }
+.track.is-playing .track__icon .icon-play { display: none; }
+.track.is-playing .track__icon .icon-pause { display: block; }
+
+/* Плашка Netlify внизу справа не должна закрывать последний день.
+   Высоту измеряет app.js и кладёт в --badge-offset. */
+body.has-netlify-badge .app {
+  padding-bottom: calc(28px + var(--badge-offset, 0px) + env(safe-area-inset-bottom, 0px));
+}
+
+/* ---------- Рулетка ---------- */
+
+.roulette { padding: 4px 16px 8px; }
+
+.wheel {
+  position: relative;
+  width: 172px;
+  height: 172px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  border: 3px solid var(--line);
+  background: var(--bg-soft);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+}
+
+.wheel__disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  /* Длительность и кривую задаёт app.js из настройки spinMs, здесь —
+     запасные значения на случай, если скрипт не успел. Кривая та же:
+     быстрый разгон и долгий плавный подход к концу */
+  transition: transform 2.6s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+/* Указатель смотрит вниз на сектор, который остановился сверху */
+.wheel__pointer {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  margin-left: -9px;
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 15px solid var(--text);
+  z-index: 2;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+
+.wheel__hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 2px solid var(--line);
+  z-index: 1;
+}
+
+.wheel__label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 52px;
+  margin: -17px 0 0 -26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.wheel__emoji { font-size: 16px; line-height: 1; }
+
+.roulette__spin {
+  display: block;
+  width: 100%;
+  max-width: 172px;
+  margin: 0 auto;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.15s ease;
+}
+
+.roulette__spin:active { transform: scale(0.97); }
+.roulette__spin:disabled { opacity: 0.55; cursor: default; transform: none; }
+
+.roulette__result {
+  min-height: 22px;
+  margin-top: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.roulette__result.is-go { color: #45c48c; }
+.roulette__result.is-skip { color: #ff7a72; }
+
+/* Уважаем системную настройку: без анимации колесо просто
+   перескакивает на результат (app.js в этом случае ждёт 0 мс) */
+@media (prefers-reduced-motion: reduce) {
+  .wheel__disc { transition: none; }
+}
+
+/* ---------- Шахматы ---------- */
+
+.chess { padding: 4px 16px 10px; }
+
+.chess__hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--hint);
+}
+
+.chess__btn {
+  display: block;
+  width: 100%;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.15s ease;
+}
+
+.chess__btn:active { transform: scale(0.97); }
+.chess__btn:disabled { opacity: 0.55; cursor: default; transform: none; }
+
+.chess__btn--ghost {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.chess__players {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--hint);
+}
+
+/* Игрок, чей сейчас ход, подсвечивается */
+.chess__player.is-turn { color: var(--accent); font-weight: 600; }
+
+/*
+  Доска: восемь на восемь. Клетки — кнопки, чтобы работали и тап,
+  и клавиатура. Цвета заданы жёстко: шахматная доска должна выглядеть
+  одинаково в светлой и тёмной теме.
+*/
+.chess__board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.chess__cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chess__cell--light { background: #cdd6e3; }
+.chess__cell--dark { background: #6f7f95; }
+
+/* Куда можно пойти: точка на пустой клетке, кольцо — на занятой */
+.chess__cell--target::after {
+  content: "";
+  position: absolute;
+  width: 30%;
+  height: 30%;
+  border-radius: 50%;
+  background: rgba(18, 22, 30, 0.38);
+}
+
+.chess__cell--capture::after {
+  width: 76%;
+  height: 76%;
+  background: transparent;
+  box-shadow: inset 0 0 0 3px rgba(18, 22, 30, 0.38);
+}
+
+.chess__cell--last { box-shadow: inset 0 0 0 100px rgba(255, 214, 102, 0.28); }
+.chess__cell--selected { box-shadow: inset 0 0 0 3px var(--accent); }
+.chess__cell--check { box-shadow: inset 0 0 0 100px rgba(224, 87, 79, 0.45); }
+
+.chess__piece {
+  font-size: min(7vw, 26px);
+  line-height: 1;
+  pointer-events: none;
+
+  /*
+    Запрещаем эмодзи-начертание. Из двенадцати шахматных символов эмодзи
+    является только U+265F (чёрная пешка) — по данным emoji-data.txt.
+    На телефонах платформа брала для него эмодзи-шрифт, а эмодзи рисуется
+    своим цветом и CSS-заливку игнорирует: белая пешка выглядела чёрной.
+    Основное лекарство — селектор U+FE0E в chess.js; это свойство
+    подстраховывает там, где браузер его поддерживает.
+  */
+  font-variant-emoji: text;
+}
+
+/* Белые фигуры — светлая заливка с тёмной обводкой, чёрные наоборот:
+   так они читаются и на светлых, и на тёмных клетках */
+.chess__cell--white .chess__piece {
+  color: #fbfcfe;
+  text-shadow: 0 0 2px #12161e, 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+.chess__cell--black .chess__piece {
+  color: #141a24;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.7);
+}
+
+.chess__turn {
+  min-height: 20px;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.chess__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.chess__error {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: #ff7a72;
+  text-align: center;
+}
+
+/* Выбор фигуры при превращении пешки */
+.chess__promo {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-soft);
+}
+
+.chess__promo-title {
+  margin-bottom: 8px;
+  font-size: 12.5px;
+  color: var(--hint);
+  text-align: center;
+}
+
+.chess__promo-list {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.chess__promo-btn {
+  display: grid;
+  place-items: center;
+  padding: 8px 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chess__promo-btn:active { background: var(--bg-soft); }
+
+/* ---------- Группы в меню ---------- */
+
+/*
+  Заголовок верхнего уровня: «Расписание» и «Приколы». Разделены линией,
+  чтобы несрочное не смешивалось с расписанием.
+*/
+.menu__group {
+  padding: 18px 16px 8px;
+  margin-top: 6px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+
+.menu__group:first-child {
+  margin-top: 0;
+  border-top: 0;
+}
+
+/* Вложенные подписи внутри группы — тише заголовка */
+.menu__group + .menu__section { padding-top: 10px; }
+
+/* ---------- Техподдержка ---------- */
+
+.support {
+  padding: 24px 0 8px;
+  text-align: center;
+}
+
+/*
+  Намеренно неприметная: подчёркнутый текст меньшей прозрачности.
+  На глаза попадается, но от расписания не отвлекает.
+*/
+.support__btn {
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--hint);
+  opacity: 0.45;
+  font: inherit;
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.support__btn:active { opacity: 0.85; }
+
+/* Сообщение: всплывает снизу, закрывается крестиком */
+.support__toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  /*
+    Ширину задаём явно. При одном только left: 50% браузер отводит
+    элементу место лишь до правого края, и сообщение сжималось вдвое —
+    текст переносился на две строки без нужды.
+  */
+  width: calc(100% - 32px);
+  max-width: 380px;
+  padding: 12px 10px 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  font-size: 13.5px;
+  transform: translateX(-50%);
+}
+
+.support__text { flex: 1; }
+
+.support__close {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--bg-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.support__close:active { background: var(--line); }
+
+
+/* ---------- Раскрывающийся заголовок «Приколы» ---------- */
+
+.menu__group--toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menu__group--toggle:active { background: var(--bg-soft); }
+
+.menu__chevron {
+  font-size: 13px;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+
+/* Развёрнуто — стрелка смотрит вверх */
+.menu__group--toggle[aria-expanded="true"] .menu__chevron {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu__chevron { transition: none; }
+}
+
+/*
+  Размер фигур считаем от ширины доски, а не от ширины окна.
+
+  Раньше стояло min(7vw, 26px): после перехода меню на весь экран доска
+  стала шире, и фигуры выглядели бы мелкими. Единицы контейнера дают
+  ровно 70 % от клетки при любой ширине — и на телефоне, и в Telegram Web.
+*/
+@supports (container-type: inline-size) {
+  .chess__board { container-type: inline-size; }
+  .chess__piece { font-size: 9cqw; }
+}
+
+/* ---------- Добавление музыки ---------- */
+
+.music { padding: 4px 16px 12px; }
+
+.music__add {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--hint);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.music__add:active { color: var(--text); border-color: var(--hint); }
+
+.music__form { display: block; }
+
+.music__label {
+  display: block;
+  margin: 12px 0 5px;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--hint);
+}
+
+.music__input,
+.music__file {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+}
+
+.music__input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.music__file { padding: 8px 10px; font-size: 12.5px; }
+
+.music__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.music__submit,
+.music__cancel {
+  flex: 1;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.music__submit { background: var(--accent); color: var(--accent-text); }
+.music__submit:disabled { opacity: 0.55; cursor: default; }
+
+.music__cancel {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.music__note {
+  min-height: 18px;
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--hint);
+}
+
+.music__note.is-error { color: #ff7a72; }
+.music__note.is-done { color: #45c48c; }
+
+/* Строка трека стала контейнером: внутрь кнопки нельзя вложить кнопку */
+.track { width: 100%; user-select: none; -webkit-user-select: none; }
+
+.track__remove {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-right: 8px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--hint);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.track__remove:active { background: var(--line); color: #ff7a72; }
+
+/* Пометка, что трек добавлен через приложение, а не лежит в config.js */
+.track__author {
+  display: block;
+  font-size: 11px;
+  color: var(--hint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Сообщение стоит вне формы, поэтому отступ задаём здесь */
+.music__note:empty { margin-top: 0; }
+
+/* ---------- Казино ---------- */
+
+.casino { padding: 4px 16px 12px; }
+
+.casino__panel {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.casino__money { display: flex; align-items: baseline; gap: 5px; }
+
+.casino__coins {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.casino__coins-label { font-size: 12px; color: var(--hint); }
+
+.casino__streak {
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: var(--hint);
+  text-align: right;
+}
+
+/*
+  Корпус автомата: тёмная панель с ободком и тенью, чтобы читалось
+  как «однорукий бандит», а не как три квадратика.
+*/
+.machine {
+  position: relative;
+  padding: 14px 12px;
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #232a35 0%, #171c24 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06),
+              0 6px 18px rgba(0, 0, 0, 0.32);
+}
+
+.machine__reels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.reel {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 1.15;
+  border-radius: 10px;
+  /* Светлее к середине: экран барабана подсвечен изнутри */
+  background: radial-gradient(circle at 50% 50%, #f3f6fb 0%, #d7dee8 100%);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.reel__symbol {
+  font-size: min(11vw, 38px);
+  line-height: 1;
+  /* Эмодзи: цвет у каждого свой, CSS-заливка тут не работает */
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
+}
+
+/* Линия выплаты через центр барабанов */
+.machine__payline {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: rgba(224, 87, 79, 0.55);
+  pointer-events: none;
+}
+
+.casino__result {
+  min-height: 20px;
+  margin-top: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.casino__result.is-win { color: #45c48c; }
+.casino__result.is-lose { color: var(--hint); }
+.casino__result.is-jackpot { color: #ffcc4d; }
+
+.casino__bet-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.casino__bet-label { font-size: 12px; color: var(--hint); }
+
+.casino__bets {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.casino__bet {
+  flex: 1;
+  padding: 8px 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.casino__bet.is-active {
+  border-color: var(--accent);
+  background: rgba(76, 141, 255, 0.16);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.casino__bet:disabled { opacity: 0.4; cursor: default; }
+
+.casino__spin {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 13px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffd15c 0%, #f0a92b 100%);
+  color: #2a1c00;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.15s ease;
+}
+
+.casino__spin:active { transform: scale(0.98); }
+.casino__spin:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+.casino__note {
+  min-height: 18px;
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--hint);
+}
+
+.casino__note.is-error { color: #ff7a72; }
+.casino__note.is-done { color: #45c48c; }
+
+/* Барабаны крутятся: символы мелькают, кадр не должен дёргаться */
+.reel.is-spinning .reel__symbol { animation: reel-spin 0.12s linear infinite; }
+
+@keyframes reel-spin {
+  0% { transform: translateY(-14%); opacity: 0.55; }
+  50% { opacity: 1; }
+  100% { transform: translateY(14%); opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reel.is-spinning .reel__symbol { animation: none; }
+}
+
+/* ---------- Выбор файла музыки ---------- */
+
+/*
+  Системный input выглядит как мелкая надпись «Выберите файл», по ней
+  трудно попасть пальцем, а на части телефонов она и вовсе не читается
+  как кнопка. Поэтому прячем сам input, а нажимаем на большой label.
+*/
+.music__pick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  color: var(--text);
+  font-size: 13.5px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.music__pick:active { border-color: var(--accent); }
+
+.music__pick.is-chosen {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Прячем, но оставляем доступным с клавиатуры */
+.music__file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.music__hint {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--hint);
+}
+
+/* ---------- Секретный пароль ---------- */
+
+/*
+  Кнопка нарочно почти невидимая: это секрет, а не раздел меню.
+  Кто знает — найдёт, кто нет — не ткнёт случайно.
+*/
+.support__secret {
+  display: block;
+  width: 26px;
+  height: 26px;
+  margin: 2px auto 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--hint);
+  opacity: 0.16;
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.support__secret::before { content: "•"; }
+.support__secret:active { opacity: 0.9; }
+
+.promo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 320px;
+  margin: 12px auto 0;
+}
+
+.promo__input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+}
+
+.promo__input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.promo__submit {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.promo__submit:disabled { opacity: 0.55; cursor: default; }
+
+.promo__note {
+  flex-basis: 100%;
+  min-height: 17px;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--hint);
+}
+
+.promo__note.is-error { color: #ff7a72; }
+.promo__note.is-done { color: #45c48c; }
+
+/* ---------- Окно «что нового» ---------- */
+
+.whatsnew {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.62);
+  animation: whatsnew-in 0.2s ease-out;
+}
+
+@keyframes whatsnew-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.whatsnew__card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 420px;
+  /* Высокое окно прокручивается внутри, а не растягивает экран */
+  max-height: 86vh;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.whatsnew__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 12px 12px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.whatsnew__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.whatsnew__close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--bg-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.whatsnew__close:active { background: var(--line); }
+
+.whatsnew__body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 18px 18px;
+}
+
+.whatsnew__lead {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  color: var(--hint);
+}
+
+.whatsnew__item { margin-bottom: 14px; }
+.whatsnew__item:last-child { margin-bottom: 0; }
+
+.whatsnew__what {
+  margin-bottom: 3px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.whatsnew__item p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--hint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .whatsnew { animation: none; }
+}
+
+/* =========================================================
+   Оформление в духе Apple
+   ---------------------------------------------------------
+   Слой идёт последним и меняет форму, не трогая логику:
+   отступы, скругления, тени, размытие, типографику.
+   Цвета по-прежнему берутся из темы Telegram, поэтому
+   оформление подстраивается под пользователя.
+   ========================================================= */
+
+/* --- Типографика: плотные заголовки, ровные цифры --- */
+
+.appbar__group { font-weight: 700; letter-spacing: -0.022em; }
+.appbar__sub { font-size: 12px; letter-spacing: 0.01em; }
+
+.day__label { font-weight: 600; letter-spacing: -0.015em; }
+.day__date,
+.lesson__time,
+.casino__balance,
+.casino__bet { font-variant-numeric: tabular-nums; }
+
+.lesson__subject { font-weight: 600; letter-spacing: -0.012em; }
+
+/* Мелкие подписи — разрежённые и заглавные: так они читаются
+   как разделы, а не как обычный текст */
+.menu__caption,
+.menu__section,
+.whatsnew__what {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+/* --- Шапка: матовое стекло во всю ширину --- */
+
+.appbar {
+  margin: 0 -14px;
+  padding-left: 14px;
+  padding-right: 14px;
+  padding-top: calc(15px + env(safe-area-inset-top, 0px));
+  padding-bottom: 13px;
+  background: color-mix(in srgb, var(--bg) 68%, transparent);
+  -webkit-backdrop-filter: var(--glass);
+  backdrop-filter: var(--glass);
+  border-bottom: 1px solid var(--line);
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border-color: transparent;
+  background: var(--bg-soft);
+  transition: transform 0.22s var(--ease), background 0.22s ease;
+}
+
+.icon-btn:active {
+  transform: scale(0.9);
+  background: var(--line);
+}
+
+/* --- Переключатель вкладок --- */
+
+.segmented {
+  gap: 2px;
+  padding: 3px;
+  margin-bottom: 14px;
+  border: 0;
+  border-radius: 13px;
+  background: var(--bg-soft);
+}
+
+.segmented__btn {
+  border-radius: 10px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: background 0.24s var(--ease), color 0.24s ease;
+}
+
+.segmented__btn.is-active {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.26), 0 4px 12px rgba(0, 0, 0, 0.14);
+}
+
+/* --- Карточки дней --- */
+
+.days { gap: 14px; }
+
+.day {
+  padding: 16px 16px 6px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.day--today {
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent),
+              var(--shadow);
+}
+
+.lesson {
+  padding: 13px 0;
+  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+/* --- Кнопки: плотные, с мягким нажатием --- */
+
+.chess__btn,
+.casino__spin,
+.roulette__spin,
+.promo__submit {
+  border-radius: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: transform 0.18s var(--ease), opacity 0.18s ease;
+}
+
+.chess__btn:active,
+.casino__spin:active,
+.roulette__spin:active,
+.promo__submit:active {
+  transform: scale(0.975);
+}
+
+.chess__btn,
+.promo__submit { padding: 13px 16px; }
+
+.casino__spin {
+  padding: 15px 16px;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28),
+              0 8px 22px rgba(240, 169, 43, 0.2);
+}
+
+.roulette__spin { padding: 14px 16px; border-radius: 16px; }
+
+.casino__bet {
+  border-radius: 12px;
+  font-weight: 600;
+  transition: transform 0.18s var(--ease), background 0.2s ease;
+}
+
+.casino__bet:active { transform: scale(0.95); }
+
+/* --- Меню: матовое стекло --- */
+
+.menu {
+  background: color-mix(in srgb, var(--bg-soft) 86%, transparent);
+  -webkit-backdrop-filter: var(--glass);
+  backdrop-filter: var(--glass);
+}
+
+.menu__item {
+  border-radius: 14px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* --- Оверлеи --- */
+
+.whatsnew,
+.menu-backdrop {
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(150%);
+}
+
+.whatsnew__card {
+  border-radius: 22px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 24px 60px rgba(0, 0, 0, 0.4);
+}
+
+.promo__input,
+.music__input,
+.music__pick {
+  border-radius: 13px;
+}
+
+/* --- Уважение к системной настройке «меньше движения» --- */
+
+@media (prefers-reduced-motion: reduce) {
+  .appbar,
+  .icon-btn,
+  .segmented__btn,
+  .chess__btn,
+  .casino__spin,
+  .roulette__spin,
+  .promo__submit,
+  .casino__bet,
+  .menu__item {
+    transition: none;
+  }
+}
+
+/* ---------- Уведомление о подарке ---------- */
+
+.gift {
+  position: fixed;
+  inset: 0;
+  /* Выше окна обновления: если совпадут, подарок покажется первым */
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(150%);
+  animation: gift-in 0.3s var(--ease);
+}
+
+@keyframes gift-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.gift__card {
+  width: 100%;
+  max-width: 340px;
+  padding: 28px 22px 20px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.28), 0 28px 60px rgba(0, 0, 0, 0.42);
+  text-align: center;
+  animation: gift-card-in 0.34s var(--ease);
+}
+
+@keyframes gift-card-in {
+  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.gift__amount {
+  margin-bottom: 12px;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.gift__text {
+  margin: 0 0 22px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.gift__ok {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 15px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: transform 0.18s var(--ease);
+}
+
+.gift__ok:active { transform: scale(0.975); }
+
+@media (prefers-reduced-motion: reduce) {
+  .gift, .gift__card { animation: none; }
+}
+
+/* ---------- ППРСД shop ---------- */
+
+.shop { margin-bottom: 8px; }
+
+.shop__hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--hint);
+}
+
+.shop__list { display: flex; flex-direction: column; gap: 12px; }
+
+.shop__card {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.shop__title {
+  margin-bottom: 4px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+
+.shop__nominal {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--hint);
+}
+
+.shop__price-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.shop__price {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.shop__balance {
+  font-size: 12.5px;
+  color: var(--hint);
+  font-variant-numeric: tabular-nums;
+}
+
+.shop__buy {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: transform 0.18s var(--ease), opacity 0.18s ease;
+}
+
+.shop__buy:active { transform: scale(0.975); }
+.shop__buy:disabled { opacity: 0.5; cursor: default; }
+
+.shop__form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+.shop__label {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--hint);
+}
+
+.shop__input {
+  width: 100%;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--bg-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.shop__input:focus { outline: none; border-color: var(--accent); }
+
+.shop__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.shop__submit,
+.shop__cancel {
+  flex: 1;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 14px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.18s var(--ease), opacity 0.18s ease;
+}
+
+.shop__submit { background: var(--accent); color: var(--accent-text); }
+.shop__cancel { background: var(--bg-soft); color: var(--text); }
+.shop__submit:active, .shop__cancel:active { transform: scale(0.975); }
+.shop__submit:disabled { opacity: 0.5; cursor: default; }
+
+.shop__note {
+  min-height: 18px;
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.shop__note.is-error { color: #ff7a72; }
+.shop__note.is-done { color: #45c48c; }
+.shop__note.is-hint { color: var(--hint); }
+
+
+/* ---------- Ставка ---------- */
+
+.casino__bet-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.casino__bet-label {
+  flex: none;
+  font-size: 13px;
+  color: var(--hint);
+}
+
+.casino__bet-input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--bg-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.casino__bet-input:focus { outline: none; border-color: var(--accent); }
+.casino__bet-input:disabled { opacity: 0.5; }
+
+.casino__bet-ok {
+  flex: none;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 13px;
+  background: var(--bg-soft);
+  color: var(--text);
+  border: 1px solid var(--line);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.18s var(--ease), opacity 0.2s ease;
+}
+
+.casino__bet-ok:active { transform: scale(0.95); }
+.casino__bet-ok:disabled { opacity: 0.55; cursor: default; }
+
+/* ---------- Товар отсутствует ---------- */
+
+.shop__out {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #ff7a72 16%, transparent);
+  color: #ff7a72;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* Кнопка отсутствующего товара — не акцентная: нажимать нечего */
+.shop__buy.is-out {
+  background: var(--bg-soft);
+  color: var(--hint);
+  border: 1px solid var(--line);
+}

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ru" data-scheme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0e1116">
+  <title>ППРСД super app</title>
+  <meta name="description" content="Расписание занятий группы — Telegram Mini App">
+
+  <!--
+    ?v=N — обход кэша. GitHub Pages своих заголовков кэша не поддерживает
+    и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
+    поднимайте номер: иначе Telegram покажет старую версию.
+  -->
+  <link rel="stylesheet" href="assets/css/styles.css?v=31">
+
+  <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+
+  <div class="app">
+
+    <header class="appbar">
+      <div class="appbar__titles">
+        <h1 class="appbar__group" id="group">ППРСД super app</h1>
+      </div>
+
+      <button class="icon-btn" id="refresh" type="button" title="Обновить" aria-label="Обновить расписание">
+        <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true">
+          <path fill="currentColor" d="M12 5V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/>
+        </svg>
+      </button>
+
+      <button
+        class="icon-btn"
+        id="menuBtn"
+        type="button"
+        title="Меню"
+        aria-label="Меню"
+        aria-expanded="false"
+        aria-controls="menu"
+      >
+        <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true">
+          <path fill="currentColor" d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z"/>
+        </svg>
+      </button>
+    </header>
+
+    <nav class="segmented" id="segments" aria-label="Период"></nav>
+
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+
+    <main class="days" id="days"></main>
+
+    <!--
+      Кнопка техподдержки. Намеренно тихая: текст меньшей прозрачности,
+      чтобы не отвлекать от расписания.
+    -->
+    <footer class="support">
+      <button class="support__btn" id="supportBtn" type="button">Техподдержка</button>
+
+      <!--
+        Секрет: кто знает пароль, получает тугрики в казино. Кнопка
+        нарочно неприметная — маленькая точка под текстом.
+      -->
+      <button class="support__secret" id="promoBtn" type="button"
+              aria-label="Секретный пароль"></button>
+
+      <form class="promo" id="promoForm" hidden>
+        <!--
+          type="text", а не "password", намеренно. macOS при фокусе на
+          поле пароля принудительно переключает раскладку на латиницу,
+          а пароль русский — вводить его становится невозможно.
+          Остальные запреты нужны, чтобы телефон не поправил слово:
+          автозаглавные буквы и автозамена сломали бы пароль.
+        -->
+        <input class="promo__input" id="promoInput" type="text"
+               placeholder="Секретный пароль" autocomplete="off"
+               autocapitalize="none" autocorrect="off" spellcheck="false"
+               maxlength="60">
+        <button class="promo__submit" id="promoSubmit" type="submit">Получить</button>
+        <div class="promo__note" id="promoNote" role="status" aria-live="polite"></div>
+      </form>
+    </footer>
+
+  </div>
+
+  <!-- Сообщение техподдержки: появляется по кнопке внизу страницы -->
+  <div class="support__toast" id="supportToast" role="status" aria-live="polite" hidden>
+    <span class="support__text">Поддержки нет. Живите так.</span>
+    <button class="support__close" id="supportClose" type="button" aria-label="Закрыть сообщение">✕</button>
+  </div>
+
+  <!-- Затемнение под меню -->
+  <div class="menu-backdrop" id="menuBackdrop" hidden></div>
+
+  <!--
+    Меню открывается на весь экран: разделов стало много, и в узкой
+    колонке они не помещались. Разделы расписания переключают основную
+    вкладку, «Приколы» открываются отдельно.
+  -->
+  <aside class="menu" id="menu" hidden aria-label="Меню">
+    <div class="menu__head">
+      <span class="menu__caption">Меню</span>
+      <button class="menu__close" id="menuClose" type="button" aria-label="Закрыть меню">✕</button>
+    </div>
+
+    <div class="menu__scroll">
+      <div class="menu__group"><span class="menu__group-label">Расписание</span></div>
+      <div class="menu__nav" id="menuNav">
+        <button class="menu__item" type="button" data-mode="week">Неделя</button>
+        <button class="menu__item" type="button" data-mode="all">Всё расписание</button>
+      </div>
+
+      <!--
+        Приколы: собраны под одним заголовком и по умолчанию свёрнуты,
+        чтобы меню не тонуло в развлечениях. Открываются нажатием.
+      -->
+      <button
+        class="menu__group menu__group--toggle"
+        id="funToggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="funContent"
+      >
+        <span class="menu__group-label">Приколы</span>
+        <span class="menu__chevron" aria-hidden="true">▾</span>
+      </button>
+
+      <div class="menu__fun" id="funContent" hidden>
+        <div class="menu__section">Шахматы</div>
+      <div class="chess" id="chess">
+        <!-- Партии ещё нет -->
+        <div class="chess__intro" id="chessIntro" hidden>
+          <p class="chess__hint">
+            Сыграйте с одногруппником. Вы играете белыми и делаете первый ход.
+          </p>
+          <button class="chess__btn" id="chessNew" type="button">Создать партию</button>
+        </div>
+
+        <!-- Идёт партия -->
+        <div class="chess__game" id="chessGame" hidden>
+          <div class="chess__players">
+            <span class="chess__player" id="chessWhite"></span>
+            <span class="chess__player" id="chessBlack"></span>
+          </div>
+
+          <div class="chess__board" id="chessBoard" role="grid"
+               aria-label="Шахматная доска"></div>
+
+          <div class="chess__turn" id="chessTurn" role="status" aria-live="polite"></div>
+
+          <div class="chess__actions">
+            <button class="chess__btn chess__btn--ghost" id="chessInvite" type="button" hidden>
+              Пригласить
+            </button>
+            <button class="chess__btn chess__btn--ghost" id="chessCancel" type="button" hidden>
+              Отменить партию
+            </button>
+            <button class="chess__btn chess__btn--ghost" id="chessResign" type="button" hidden>
+              Сдаться
+            </button>
+            <button class="chess__btn chess__btn--ghost" id="chessAgain" type="button" hidden>
+              Новая партия
+            </button>
+          </div>
+        </div>
+
+        <!-- Выбор фигуры при превращении пешки -->
+        <div class="chess__promo" id="chessPromo" hidden>
+          <div class="chess__promo-title">Во что превратить пешку?</div>
+          <div class="chess__promo-list" id="chessPromoList"></div>
+        </div>
+
+        <p class="chess__error" id="chessError" hidden></p>
+      </div>
+
+        <div class="menu__section">Рулетка</div>
+        <div class="roulette" id="roulette">
+        <div class="wheel">
+          <div class="wheel__disc" id="rouletteWheel"></div>
+          <div class="wheel__hub" aria-hidden="true"></div>
+          <div class="wheel__pointer" aria-hidden="true"></div>
+        </div>
+
+        <button class="roulette__spin" id="rouletteSpin" type="button">Крутить</button>
+        <div class="roulette__result" id="rouletteResult" role="status" aria-live="polite"></div>
+      </div>
+
+        <div class="menu__section">Казино</div>
+        <div class="casino" id="casino">
+          <div class="casino__panel">
+            <div class="casino__money">
+              <span class="casino__coins" id="casinoBalance">0</span>
+              <span class="casino__coins-label" id="casinoUnit">тугриков</span>
+            </div>
+            <div class="casino__streak" id="casinoStreak"></div>
+          </div>
+
+          <!-- Однорукий бандит: три барабана и линия выплаты -->
+          <div class="machine" id="casinoMachine">
+            <div class="machine__reels" id="casinoReels" aria-label="Барабаны автомата">
+              <div class="reel"><span class="reel__symbol">🥔</span></div>
+              <div class="reel"><span class="reel__symbol">🥒</span></div>
+              <div class="reel"><span class="reel__symbol">🧦</span></div>
+            </div>
+            <div class="machine__payline" aria-hidden="true"></div>
+          </div>
+
+          <div class="casino__result" id="casinoResult" role="status" aria-live="polite"></div>
+
+          <!--
+            Ставку задаёт сам игрок: готовых сумм нет, есть только поле.
+            Границы приходят с сервера, он же и зажмёт значение, если
+            ввести что-то за пределами.
+          -->
+          <div class="casino__bet-row">
+            <span class="casino__bet-label">Ставка</span>
+            <input class="casino__bet-input" id="casinoOwnBet" type="text"
+                   inputmode="numeric" maxlength="7" placeholder="10"
+                   autocomplete="off" aria-label="Сумма ставки">
+            <button class="casino__bet-ok" id="casinoOwnOk" type="button">ОК</button>
+          </div>
+
+          <button class="casino__spin" id="casinoSpin" type="button">Дэпнуть</button>
+        </div>
+
+        <div class="menu__section">ППРСД music</div>
+        <div class="tracks" id="tracks"></div>
+
+        <!--
+          Добавление трека прямо в приложении. Файл уходит на сервер
+          и хранится в Redis: мини-приложение статическое, файлы ему
+          хранить негде.
+        -->
+        <div class="music" id="music">
+          <button class="music__add" id="musicAdd" type="button">Добавить трек</button>
+
+          <form class="music__form" id="musicForm" hidden>
+            <label class="music__label" for="musicTitle">Название</label>
+            <input class="music__input" id="musicTitle" type="text" maxlength="80"
+                   placeholder="Как назвать трек" autocomplete="off">
+
+            <span class="music__label">Файл, до 6 МБ</span>
+            <label class="music__pick" for="musicFile">
+              <span class="music__pick-text" id="musicPickText">Выбрать файл на телефоне</span>
+              <input class="music__file" id="musicFile" type="file"
+                     accept="audio/*,.mp3,.m4a,.aac,.ogg,.oga,.opus,.wav,.webm">
+            </label>
+
+            <p class="music__hint">
+              Не открывается выбор файла? Отправьте трек боту прямо в чат —
+              он появится в этом списке.
+            </p>
+
+            <label class="music__label" for="musicUrl">…или ссылка на mp3</label>
+            <input class="music__input" id="musicUrl" type="url"
+                   placeholder="https://" autocomplete="off">
+
+            <div class="music__actions">
+              <button class="music__submit" id="musicSubmit" type="submit">Добавить</button>
+              <button class="music__cancel" id="musicCancel" type="button">Отмена</button>
+            </div>
+          </form>
+
+          <!-- Сообщения нужны и форме, и удалению треков -->
+          <div class="music__note" id="musicNote" role="status" aria-live="polite"></div>
+        </div>
+      </div>
+
+      <!--
+        ППРСД shop: обмен тугриков на подарки. Товар один, и покупка
+        спрашивает имя с контактом — иначе заказ некому передать.
+      -->
+      <div class="menu__section">ППРСД shop</div>
+      <div class="shop" id="shop">
+        <p class="shop__hint" id="shopHint">Обменивайте тугрики на подарки.</p>
+        <div class="shop__list" id="shopList"></div>
+
+        <form class="shop__form" id="shopForm" hidden>
+          <label class="shop__label" for="shopName">Ваше имя</label>
+          <input class="shop__input" id="shopName" type="text" maxlength="60"
+                 placeholder="Как к вам обращаться" autocomplete="off">
+
+          <label class="shop__label" for="shopContact">Ваш ID или ник в Telegram</label>
+          <input class="shop__input" id="shopContact" type="text" maxlength="60"
+                 placeholder="@ник или 123456789" autocomplete="off"
+                 autocapitalize="none" spellcheck="false">
+
+          <div class="shop__actions">
+            <button class="shop__submit" id="shopSubmit" type="submit">Купить</button>
+            <button class="shop__cancel" id="shopCancel" type="button">Отмена</button>
+          </div>
+        </form>
+
+        <div class="shop__note" id="shopNote" role="status" aria-live="polite"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!--
+    Окно «что нового». Показывается один раз: отметка в localStorage
+    под ключом с версией. Для следующего анонса достаточно поднять
+    номер в WHATS_NEW_KEY.
+  -->
+  <div class="whatsnew" id="whatsNew" hidden>
+    <div class="whatsnew__card" role="dialog" aria-modal="true"
+         aria-labelledby="whatsNewTitle">
+      <div class="whatsnew__head">
+        <h2 class="whatsnew__title" id="whatsNewTitle">🎓 Что нового</h2>
+        <button class="whatsnew__close" id="whatsNewClose" type="button"
+                aria-label="Закрыть">✕</button>
+      </div>
+
+      <div class="whatsnew__body">
+        <p class="whatsnew__lead">Приложение заметно выросло. Коротко о главном.</p>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">📅 Расписание</div>
+          <p>Три вкладки сверху: «Сегодня», «Завтра» и «Следующая неделя».
+             Последняя теперь считается от понедельника — как настоящая
+             учебная неделя. Неделя целиком и всё расписание — в меню,
+             кнопка справа вверху.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">🎲 Приколы</div>
+          <p>Новый раздел в меню, по умолчанию свёрнут — разверните,
+             там всё несрочное.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">♟ Шахматы с одногруппником</div>
+          <p>Создаёте партию, нажимаете «Пригласить» и отправляете ссылку.
+             Соперник получает кнопку «Открыть доску». Ходы проверяет
+             сервер, так что схитрить не выйдет. Уйдёте из приложения —
+             бот напишет, когда ваш ход. За победу — 300 тугриков.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">🎰 Казино</div>
+          <p>Однорукий бандит на тугрики. Ставка 10, 25, 50 или 100.
+             500 тугриков за вход каждый день, плюс 3000 в воскресенье —
+             если заходили всю неделю без пропусков.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">🎵 ППРСД music</div>
+          <p>Треки теперь можно добавлять самим! Отправьте боту mp3 прямо
+             в чат — он появится в списке у всех. Можно и через приложение:
+             файлом или ссылкой.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">🛍 ППРСД shop</div>
+          <p>Тугрики можно потратить: подарочная карта в «Золотое Яблоко»
+             на 300 ₽ за 30 000 тугриков. Нужны имя и контакт в Telegram —
+             по ним с вами свяжутся.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">🌀 Рулетка</div>
+          <p>«Идти на пары или не идти». Честный жребий, если сомневаетесь.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">🛠 Техподдержка</div>
+          <p>Внизу главной страницы. Работает ровно так, как и ожидается.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!--
+    Подарок. Показывается один раз: сервер начисляет его при первом
+    входе и запоминает это, поэтому второй раз уведомление не придёт.
+  -->
+  <div class="gift" id="giftBox" hidden>
+    <div class="gift__card" role="dialog" aria-modal="true" aria-labelledby="giftText">
+      <div class="gift__amount" id="giftAmount"></div>
+      <p class="gift__text" id="giftText"></p>
+      <button class="gift__ok" id="giftOk" type="button">Спасибо!</button>
+    </div>
+  </div>
+
+  <script src="assets/js/config.js?v=31"></script>
+  <script src="assets/js/core.js?v=31"></script>
+  <script src="assets/js/chess.js?v=31"></script>
+  <script src="assets/js/app.js?v=31"></script>
+</body>
+</html>
