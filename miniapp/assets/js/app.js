@@ -325,6 +325,24 @@
   var deleteNote = function () {};
   var updateNoteBadge = function () {};
   var populateSubjectDatalist = function () {};
+  var renderNoteList = function () {};
+
+  function showToast(text, isError) {
+    var toast = document.getElementById("appToast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "appToast";
+      toast.className = "app-toast";
+      document.body.appendChild(toast);
+    }
+    toast.textContent = text;
+    toast.className = "app-toast" + (isError ? " is-error" : " is-success");
+    toast.classList.add("is-visible");
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(function () {
+      toast.classList.remove("is-visible");
+    }, 2800);
+  }
 
   function loadStoredNotes() {
     try {
@@ -333,6 +351,16 @@
     } catch (e) {
       notesList = [];
     }
+  }
+
+  function saveStoredNotes() {
+    try {
+      localStorage.setItem(NOTES_KEY, JSON.stringify(notesList));
+    } catch (e) {
+      console.warn("[notes] ошибка записи в localStorage:", e);
+    }
+    updateNoteBadge();
+    renderNoteList();
   }
 
   loadStoredNotes();
@@ -3004,9 +3032,11 @@
 
     deleteNote = function (id) {
       notesList = notesList.filter(function (n) { return n.id !== id; });
-      haptic("warning");
       saveStoredNotes();
       renderDays();
+      renderNoteList();
+      showToast("Задание удалено");
+      haptic("warning");
 
       fetchWithTimeout((apiBase || "") + "/api/notes/" + id, {
         method: "DELETE",
@@ -3014,7 +3044,7 @@
       }, 10000).catch(function () {});
     };
 
-    function renderNoteList() {
+    function renderNoteListImpl() {
       if (!listEl) return;
 
       var activeCount = notesList.filter(function (n) { return !n.done; }).length;
@@ -3081,7 +3111,8 @@
         delBtn.className = "note-item__delete";
         delBtn.type = "button";
         delBtn.setAttribute("aria-label", "Удалить");
-        delBtn.innerHTML = "🗑";
+        delBtn.title = "Удалить задание";
+        delBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
         delBtn.addEventListener("click", function (e) {
           e.stopPropagation();
           deleteNote(n.id);
@@ -3092,7 +3123,33 @@
         card.appendChild(delBtn);
         listEl.appendChild(card);
       });
+
+      var hasDone = notesList.some(function (n) { return n.done; });
+      if (hasDone && (noteFilter === "all" || noteFilter === "done")) {
+        var clearBtn = document.createElement("button");
+        clearBtn.type = "button";
+        clearBtn.className = "notelist__clear-done";
+        clearBtn.textContent = "🗑 Очистить выполненные задания";
+        clearBtn.addEventListener("click", function () {
+          var toRemove = notesList.filter(function (n) { return n.done; });
+          notesList = notesList.filter(function (n) { return !n.done; });
+          saveStoredNotes();
+          renderDays();
+          renderNoteList();
+          showToast("Выполненные задания очищены");
+          haptic("warning");
+          toRemove.forEach(function (n) {
+            fetchWithTimeout((apiBase || "") + "/api/notes/" + n.id, {
+              method: "DELETE",
+              headers: chessHeaders()
+            }, 10000).catch(function () {});
+          });
+        });
+        listEl.appendChild(clearBtn);
+      }
     }
+
+    renderNoteList = renderNoteListImpl;
 
     updateNoteBadge = function () {
       var badge = document.getElementById("noteBadge");
@@ -3227,7 +3284,8 @@
 
         form.reset();
         if (timeInput) timeInput.value = "18:00";
-        showTab("list");
+        closeModal();
+        showToast("✓ Задание сохранено!");
         haptic("success");
 
         fetchWithTimeout((apiBase || "") + "/api/notes", {
