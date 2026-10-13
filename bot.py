@@ -34,8 +34,6 @@ import casino_api
 import casino
 import chess_api
 import chess_game
-import music
-import music_api
 import shop_api
 import parser
 from parser import format_schedule, get_today, get_tomorrow, get_week, parse_schedule
@@ -94,11 +92,8 @@ if not TOKEN:
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-# Потолок на размер запроса. Загрузка музыки идёт файлом, и без этого
-# Flask прочитает в память сколько угодно — а на бесплатном Render
-# всего 512 МБ. Восемь мегабайт покрывают файл в 6 МБ с запасом
-# на обвязку multipart.
-app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
+# Ограничение на размер входящих запросов к Flask (1 МБ)
+app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
 
 # Раздел шахмат /api/chess подключается ниже — после того, как объявлена
 # функция уведомлений: в Python имя должно существовать в момент вызова.
@@ -582,8 +577,6 @@ def notify_chess_move(game, game_id, mover_id, resigned=False, reward=None):
 # notify связывает ходы с сообщениями в боте.
 chess_api.init_app(app, TOKEN, notify=notify_chess_move, mini_app_url=MINIAPP_URL)
 
-# Музыка: раздел /api/music. Администратор может удалять чужие треки.
-music_api.init_app(app, admin_id=ADMIN_ID)
 
 # Магазин: тугрики уходят администратору, ему же и сообщение
 shop_api.init_app(app, admin_id=ADMIN_ID, notify=notify_shop_order)
@@ -659,73 +652,6 @@ def accept_chess_invite(message, game_id):
 # =========================
 # ADMIN PANEL
 # =========================
-@bot.message_handler(content_types=["audio", "voice", "document"])
-def handle_music_upload(message):
-    """
-    Принимает трек, отправленный боту, и кладёт его в общий список.
-
-    Это основной способ добавить музыку: системный выбор файла внутри
-    Telegram WebView открывается не на всех телефонах, а отправка файла
-    боту работает всегда — это родная для Telegram механика.
-    """
-    info = message.audio or message.voice or message.document
-
-    if not info:
-        return
-
-    mime = getattr(info, "mime_type", "") or ""
-    name = getattr(info, "file_name", "") or ""
-
-    if not music.is_audio(mime, name):
-        bot.reply_to(
-            message,
-            "🎵 Это не похоже на аудиофайл.\n\n"
-            "Пришлите mp3, m4a, ogg или wav — и трек появится "
-            "в разделе «ППРСД music».",
-        )
-        return
-
-    size = getattr(info, "file_size", 0) or 0
-    if size > music.MAX_UPLOAD_BYTES:
-        limit = music.MAX_UPLOAD_BYTES // (1024 * 1024)
-        bot.reply_to(message, f"🎵 Файл больше {limit} МБ — пришлите поменьше.")
-        return
-
-    try:
-        file_info = bot.get_file(info.file_id)
-        data = bot.download_file(file_info.file_path)
-    except Exception as e:
-        print("[MUSIC] не удалось скачать файл:", e)
-        bot.reply_to(message, "🎵 Не получилось скачать файл. Попробуйте ещё раз.")
-        return
-
-    player = {
-        "id": message.from_user.id,
-        "name": message.from_user.first_name or "Кто-то",
-    }
-
-    title = (
-        getattr(info, "title", None)
-        or getattr(info, "performer", None)
-        or name
-        or "Трек из Telegram"
-    )
-
-    track, error = music.add_file(player, title, data, mime or "audio/mpeg", name)
-
-    if error:
-        bot.reply_to(message, f"🎵 {error}")
-        return
-
-    print(f"[MUSIC] {player['name']} добавил «{track['title']}» "
-          f"({track['size']} байт)")
-
-    bot.reply_to(
-        message,
-        f"🎵 Добавил «{track['title']}» в раздел «ППРСД music».\n\n"
-        "Откройте приложение, чтобы послушать.",
-    )
-
 
 @bot.message_handler(commands=["admin"])
 def admin(message):

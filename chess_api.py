@@ -16,8 +16,7 @@ import auth
 import casino
 import chess_game
 
-# Проверка подписи вынесена в общий модуль: её используют и шахматы,
-# и музыка. Имена переэкспортируем, чтобы обращаться по-прежнему.
+# Проверка подписи вынесена в auth: имена переэкспортируем, чтобы обращаться по-прежнему.
 from auth import DEV_AUTH, current_user, verify_init_data  # noqa: F401
 
 bp = Blueprint("chess", __name__, url_prefix="/api/chess")
