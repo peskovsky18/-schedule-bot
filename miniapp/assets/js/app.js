@@ -201,6 +201,7 @@
         state.loading = false;
         writeCache(data);
         render();
+        populateSubjectDatalist();
       })
       .catch(function (err) {
         state.loading = false;
@@ -313,6 +314,84 @@
     }
   }
 
+  /* ---------- Заметки и дедлайны к парам ---------- */
+
+  var NOTES_KEY = "schedule.notes.v1";
+  var notesList = [];
+  var noteFilter = "active";
+  var openNoteModal = function () {};
+  var openNoteFormForSubject = function () {};
+  var toggleNote = function () {};
+  var deleteNote = function () {};
+  var updateNoteBadge = function () {};
+  var populateSubjectDatalist = function () {};
+
+  function loadStoredNotes() {
+    try {
+      var raw = localStorage.getItem(NOTES_KEY);
+      if (raw) notesList = JSON.parse(raw) || [];
+    } catch (e) {
+      notesList = [];
+    }
+  }
+
+  loadStoredNotes();
+
+  function getNotesForSubject(subject) {
+    if (!subject) return [];
+    var norm = String(subject).trim().toLowerCase();
+    return notesList.filter(function (n) {
+      return n.subject && String(n.subject).trim().toLowerCase() === norm;
+    });
+  }
+
+  function formatDeadline(iso) {
+    if (!iso) return null;
+    try {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return null;
+
+      var now = new Date();
+      var isOverdue = d.getTime() < now.getTime();
+
+      var months = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+      var day = d.getDate();
+      var month = months[d.getMonth()];
+      var hours = ("0" + d.getHours()).slice(-2);
+      var minutes = ("0" + d.getMinutes()).slice(-2);
+      var timeStr = hours + ":" + minutes;
+
+      var todayStr = core.moscowToday();
+      var dueIsoDate = "";
+      try {
+        dueIsoDate = d.toISOString().split("T")[0];
+      } catch (e) {
+        dueIsoDate = String(iso).split("T")[0];
+      }
+      var isToday = dueIsoDate === todayStr;
+      var isTomorrow = dueIsoDate === core.addDays(todayStr, 1);
+
+      var text = "";
+      if (isOverdue) {
+        text = "⚠️ До " + day + " " + month + ", " + timeStr;
+      } else if (isToday) {
+        text = "⚡ Сегодня в " + timeStr;
+      } else if (isTomorrow) {
+        text = "⏳ Завтра в " + timeStr;
+      } else {
+        text = "📅 " + day + " " + month + ", " + timeStr;
+      }
+
+      return {
+        text: text,
+        isOverdue: isOverdue,
+        isToday: isToday
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
   function renderDays() {
     var box = document.getElementById("days");
     if (!box) return;
@@ -399,7 +478,20 @@
     card.appendChild(el("div", "lesson__time", lesson.time));
 
     var body = el("div", "lesson__body");
-    body.appendChild(el("h3", "lesson__subject", lesson.subject));
+
+    var headRow = el("div", "lesson__head-row");
+    headRow.appendChild(el("h3", "lesson__subject", lesson.subject));
+
+    var addNoteBtn = el("button", "lesson__add-note", "+ Задание");
+    addNoteBtn.type = "button";
+    addNoteBtn.title = "Добавить задание к этой паре";
+    addNoteBtn.addEventListener("click", function (event) {
+      event.stopPropagation();
+      openNoteFormForSubject(lesson.subject);
+    });
+    headRow.appendChild(addNoteBtn);
+
+    body.appendChild(headRow);
 
     var tags = el("div", "lesson__tags");
 
@@ -440,6 +532,49 @@
       });
 
       body.appendChild(link);
+    }
+
+    // Заметки к этой паре
+    var subjectNotes = getNotesForSubject(lesson.subject);
+    if (subjectNotes.length > 0) {
+      var notesWrap = el("div", "lesson__notes");
+      subjectNotes.forEach(function (n) {
+        var item = el("div", "lesson__note-item" + (n.done ? " is-done" : ""));
+
+        var check = document.createElement("input");
+        check.type = "checkbox";
+        check.className = "lesson__note-check";
+        check.checked = !!n.done;
+        check.title = n.done ? "Отметить невыполненным" : "Отметить выполненным";
+        check.addEventListener("click", function (e) {
+          e.stopPropagation();
+          toggleNote(n.id);
+        });
+
+        var content = el("div", "lesson__note-content");
+        var textEl = el("span", "lesson__note-text", n.text);
+        content.appendChild(textEl);
+
+        if (n.deadline) {
+          var due = formatDeadline(n.deadline);
+          if (due) {
+            var dueEl = el("span", "lesson__note-due" + (due.isOverdue ? " is-overdue" : ""), due.text);
+            content.appendChild(dueEl);
+          }
+        }
+
+        item.appendChild(check);
+        item.appendChild(content);
+
+        item.addEventListener("click", function (e) {
+          if (e.target !== check) {
+            openNoteModal();
+          }
+        });
+
+        notesWrap.appendChild(item);
+      });
+      body.appendChild(notesWrap);
     }
 
     card.appendChild(body);
@@ -2780,6 +2915,349 @@
     renderSolo();
   }
 
+  /* ---------- Заметки и задания к парам ---------- */
+
+  function initNotes() {
+    loadStoredNotes();
+
+    var addBtn = document.getElementById("addNoteBtn");
+    var menuNotesBtn = document.getElementById("menuNotesBtn");
+    var modal = document.getElementById("noteModal");
+    var backdrop = document.getElementById("noteModalBackdrop");
+    var closeBtn = document.getElementById("noteModalClose");
+
+    var tabList = document.getElementById("noteTabList");
+    var tabForm = document.getElementById("noteTabForm");
+    var tabCount = document.getElementById("noteTabCount");
+
+    var form = document.getElementById("noteForm");
+    var subjectInput = document.getElementById("noteSubjectInput");
+    var textInput = document.getElementById("noteTextInput");
+    var dateInput = document.getElementById("noteDateInput");
+    var timeInput = document.getElementById("noteTimeInput");
+    var chipToday = document.getElementById("noteChipToday");
+    var chipTomorrow = document.getElementById("noteChipTomorrow");
+    var chipWeek = document.getElementById("noteChipWeek");
+    var chipClear = document.getElementById("noteChipClear");
+    var cancelBtn = document.getElementById("noteCancelBtn");
+
+    var listWrap = document.getElementById("noteListWrap");
+    var listEl = document.getElementById("noteList");
+    var filterBtns = document.querySelectorAll(".notelist__filter");
+
+    if (!modal) return;
+
+    function openModal() {
+      modal.hidden = false;
+      showTab("list");
+      populateSubjectDatalist();
+      renderNoteList();
+      haptic("light");
+    }
+
+    function closeModal() {
+      modal.hidden = true;
+    }
+
+    function showTab(tab) {
+      if (tab === "form") {
+        if (tabForm) tabForm.classList.add("is-active");
+        if (tabList) tabList.classList.remove("is-active");
+        if (form) form.hidden = false;
+        if (listWrap) listWrap.hidden = true;
+        if (textInput) textInput.focus();
+      } else {
+        if (tabForm) tabForm.classList.remove("is-active");
+        if (tabList) tabList.classList.add("is-active");
+        if (form) form.hidden = true;
+        if (listWrap) listWrap.hidden = false;
+        renderNoteList();
+      }
+    }
+
+    openNoteModal = openModal;
+    openNoteFormForSubject = function (subj) {
+      modal.hidden = false;
+      showTab("form");
+      if (subjectInput) subjectInput.value = subj || "";
+      if (textInput) textInput.focus();
+      haptic("light");
+    };
+
+    toggleNote = function (id) {
+      for (var i = 0; i < notesList.length; i++) {
+        if (notesList[i].id === id) {
+          notesList[i].done = !notesList[i].done;
+          haptic("light");
+          break;
+        }
+      }
+      saveStoredNotes();
+      renderDays();
+
+      fetchWithTimeout((apiBase || "") + "/api/notes/toggle", {
+        method: "POST",
+        headers: chessHeaders(),
+        body: JSON.stringify({ id: id })
+      }, 10000).catch(function () {});
+    };
+
+    deleteNote = function (id) {
+      notesList = notesList.filter(function (n) { return n.id !== id; });
+      haptic("warning");
+      saveStoredNotes();
+      renderDays();
+
+      fetchWithTimeout((apiBase || "") + "/api/notes/" + id, {
+        method: "DELETE",
+        headers: chessHeaders()
+      }, 10000).catch(function () {});
+    };
+
+    function renderNoteList() {
+      if (!listEl) return;
+
+      var activeCount = notesList.filter(function (n) { return !n.done; }).length;
+      if (tabCount) tabCount.textContent = activeCount > 0 ? "(" + activeCount + ")" : "";
+
+      var filtered = notesList.filter(function (n) {
+        if (noteFilter === "active") return !n.done;
+        if (noteFilter === "done") return n.done;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        var msg = noteFilter === "done" ? "Выполненных заданий пока нет." :
+                  noteFilter === "active" ? "Все задания выполнены! Отличная работа 🎉" :
+                  "Заметок пока нет. Нажмите «+ Новая заметка», чтобы записать задание к паре.";
+        listEl.innerHTML = '<div class="notelist__empty"><div class="notelist__empty-icon">📝</div>' + msg + '</div>';
+        return;
+      }
+
+      listEl.innerHTML = "";
+      filtered.forEach(function (n) {
+        var card = document.createElement("div");
+        card.className = "note-item" + (n.done ? " is-done" : "");
+
+        var check = document.createElement("input");
+        check.type = "checkbox";
+        check.className = "note-item__checkbox";
+        check.checked = !!n.done;
+        check.title = n.done ? "Отметить невыполненным" : "Отметить выполненным";
+        check.addEventListener("change", function (e) {
+          e.stopPropagation();
+          toggleNote(n.id);
+        });
+
+        var body = document.createElement("div");
+        body.className = "note-item__body";
+
+        var top = document.createElement("div");
+        top.className = "note-item__top";
+
+        var subj = document.createElement("span");
+        subj.className = "note-item__subject";
+        subj.textContent = n.subject || "Общая заметка";
+        top.appendChild(subj);
+
+        if (n.deadline) {
+          var due = formatDeadline(n.deadline);
+          if (due) {
+            var dueEl = document.createElement("span");
+            dueEl.className = "note-item__deadline" + (due.isOverdue ? " is-overdue" : "") + (due.isToday ? " is-today" : "");
+            dueEl.textContent = due.text;
+            top.appendChild(dueEl);
+          }
+        }
+
+        body.appendChild(top);
+
+        var textEl = document.createElement("div");
+        textEl.className = "note-item__text";
+        textEl.textContent = n.text;
+        body.appendChild(textEl);
+
+        var delBtn = document.createElement("button");
+        delBtn.className = "note-item__delete";
+        delBtn.type = "button";
+        delBtn.setAttribute("aria-label", "Удалить");
+        delBtn.innerHTML = "🗑";
+        delBtn.addEventListener("click", function (e) {
+          e.stopPropagation();
+          deleteNote(n.id);
+        });
+
+        card.appendChild(check);
+        card.appendChild(body);
+        card.appendChild(delBtn);
+        listEl.appendChild(card);
+      });
+    }
+
+    updateNoteBadge = function () {
+      var badge = document.getElementById("noteBadge");
+      if (!badge) return;
+      var activeCount = notesList.filter(function (n) { return !n.done; }).length;
+      badge.hidden = activeCount === 0;
+    };
+
+    populateSubjectDatalist = function () {
+      var datalist = document.getElementById("noteSubjectList");
+      if (!datalist || !state.data || !state.data.days) return;
+      var subjects = {};
+      state.data.days.forEach(function (d) {
+        if (d.lessons) {
+          d.lessons.forEach(function (l) {
+            if (l.subject && l.subject.trim()) subjects[l.subject.trim()] = true;
+          });
+        }
+      });
+      datalist.innerHTML = "";
+      Object.keys(subjects).sort().forEach(function (s) {
+        var opt = document.createElement("option");
+        opt.value = s;
+        datalist.appendChild(opt);
+      });
+    };
+
+    if (addBtn) {
+      addBtn.addEventListener("click", function () {
+        modal.hidden = false;
+        if (notesList.length === 0) showTab("form");
+        else showTab("list");
+        populateSubjectDatalist();
+        haptic("light");
+      });
+    }
+
+    if (menuNotesBtn) {
+      menuNotesBtn.addEventListener("click", function () {
+        var menuClose = document.getElementById("menuClose");
+        if (menuClose) menuClose.click();
+        openModal();
+      });
+    }
+
+    if (closeBtn) closeBtn.addEventListener("click", closeModal);
+    if (backdrop) backdrop.addEventListener("click", closeModal);
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !modal.hidden) closeModal();
+    });
+
+    if (tabList) tabList.addEventListener("click", function () { showTab("list"); });
+    if (tabForm) tabForm.addEventListener("click", function () { showTab("form"); });
+
+    if (chipToday) {
+      chipToday.addEventListener("click", function () {
+        dateInput.value = core.moscowToday();
+        if (!timeInput.value) timeInput.value = "18:00";
+        haptic("selection");
+      });
+    }
+    if (chipTomorrow) {
+      chipTomorrow.addEventListener("click", function () {
+        dateInput.value = core.addDays(core.moscowToday(), 1);
+        if (!timeInput.value) timeInput.value = "18:00";
+        haptic("selection");
+      });
+    }
+    if (chipWeek) {
+      chipWeek.addEventListener("click", function () {
+        dateInput.value = core.addDays(core.moscowToday(), 7);
+        if (!timeInput.value) timeInput.value = "18:00";
+        haptic("selection");
+      });
+    }
+    if (chipClear) {
+      chipClear.addEventListener("click", function () {
+        dateInput.value = "";
+        timeInput.value = "";
+        haptic("selection");
+      });
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", function () {
+        showTab("list");
+      });
+    }
+
+    if (filterBtns && filterBtns.length) {
+      Array.prototype.forEach.call(filterBtns, function (btn) {
+        btn.addEventListener("click", function () {
+          Array.prototype.forEach.call(filterBtns, function (b) { b.classList.remove("is-active"); });
+          btn.classList.add("is-active");
+          noteFilter = btn.dataset.filter || "all";
+          renderNoteList();
+          haptic("selection");
+        });
+      });
+    }
+
+    if (form) {
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var subj = subjectInput ? subjectInput.value.trim() : "";
+        var text = textInput ? textInput.value.trim() : "";
+        var date = dateInput ? dateInput.value.trim() : "";
+        var time = timeInput ? timeInput.value.trim() : "";
+
+        if (!text) {
+          if (textInput) textInput.focus();
+          return;
+        }
+
+        var deadline = "";
+        if (date) {
+          deadline = date + "T" + (time || "18:00");
+        }
+
+        var newNote = {
+          id: "note_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+          subject: subj,
+          text: text,
+          deadline: deadline,
+          done: false,
+          created_at: Math.floor(Date.now() / 1000)
+        };
+
+        notesList.unshift(newNote);
+        saveStoredNotes();
+        renderDays();
+
+        form.reset();
+        if (timeInput) timeInput.value = "18:00";
+        showTab("list");
+        haptic("success");
+
+        fetchWithTimeout((apiBase || "") + "/api/notes", {
+          method: "POST",
+          headers: chessHeaders(),
+          body: JSON.stringify(newNote)
+        }, 10000).catch(function () {});
+      });
+    }
+
+    fetchWithRetry((apiBase || "") + "/api/notes", {
+      headers: authHeaders()
+    }, LOAD_TIMEOUT_MS, 1)
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data && data.ok && Array.isArray(data.notes)) {
+          var map = {};
+          notesList.forEach(function (n) { map[n.id] = n; });
+          data.notes.forEach(function (n) { map[n.id] = n; });
+          notesList = Object.keys(map).map(function (k) { return map[k]; });
+          notesList.sort(function (a, b) { return (b.created_at || 0) - (a.created_at || 0); });
+          saveStoredNotes();
+          renderDays();
+        }
+      })
+      .catch(function () {});
+
+    updateNoteBadge();
+  }
+
   function start() {
     initTelegram();
     watchNetlifyBadge();
@@ -2805,6 +3283,7 @@
     initLeaderboard();
     initPromo();
     initShop();
+    initNotes();
     initWhatsNew();
 
     // Монеты за вход начисляем при каждом запуске: сервер сам решит,
