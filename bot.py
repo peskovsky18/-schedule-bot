@@ -38,6 +38,7 @@ import shop_api
 import ttt_api
 import ttt_game
 import notes_api
+import pet_api
 import parser
 from parser import format_schedule, get_today, get_tomorrow, get_week, parse_schedule
 
@@ -635,6 +636,9 @@ casino_api.init_app(app)
 
 # Заметки и задания к парам с дедлайнами
 notes_api.init_app(app)
+
+# Питомец-тамагочи
+pet_api.init_app(app)
 
 
 def accept_chess_invite(message, game_id):

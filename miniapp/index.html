@@ -13,7 +13,7 @@
     и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
     поднимайте номер: иначе Telegram покажет старую версию.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=35">
+  <link rel="stylesheet" href="assets/css/styles.css?v=36">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -124,6 +124,7 @@
       <div class="menu__group"><span class="menu__group-label">Учёба</span></div>
       <div class="menu__nav">
         <button class="menu__item" id="menuNotesBtn" type="button">📝 Заметки и дедлайны</button>
+        <button class="menu__item" id="menuPetNavBtn" type="button">🐾 Питомец-тамагочи</button>
       </div>
 
       <!--
@@ -302,6 +303,121 @@
 
       </div>
 
+      <!-- Тамагочи: питомец группы -->
+      <div class="menu__section">Питомец-тамагочи</div>
+      <div class="pet" id="petSection">
+
+        <!-- Загрузка -->
+        <div class="pet__loading" id="petLoading">Загружаем питомца…</div>
+
+        <!-- Питомца ещё нет -->
+        <div class="pet__adopt" id="petAdoptBox" hidden>
+          <div class="pet__preview-avatar" aria-hidden="true">
+            <div class="pet__ghost-blob">🐾</div>
+          </div>
+          <h3 class="pet__adopt-title">Заведите своего питомца</h3>
+          <p class="pet__adopt-text">
+            Милый персонаж-стрик. Кормите его яблоками за 100 тугриков и покупайте стильные аксессуары. Но будьте внимательны: если не заходить к нему 5 дней, он погибает!
+          </p>
+          <div class="pet__adopt-cost">Создание: <strong>1 000 тугриков</strong></div>
+          <div class="pet__adopt-row">
+            <input class="pet__input" id="petNameInput" type="text" maxlength="30"
+                   placeholder="Имя питомца (например: Стрики)" autocomplete="off">
+            <button class="pet__btn pet__btn--primary" id="petAdoptBtn" type="button">Завести</button>
+          </div>
+          <p class="pet__error" id="petAdoptError" hidden></p>
+        </div>
+
+        <!-- Питомец существует (жив или погиб) -->
+        <div class="pet__active" id="petActiveBox" hidden>
+          <div class="pet__header">
+            <div class="pet__info">
+              <span class="pet__name" id="petName"></span>
+              <span class="pet__age" id="petAge"></span>
+            </div>
+            <div class="pet__hearts-wrap">
+              <div class="pet__hearts" id="petHearts" aria-label="Здоровье питомца"></div>
+              <span class="pet__timer" id="petTimer"></span>
+            </div>
+          </div>
+
+          <div class="pet__stage">
+            <div class="pet__char" id="petChar" role="button" tabindex="0" title="Нажмите, чтобы погладить">
+              <svg class="pet__svg" id="petSvg" viewBox="0 0 160 160" width="160" height="160">
+                <defs>
+                  <linearGradient id="petGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#ff7b54" />
+                    <stop offset="50%" stop-color="#ff5252" />
+                    <stop offset="100%" stop-color="#9c27b0" />
+                  </linearGradient>
+                  <linearGradient id="petGhostGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#b2ebf2" />
+                    <stop offset="100%" stop-color="#80deea" />
+                  </linearGradient>
+                </defs>
+
+                <ellipse class="pet__shadow" cx="80" cy="148" rx="42" ry="7" fill="rgba(0,0,0,0.25)" />
+
+                <g class="pet__body-group" id="petBodyGroup">
+                  <path class="pet__body" id="petBodyPath"
+                    d="M 80 26 C 112 26 132 58 132 94 C 132 126 108 144 80 144 C 52 144 28 126 28 94 C 28 58 48 26 80 26 Z"
+                    fill="url(#petGradient)" />
+
+                  <circle class="pet__blush" id="petBlushLeft" cx="54" cy="95" r="7" fill="#ff4081" opacity="0.45" />
+                  <circle class="pet__blush" id="petBlushRight" cx="106" cy="95" r="7" fill="#ff4081" opacity="0.45" />
+
+                  <g class="pet__eyes" id="petEyes">
+                    <circle cx="62" cy="84" r="7.5" fill="#18181b" />
+                    <circle cx="60" cy="81.5" r="3" fill="#ffffff" />
+                    <circle cx="64" cy="85.5" r="1.3" fill="#ffffff" />
+
+                    <circle cx="98" cy="84" r="7.5" fill="#18181b" />
+                    <circle cx="96" cy="81.5" r="3" fill="#ffffff" />
+                    <circle cx="100" cy="85.5" r="1.3" fill="#ffffff" />
+                  </g>
+
+                  <path class="pet__mouth" id="petMouth" d="M 74 98 Q 80 104 86 98" fill="none" stroke="#18181b" stroke-width="2.5" stroke-linecap="round" />
+
+                  <g class="pet__layer-neck" id="petLayerNeck"></g>
+                  <g class="pet__layer-hat" id="petLayerHat"></g>
+                </g>
+
+                <ellipse class="pet__halo" id="petHalo" cx="80" cy="18" rx="28" ry="6" fill="none" stroke="#ffd54f" stroke-width="3.5" opacity="0" />
+              </svg>
+            </div>
+
+            <div class="pet__reaction" id="petReaction" aria-hidden="true"></div>
+          </div>
+
+          <div class="pet__alive-box" id="petAliveBox">
+            <button class="pet__feed-btn" id="petFeedBtn" type="button">
+              <span class="pet__feed-icon">🍎</span>
+              <span class="pet__feed-text">Покормить яблоком</span>
+              <span class="pet__feed-price">100 тугриков (+1 ❤️)</span>
+            </button>
+
+            <div class="pet__wardrobe-title">Гардероб и аксессуары</div>
+            <div class="pet__wardrobe" id="petWardrobe">
+              <div class="pet__items-grid" id="petItemsGrid"></div>
+            </div>
+          </div>
+
+          <div class="pet__dead-box" id="petDeadBox" hidden>
+            <div class="pet__dead-icon">🪦</div>
+            <h4 class="pet__dead-title">Питомец ушёл на радугу…</h4>
+            <p class="pet__dead-text">Вы не заходили к нему 5 дней, и сердечки закончились. Но вы можете завести нового друга!</p>
+            <div class="pet__adopt-row">
+              <input class="pet__input" id="petReviveNameInput" type="text" maxlength="30"
+                     placeholder="Имя нового питомца" autocomplete="off">
+              <button class="pet__btn pet__btn--primary" id="petReviveBtn" type="button">Завести нового (1 000 тугриков)</button>
+            </div>
+            <p class="pet__error" id="petReviveError" hidden></p>
+          </div>
+
+          <p class="pet__note" id="petNote" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+
       <!--
         ППРСД shop: обмен тугриков на подарки. Товар один, и покупка
         спрашивает имя с контактом — иначе заказ некому передать.
@@ -389,6 +505,11 @@
         <div class="whatsnew__item">
           <div class="whatsnew__what">🌀 Рулетка</div>
           <p>«Идти на пары или не идти». Честный жребий, если сомневаетесь.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">🐾 Питомец-тамагочи</div>
+          <p>Заведите своего персонажа-стрика за 1 000 тугриков. Кормите его яблоками за 100 тугриков, наряжайте в стильные аксессуары и не забывайте заходить: без еды питомец проживёт ровно 5 дней!</p>
         </div>
 
         <div class="whatsnew__item">
@@ -505,9 +626,9 @@
     </div>
   </div>
 
-  <script src="assets/js/config.js?v=35"></script>
-  <script src="assets/js/core.js?v=35"></script>
-  <script src="assets/js/chess.js?v=35"></script>
-  <script src="assets/js/app.js?v=35"></script>
+  <script src="assets/js/config.js?v=36"></script>
+  <script src="assets/js/core.js?v=36"></script>
+  <script src="assets/js/chess.js?v=36"></script>
+  <script src="assets/js/app.js?v=36"></script>
 </body>
 </html>

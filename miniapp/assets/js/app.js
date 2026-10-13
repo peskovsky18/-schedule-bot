@@ -3316,6 +3316,509 @@
     updateNoteBadge();
   }
 
+  /* ---------- Питомец-тамагочи ---------- */
+
+  function initPet() {
+    var section = document.getElementById("petSection");
+    if (!section) return;
+
+    var loadingEl = document.getElementById("petLoading");
+    var adoptBox = document.getElementById("petAdoptBox");
+    var nameInput = document.getElementById("petNameInput");
+    var adoptBtn = document.getElementById("petAdoptBtn");
+    var adoptErr = document.getElementById("petAdoptError");
+
+    var activeBox = document.getElementById("petActiveBox");
+    var nameEl = document.getElementById("petName");
+    var ageEl = document.getElementById("petAge");
+    var heartsEl = document.getElementById("petHearts");
+    var timerEl = document.getElementById("petTimer");
+
+    var petChar = document.getElementById("petChar");
+    var layerHat = document.getElementById("petLayerHat");
+    var layerNeck = document.getElementById("petLayerNeck");
+    var reactionBox = document.getElementById("petReaction");
+
+    var aliveBox = document.getElementById("petAliveBox");
+    var feedBtn = document.getElementById("petFeedBtn");
+    var itemsGrid = document.getElementById("petItemsGrid");
+
+    var deadBox = document.getElementById("petDeadBox");
+    var reviveInput = document.getElementById("petReviveNameInput");
+    var reviveBtn = document.getElementById("petReviveBtn");
+    var reviveErr = document.getElementById("petReviveError");
+
+    var navBtn = document.getElementById("menuPetNavBtn");
+
+    var petData = null;
+    var petBalance = 0;
+    var petCatalog = [];
+    var busy = false;
+
+    var ITEM_SVGS = {
+      cap: '<path d="M 50 36 C 50 20 110 20 110 36 Z" fill="#2563eb" />' +
+           '<path d="M 44 36 C 44 34 76 28 116 34 C 122 36 120 40 112 40 C 80 40 44 38 44 36 Z" fill="#1d4ed8" />' +
+           '<circle cx="80" cy="22" r="3" fill="#60a5fa" />',
+      shades: '<line x1="72" y1="82" x2="88" y2="82" stroke="#111827" stroke-width="3" stroke-linecap="round" />' +
+              '<path d="M 48 76 L 73 76 L 71 91 C 70 94 51 94 50 91 Z" fill="#111827" stroke="#374151" stroke-width="1.5" />' +
+              '<path d="M 87 76 L 112 76 L 110 91 C 109 94 90 94 89 91 Z" fill="#111827" stroke="#374151" stroke-width="1.5" />' +
+              '<line x1="52" y1="79" x2="68" y2="89" stroke="#ffffff" stroke-width="1.5" opacity="0.6" stroke-linecap="round" />' +
+              '<line x1="91" y1="79" x2="107" y2="89" stroke="#ffffff" stroke-width="1.5" opacity="0.6" stroke-linecap="round" />',
+      grad: '<polygon points="80,12 120,24 80,36 40,24" fill="#1e1e24" stroke="#3f3f46" stroke-width="1" />' +
+            '<path d="M 62 29 Q 80 25 98 29 L 96 38 Q 80 42 64 38 Z" fill="#18181b" />' +
+            '<circle cx="80" cy="24" r="2" fill="#eab308" />' +
+            '<path d="M 80 24 Q 105 28 108 42" fill="none" stroke="#eab308" stroke-width="1.5" />' +
+            '<circle cx="108" cy="43" r="2" fill="#eab308" />',
+      crown: '<path d="M 52 32 L 56 16 L 68 25 L 80 12 L 92 25 L 104 16 L 108 32 Z" fill="#fbbf24" stroke="#d97706" stroke-width="1.5" />' +
+             '<circle cx="56" cy="16" r="2.5" fill="#ef4444" />' +
+             '<circle cx="80" cy="12" r="3" fill="#3b82f6" />' +
+             '<circle cx="104" cy="16" r="2.5" fill="#10b981" />' +
+             '<circle cx="80" cy="27" r="2" fill="#ffffff" opacity="0.8" />',
+      headphones: '<path d="M 44 80 C 44 14 116 14 116 80" fill="none" stroke="#22c55e" stroke-width="4.5" stroke-linecap="round" />' +
+                  '<rect x="36" y="68" width="11" height="24" rx="5" fill="#16a34a" stroke="#15803d" stroke-width="1.5" />' +
+                  '<rect x="113" y="68" width="11" height="24" rx="5" fill="#16a34a" stroke="#15803d" stroke-width="1.5" />',
+      bow: '<circle cx="80" cy="112" r="4" fill="#ec4899" />' +
+           '<polygon points="80,112 65,104 65,120" fill="#f472b6" stroke="#db2777" stroke-width="1" />' +
+           '<polygon points="80,112 95,104 95,120" fill="#f472b6" stroke="#db2777" stroke-width="1" />',
+      tie: '<polygon points="76,108 84,108 82,114 78,114" fill="#dc2626" />' +
+           '<polygon points="78,114 82,114 85,135 80,141 75,135" fill="#ef4444" stroke="#b91c1c" stroke-width="1" />' +
+           '<line x1="77" y1="120" x2="83" y2="124" stroke="#fca5a5" stroke-width="1.2" stroke-linecap="round" />' +
+           '<line x1="76" y1="128" x2="84" y2="132" stroke="#fca5a5" stroke-width="1.2" stroke-linecap="round" />',
+      scarf: '<rect x="52" y="106" width="56" height="13" rx="6.5" fill="#f97316" stroke="#c2410c" stroke-width="1" />' +
+             '<path d="M 88 116 L 98 116 L 96 138 L 86 138 Z" fill="#ea580c" />' +
+             '<line x1="87" y1="138" x2="87" y2="142" stroke="#fff7ed" stroke-width="1" />' +
+             '<line x1="91" y1="138" x2="91" y2="142" stroke="#fff7ed" stroke-width="1" />' +
+             '<line x1="95" y1="138" x2="95" y2="142" stroke="#fff7ed" stroke-width="1" />'
+    };
+
+    function petFetch(path, options) {
+      var opt = options || {};
+      opt.headers = chessHeaders();
+      return fetchWithRetry((apiBase || "") + "/api/pet" + path, opt, LOAD_TIMEOUT_MS, 1)
+        .then(function (r) { return r.json(); });
+    }
+
+    function syncCasinoBalance(newBal) {
+      if (typeof newBal === "number") {
+        petBalance = newBal;
+        if (typeof casinoPlayer !== "undefined" && casinoPlayer) {
+          casinoPlayer.balance = newBal;
+        }
+        if (typeof casinoRender === "function") {
+          casinoRender();
+        }
+      }
+    }
+
+    function formatPetAge(adoptedAt) {
+      if (!adoptedAt) return "";
+      var diffSec = Math.max(0, Math.floor(Date.now() / 1000) - adoptedAt);
+      var days = Math.floor(diffSec / 86400);
+      if (days === 0) return "родился сегодня";
+      var rem10 = days % 10;
+      var rem100 = days % 100;
+      var word = "дней";
+      if (rem10 === 1 && rem100 !== 11) word = "день";
+      else if (rem10 >= 2 && rem10 <= 4 && (rem100 < 10 || rem100 >= 20)) word = "дня";
+      return days + " " + word + " с вами";
+    }
+
+    function spawnReaction(emoji) {
+      if (!reactionBox) return;
+      var el = document.createElement("span");
+      el.className = "pet__reaction-heart";
+      el.textContent = emoji || "❤️";
+      var offset = 30 + Math.random() * 100;
+      el.style.left = offset + "px";
+      reactionBox.appendChild(el);
+      setTimeout(function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, 1000);
+    }
+
+    function cheerPet() {
+      if (!petChar) return;
+      petChar.classList.remove("is-happy");
+      void petChar.offsetWidth;
+      petChar.classList.add("is-happy");
+      setTimeout(function () {
+        petChar.classList.remove("is-happy");
+      }, 700);
+    }
+
+    function renderPet() {
+      if (loadingEl) loadingEl.hidden = true;
+
+      if (!petData) {
+        if (adoptBox) adoptBox.hidden = false;
+        if (activeBox) activeBox.hidden = true;
+        return;
+      }
+
+      if (adoptBox) adoptBox.hidden = true;
+      if (activeBox) activeBox.hidden = false;
+
+      var isDead = !!petData.dead;
+
+      if (nameEl) nameEl.textContent = petData.name || "Стрики";
+      if (ageEl) ageEl.textContent = formatPetAge(petData.adopted_at);
+
+      if (petChar) {
+        petChar.classList.toggle("is-dead", isDead);
+      }
+
+      if (heartsEl) {
+        heartsEl.innerHTML = "";
+        var h = Math.max(0, Math.min(5, petData.health || 0));
+        for (var i = 0; i < 5; i++) {
+          var sp = document.createElement("span");
+          sp.className = "pet__heart " + (i < h ? "is-filled" : "is-lost");
+          sp.textContent = i < h ? "❤️" : "🤍";
+          heartsEl.appendChild(sp);
+        }
+      }
+
+      if (timerEl) {
+        if (isDead) {
+          timerEl.textContent = "Погиб 🪦";
+        } else if (petData.health >= 5) {
+          timerEl.textContent = "Сыт и счастлив ✨";
+        } else {
+          var nowSec = Math.floor(Date.now() / 1000);
+          var elapsed = Math.max(0, nowSec - (petData.last_fed_at || nowSec));
+          var leftSec = Math.max(0, 86400 - (elapsed % 86400));
+          var hrs = Math.floor(leftSec / 3600);
+          var mins = Math.floor((leftSec % 3600) / 60);
+          timerEl.textContent = "До потери ❤️: " + hrs + "ч " + mins + "м";
+        }
+      }
+
+      if (isDead) {
+        if (aliveBox) aliveBox.hidden = true;
+        if (deadBox) deadBox.hidden = false;
+        if (layerHat) layerHat.innerHTML = "";
+        if (layerNeck) layerNeck.innerHTML = "";
+        return;
+      }
+
+      if (aliveBox) aliveBox.hidden = false;
+      if (deadBox) deadBox.hidden = true;
+
+      var equipped = petData.equipped || [];
+      var equippedHat = "";
+      var equippedNeck = "";
+
+      for (var j = 0; j < equipped.length; j++) {
+        var eqId = equipped[j];
+        for (var k = 0; k < petCatalog.length; k++) {
+          if (petCatalog[k].id === eqId) {
+            if (petCatalog[k].type === "hat") equippedHat = eqId;
+            if (petCatalog[k].type === "neck") equippedNeck = eqId;
+          }
+        }
+      }
+
+      if (layerHat) layerHat.innerHTML = equippedHat ? (ITEM_SVGS[equippedHat] || "") : "";
+      if (layerNeck) layerNeck.innerHTML = equippedNeck ? (ITEM_SVGS[equippedNeck] || "") : "";
+
+      if (feedBtn) {
+        feedBtn.disabled = petData.health >= 5;
+        var feedText = feedBtn.querySelector(".pet__feed-text");
+        if (feedText) {
+          feedText.textContent = petData.health >= 5 ? "Питомец полностью сыт" : "Покормить яблоком";
+        }
+      }
+
+      renderWardrobe();
+    }
+
+    function renderWardrobe() {
+      if (!itemsGrid) return;
+      itemsGrid.innerHTML = "";
+
+      var owned = petData.items || [];
+      var equipped = petData.equipped || [];
+
+      petCatalog.forEach(function (item) {
+        var isOwned = owned.indexOf(item.id) !== -1;
+        var isEq = equipped.indexOf(item.id) !== -1;
+
+        var card = document.createElement("div");
+        card.className = "pet-card" + (isEq ? " is-equipped" : "");
+
+        var icon = document.createElement("div");
+        icon.className = "pet-card__icon";
+        icon.textContent = item.emoji || "✨";
+
+        var name = document.createElement("div");
+        name.className = "pet-card__name";
+        name.textContent = item.name;
+
+        var desc = document.createElement("div");
+        desc.className = "pet-card__desc";
+        desc.textContent = item.description || "";
+
+        var btn = document.createElement("button");
+        btn.type = "button";
+
+        if (!isOwned) {
+          btn.className = "pet-card__btn pet-card__btn--buy";
+          btn.textContent = "Купить: " + item.price + " 💰";
+          btn.addEventListener("click", function () {
+            buyItem(item);
+          });
+        } else if (isEq) {
+          btn.className = "pet-card__btn pet-card__btn--unequip";
+          btn.textContent = "✓ Надет (снять)";
+          btn.addEventListener("click", function () {
+            toggleEquip(item);
+          });
+        } else {
+          btn.className = "pet-card__btn pet-card__btn--equip";
+          btn.textContent = "Надеть";
+          btn.addEventListener("click", function () {
+            toggleEquip(item);
+          });
+        }
+
+        card.appendChild(icon);
+        card.appendChild(name);
+        card.appendChild(desc);
+        card.appendChild(btn);
+        itemsGrid.appendChild(card);
+      });
+    }
+
+    function buyItem(item) {
+      if (busy) return;
+      if (petBalance < item.price) {
+        showToast("Нужно " + item.price + " тугриков. Не хватает!", true);
+        haptic("error");
+        return;
+      }
+
+      busy = true;
+      petFetch("/buy", {
+        method: "POST",
+        body: JSON.stringify({ item_id: item.id })
+      })
+        .then(function (res) {
+          busy = false;
+          if (!res || !res.ok) {
+            showToast((res && res.error) || "Не удалось купить", true);
+            haptic("error");
+            return;
+          }
+          petData = res.pet;
+          syncCasinoBalance(res.balance);
+          cheerPet();
+          spawnReaction("✨");
+          showToast("Куплено: " + item.name + " 🎉");
+          haptic("success");
+          renderPet();
+        })
+        .catch(function (err) {
+          busy = false;
+          showToast(err && err.message ? err.message : "Ошибка покупки", true);
+          haptic("error");
+        });
+    }
+
+    function toggleEquip(item) {
+      if (busy) return;
+      busy = true;
+
+      petFetch("/equip", {
+        method: "POST",
+        body: JSON.stringify({ item_id: item.id })
+      })
+        .then(function (res) {
+          busy = false;
+          if (!res || !res.ok) {
+            showToast((res && res.error) || "Не удалось надеть", true);
+            haptic("error");
+            return;
+          }
+          petData = res.pet;
+          cheerPet();
+          spawnReaction("✨");
+          haptic("selection");
+          renderPet();
+        })
+        .catch(function (err) {
+          busy = false;
+          showToast(err && err.message ? err.message : "Ошибка", true);
+          haptic("error");
+        });
+    }
+
+    function adoptPet(name, errEl) {
+      if (busy) return;
+      var cleanName = (name || "").trim();
+      if (!cleanName) {
+        if (errEl) {
+          errEl.textContent = "Укажите имя для питомца";
+          errEl.hidden = false;
+        }
+        return;
+      }
+      if (errEl) errEl.hidden = true;
+
+      busy = true;
+      petFetch("/adopt", {
+        method: "POST",
+        body: JSON.stringify({ name: cleanName })
+      })
+        .then(function (res) {
+          busy = false;
+          if (!res || !res.ok) {
+            var msg = (res && res.error) || "Не удалось завести питомца";
+            if (errEl) {
+              errEl.textContent = msg;
+              errEl.hidden = false;
+            }
+            showToast(msg, true);
+            haptic("error");
+            return;
+          }
+          petData = res.pet;
+          syncCasinoBalance(res.balance);
+          cheerPet();
+          spawnReaction("🎉");
+          spawnReaction("❤️");
+          showToast("🎉 Поздравляем с новым питомцем: " + res.pet.name + "!");
+          haptic("success");
+          renderPet();
+        })
+        .catch(function (err) {
+          busy = false;
+          var msg = err && err.message ? err.message : "Ошибка сети";
+          if (errEl) {
+            errEl.textContent = msg;
+            errEl.hidden = false;
+          }
+          showToast(msg, true);
+          haptic("error");
+        });
+    }
+
+    function feedPet() {
+      if (busy || !petData || petData.dead) return;
+      if (petData.health >= 5) {
+        showToast("Питомец уже сыт и счастлив! (5/5 ❤️)");
+        haptic("warning");
+        return;
+      }
+      if (petBalance < 100) {
+        showToast("Нужно 100 тугриков на яблоко. Сыграйте в казино!", true);
+        haptic("error");
+        return;
+      }
+
+      busy = true;
+      petFetch("/feed", {
+        method: "POST",
+        body: JSON.stringify({})
+      })
+        .then(function (res) {
+          busy = false;
+          if (!res || !res.ok) {
+            showToast((res && res.error) || "Не удалось покормить", true);
+            haptic("error");
+            return;
+          }
+          petData = res.pet;
+          syncCasinoBalance(res.balance);
+          cheerPet();
+          spawnReaction("🍏");
+          setTimeout(function () { spawnReaction("❤️"); }, 150);
+          setTimeout(function () { spawnReaction("🥰"); }, 300);
+          showToast("🍏 Хрум-хрум! " + petData.name + " подкрепился (+1 ❤️)");
+          haptic("success");
+          renderPet();
+        })
+        .catch(function (err) {
+          busy = false;
+          showToast(err && err.message ? err.message : "Ошибка кормления", true);
+          haptic("error");
+        });
+    }
+
+    // Обработчики кликов
+    if (petChar) {
+      petChar.addEventListener("click", function () {
+        if (!petData || petData.dead) return;
+        cheerPet();
+        var emojis = ["❤️", "💖", "🥰", "✨", "🐾"];
+        spawnReaction(emojis[Math.floor(Math.random() * emojis.length)]);
+        haptic("light");
+      });
+    }
+
+    if (adoptBtn) {
+      adoptBtn.addEventListener("click", function () {
+        adoptPet(nameInput ? nameInput.value : "", adoptErr);
+      });
+    }
+
+    if (nameInput) {
+      nameInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          adoptPet(nameInput.value, adoptErr);
+        }
+      });
+    }
+
+    if (reviveBtn) {
+      reviveBtn.addEventListener("click", function () {
+        adoptPet(reviveInput ? reviveInput.value : "", reviveErr);
+      });
+    }
+
+    if (reviveInput) {
+      reviveInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          adoptPet(reviveInput.value, reviveErr);
+        }
+      });
+    }
+
+    if (feedBtn) {
+      feedBtn.addEventListener("click", feedPet);
+    }
+
+    if (navBtn) {
+      navBtn.addEventListener("click", function () {
+        var funContent = document.getElementById("funContent");
+        var funToggle = document.getElementById("funToggle");
+        if (funContent && funContent.hidden) {
+          funContent.hidden = false;
+          if (funToggle) funToggle.setAttribute("aria-expanded", "true");
+        }
+        section.scrollIntoView({ behavior: "smooth", block: "center" });
+        cheerPet();
+        haptic("light");
+      });
+    }
+
+    // Первичная загрузка
+    fetchWithRetry((apiBase || "") + "/api/pet", {
+      headers: authHeaders()
+    }, LOAD_TIMEOUT_MS, 2)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data && data.ok) {
+          petData = data.pet || null;
+          petBalance = typeof data.balance === "number" ? data.balance : 0;
+          petCatalog = Array.isArray(data.catalog) ? data.catalog : [];
+        }
+        renderPet();
+      })
+      .catch(function () {
+        if (loadingEl) loadingEl.textContent = "Не удалось загрузить питомца";
+      });
+  }
+
   function start() {
     initTelegram();
     watchNetlifyBadge();
@@ -3342,6 +3845,7 @@
     initPromo();
     initShop();
     initNotes();
+    initPet();
     initWhatsNew();
 
     // Монеты за вход начисляем при каждом запуске: сервер сам решит,
