@@ -72,3 +72,14 @@ window.CHESS = {
   enabled: true,
   bot: "pprsd23_bot",
 };
+
+/**
+ * Крестики-нолики 3х3.
+ *
+ * bot — имя бота без @. Из него собирается ссылка-приглашение
+ * вида https://t.me/<bot>?start=ttt_<id партии>.
+ */
+window.TTT = {
+  enabled: true,
+  bot: "pprsd23_bot",
+};

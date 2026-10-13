@@ -13,7 +13,7 @@
     и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
     поднимайте номер: иначе Telegram покажет старую версию.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=32">
+  <link rel="stylesheet" href="assets/css/styles.css?v=33">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -177,6 +177,66 @@
         <p class="chess__error" id="chessError" hidden></p>
       </div>
 
+      <div class="menu__section">Крестики-нолики 3х3</div>
+      <div class="ttt" id="ttt">
+        <div class="ttt__modes">
+          <button class="ttt__mode is-active" id="tttModeSolo" type="button">С ботом</button>
+          <button class="ttt__mode" id="tttModeMulti" type="button">С одногруппником</button>
+        </div>
+
+        <!-- Одиночный режим с ботом -->
+        <div class="ttt__box" id="tttSoloBox">
+          <div class="ttt__status" id="tttSoloStatus" role="status" aria-live="polite">Ваш ход (X)</div>
+          <div class="ttt__board" id="tttSoloBoard" role="grid" aria-label="Поле крестиков-ноликов">
+            <button class="ttt__cell" data-idx="0" type="button" aria-label="Клетка 1"></button>
+            <button class="ttt__cell" data-idx="1" type="button" aria-label="Клетка 2"></button>
+            <button class="ttt__cell" data-idx="2" type="button" aria-label="Клетка 3"></button>
+            <button class="ttt__cell" data-idx="3" type="button" aria-label="Клетка 4"></button>
+            <button class="ttt__cell" data-idx="4" type="button" aria-label="Клетка 5"></button>
+            <button class="ttt__cell" data-idx="5" type="button" aria-label="Клетка 6"></button>
+            <button class="ttt__cell" data-idx="6" type="button" aria-label="Клетка 7"></button>
+            <button class="ttt__cell" data-idx="7" type="button" aria-label="Клетка 8"></button>
+            <button class="ttt__cell" data-idx="8" type="button" aria-label="Клетка 9"></button>
+          </div>
+          <div class="ttt__actions">
+            <button class="ttt__btn" id="tttSoloReset" type="button">Новая игра</button>
+          </div>
+        </div>
+
+        <!-- Мультиплеер с одногруппником -->
+        <div class="ttt__box" id="tttMultiBox" hidden>
+          <div class="ttt__intro" id="tttMultiIntro">
+            <p class="ttt__hint">Сыграйте по сети. Создайте партию и отправьте ссылку другу.</p>
+            <button class="ttt__btn" id="tttMultiNew" type="button">Создать партию</button>
+          </div>
+
+          <div class="ttt__game" id="tttMultiGame" hidden>
+            <div class="ttt__players">
+              <span class="ttt__player" id="tttPlayerX"></span>
+              <span class="ttt__player" id="tttPlayerO"></span>
+            </div>
+            <div class="ttt__status" id="tttMultiStatus" role="status" aria-live="polite"></div>
+            <div class="ttt__board" id="tttMultiBoard" role="grid" aria-label="Сетевое поле">
+              <button class="ttt__cell" data-idx="0" type="button" aria-label="Клетка 1"></button>
+              <button class="ttt__cell" data-idx="1" type="button" aria-label="Клетка 2"></button>
+              <button class="ttt__cell" data-idx="2" type="button" aria-label="Клетка 3"></button>
+              <button class="ttt__cell" data-idx="3" type="button" aria-label="Клетка 4"></button>
+              <button class="ttt__cell" data-idx="4" type="button" aria-label="Клетка 5"></button>
+              <button class="ttt__cell" data-idx="5" type="button" aria-label="Клетка 6"></button>
+              <button class="ttt__cell" data-idx="6" type="button" aria-label="Клетка 7"></button>
+              <button class="ttt__cell" data-idx="7" type="button" aria-label="Клетка 8"></button>
+              <button class="ttt__cell" data-idx="8" type="button" aria-label="Клетка 9"></button>
+            </div>
+            <div class="ttt__actions">
+              <button class="ttt__btn ttt__btn--ghost" id="tttMultiInvite" type="button" hidden>Пригласить</button>
+              <button class="ttt__btn ttt__btn--ghost" id="tttMultiResign" type="button" hidden>Сдаться</button>
+              <button class="ttt__btn ttt__btn--ghost" id="tttMultiAgain" type="button" hidden>Новая партия</button>
+            </div>
+          </div>
+          <p class="ttt__error" id="tttMultiError" hidden></p>
+        </div>
+      </div>
+
         <div class="menu__section">Рулетка</div>
         <div class="roulette" id="roulette">
         <div class="wheel">
@@ -225,6 +285,7 @@
           </div>
 
           <button class="casino__spin" id="casinoSpin" type="button">Дэпнуть</button>
+          <button class="casino__leaderboard-btn" id="casinoLeaderboardBtn" type="button">🏆 Таблица лидеров</button>
         </div>
 
       </div>
@@ -319,10 +380,35 @@
         </div>
 
         <div class="whatsnew__item">
+          <div class="whatsnew__what">❌ Крестики-нолики 3х3</div>
+          <p>Быстрые партии: играйте против умного бота или приглашайте одногруппника по ссылке. За победу по сети — 100 тугриков.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">🏆 Таблица лидеров</div>
+          <p>Рейтинг богачей группы в казино: смотрите, кто накопил больше всех тугриков и держит самую длинную серию входов.</p>
+        </div>
+
+        <div class="whatsnew__item">
           <div class="whatsnew__what">🛠 Техподдержка</div>
           <p>Внизу главной страницы. Работает ровно так, как и ожидается.</p>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Таблица лидеров -->
+  <div class="leaderboard" id="leaderboardModal" hidden>
+    <div class="leaderboard__backdrop" id="leaderboardBackdrop"></div>
+    <div class="leaderboard__card" role="dialog" aria-modal="true" aria-labelledby="leaderboardTitle">
+      <div class="leaderboard__head">
+        <h2 class="leaderboard__title" id="leaderboardTitle">🏆 Таблица лидеров</h2>
+        <button class="leaderboard__close" id="leaderboardClose" type="button" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="leaderboard__body">
+        <div class="leaderboard__list" id="leaderboardList"></div>
+      </div>
+      <div class="leaderboard__foot" id="leaderboardFoot"></div>
     </div>
   </div>
 
@@ -338,9 +424,9 @@
     </div>
   </div>
 
-  <script src="assets/js/config.js?v=32"></script>
-  <script src="assets/js/core.js?v=32"></script>
-  <script src="assets/js/chess.js?v=32"></script>
-  <script src="assets/js/app.js?v=32"></script>
+  <script src="assets/js/config.js?v=33"></script>
+  <script src="assets/js/core.js?v=33"></script>
+  <script src="assets/js/chess.js?v=33"></script>
+  <script src="assets/js/app.js?v=33"></script>
 </body>
 </html>

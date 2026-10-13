@@ -35,6 +35,8 @@ import casino
 import chess_api
 import chess_game
 import shop_api
+import ttt_api
+import ttt_game
 import parser
 from parser import format_schedule, get_today, get_tomorrow, get_week, parse_schedule
 
@@ -459,11 +461,14 @@ def send_safe(chat_id, text):
 def start(message):
     save_user(message.chat.id)
 
-    # Переход по ссылке-приглашению в шахматы выглядит как /start <id партии>
+    # Переход по ссылке-приглашению: в крестики-нолики (/start ttt_<id>) или шахматы (/start <id>)
     parts = (message.text or "").split(maxsplit=1)
     invite = parts[1].strip() if len(parts) > 1 else ""
 
-    if invite and accept_chess_invite(message, invite):
+    if invite.startswith("ttt_"):
+        if accept_ttt_invite(message, invite[4:]):
+            return
+    elif invite and accept_chess_invite(message, invite):
         return
 
     bot.send_message(
@@ -573,9 +578,52 @@ def notify_chess_move(game, game_id, mover_id, resigned=False, reward=None):
     threading.Thread(target=work, daemon=True, name="chess-notify").start()
 
 
+def notify_ttt_move(game, mover_id, reward_user_id=None):
+    """
+    Уведомляет соперника о ходе в крестиках-ноликах.
+    """
+    game_id = game["id"]
+    opponent = ttt_game.opponent_of(game, mover_id)
+
+    outgoing = []
+    if opponent and not ttt_api.seen_recently(game_id, opponent["id"]):
+        if game["status"] == "finished":
+            if game.get("winner") == "draw":
+                text = "❌ Ничья в крестиках-ноликах!"
+            else:
+                text = f"❌ Партия завершена! Победитель: {game.get('winner')}."
+        else:
+            text = "❌ Ваш ход в крестиках-ноликах!"
+        outgoing.append((opponent["id"], text))
+
+    if reward_user_id and not ttt_api.seen_recently(game_id, reward_user_id):
+        outgoing.append((reward_user_id, f"🎉 Победа в крестиках-ноликах! +{ttt_game.TTT_WIN_COINS} тугриков."))
+
+    if not outgoing:
+        return
+
+    def work():
+        markup = None
+        if MINIAPP_URL:
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton(
+                "Открыть игру",
+                web_app=types.WebAppInfo(url=f"{MINIAPP_URL}/?ttt={game_id}"),
+            ))
+
+        for chat_id, text in outgoing:
+            try:
+                bot.send_message(chat_id, text, reply_markup=markup)
+            except Exception as e:
+                print("[TTT] не удалось отправить сообщение:", e)
+
+    threading.Thread(target=work, daemon=True, name="ttt-notify").start()
+
+
 # Токен нужен, чтобы проверять подпись Telegram и понимать, кто ходит.
 # notify связывает ходы с сообщениями в боте.
 chess_api.init_app(app, TOKEN, notify=notify_chess_move, mini_app_url=MINIAPP_URL)
+ttt_api.init_app(app, TOKEN, notify=notify_ttt_move, mini_app_url=MINIAPP_URL)
 
 
 # Магазин: тугрики уходят администратору, ему же и сообщение
@@ -645,6 +693,62 @@ def accept_chess_invite(message, game_id):
             bot.send_message(game["white"]["id"], "♟ Соперник присоединился. Ваш ход!")
         except Exception as e:
             print("[CHESS] не удалось предупредить соперника:", e)
+
+    return True
+
+
+def accept_ttt_invite(message, game_id):
+    """
+    Принимает приглашение в крестики-нолики и отправляет кнопку запуска.
+    """
+    game = ttt_game.load_game(game_id)
+
+    if not game:
+        bot.send_message(
+            message.chat.id,
+            "❌ Эта партия в крестики-нолики уже недоступна. Создайте новую в приложении.",
+        )
+        return True
+
+    player = {
+        "id": message.from_user.id,
+        "name": message.from_user.first_name or "Игрок",
+    }
+
+    already = ttt_game.is_player(game, player["id"])
+
+    if not already:
+        game, error = ttt_game.join_game(game, player)
+        if error:
+            bot.send_message(message.chat.id, f"❌ {error}")
+            return True
+
+    if not MINIAPP_URL:
+        bot.send_message(
+            message.chat.id,
+            "❌ Приглашение принято, но MINIAPP_URL не задан.",
+        )
+        return True
+
+    symbol = ttt_game.player_symbol(game, player["id"])
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton(
+        "Открыть крестики-нолики",
+        web_app=types.WebAppInfo(url=f"{MINIAPP_URL}/?ttt={game_id}"),
+    ))
+
+    if already:
+        text = "❌ Вы уже в этой партии крестиков-ноликов. Вот доска:"
+    else:
+        text = f"❌ Вас пригласили в крестики-нолики! Вы играете за '{symbol}'."
+
+    bot.send_message(message.chat.id, text, reply_markup=markup)
+
+    if not already and symbol == "O" and game.get("x"):
+        try:
+            bot.send_message(game["x"]["id"], "❌ Соперник присоединился к крестикам-ноликам! Ваш ход.")
+        except Exception as e:
+            print("[TTT] не удалось предупредить соперника:", e)
 
     return True
 

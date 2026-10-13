@@ -17,12 +17,15 @@ import json
 import os
 import secrets
 import threading
+import time
 from datetime import datetime, timedelta
 
 from parser import now_msk
 
 # Ключ в хранилище
 KEY_PREFIX = "casino:user:"
+LEADERBOARD_KEY = "casino:leaderboard"
+_leaderboard_lock = threading.Lock()
 
 # Сколько тугриков дают за вход и сколько — за неделю без пропусков
 START_BALANCE = 0
@@ -161,7 +164,95 @@ def save(user_id, record):
     import store
 
     store.get_store().set(_key(user_id), json.dumps(record, ensure_ascii=False))
+    if record.get("name"):
+        update_leaderboard(
+            user_id,
+            record["name"],
+            record.get("balance", 0),
+            record.get("streak", 0),
+            record.get("best", 0),
+        )
     return record
+
+
+def update_leaderboard(user_id, name, balance, streak=0, best=0):
+    """Обновляет запись игрока в глобальной таблице лидеров."""
+    import store
+
+    with _leaderboard_lock:
+        raw = store.get_store().get(LEADERBOARD_KEY)
+        data = {}
+        if raw:
+            try:
+                data = json.loads(raw)
+            except (ValueError, TypeError):
+                data = {}
+
+        data[str(user_id)] = {
+            "id": user_id,
+            "name": name or "Игрок",
+            "balance": int(balance),
+            "streak": int(streak),
+            "best": int(best),
+            "updated": int(time.time()),
+        }
+
+        store.get_store().set(LEADERBOARD_KEY, json.dumps(data, ensure_ascii=False))
+
+
+def get_leaderboard(current_user_id=None, limit=20):
+    """
+    Возвращает топ игроков по тугрикам и позицию текущего пользователя.
+    """
+    import store
+
+    raw = store.get_store().get(LEADERBOARD_KEY)
+    data = {}
+    if raw:
+        try:
+            data = json.loads(raw)
+        except (ValueError, TypeError):
+            data = {}
+
+    players = list(data.values())
+    players.sort(key=lambda p: (p.get("balance", 0), p.get("best", 0)), reverse=True)
+
+    my_rank = None
+    if current_user_id:
+        for idx, p in enumerate(players, start=1):
+            if str(p.get("id")) == str(current_user_id):
+                my_rank = idx
+                break
+
+    top = []
+    for idx, p in enumerate(players[:limit], start=1):
+        item = dict(p)
+        item["rank"] = idx
+        top.append(item)
+
+    return {
+        "leaders": top,
+        "myRank": my_rank,
+        "total": len(players),
+    }
+
+
+def sync_player(user_id, name):
+    """Синхронизирует имя и обновляет позицию в таблице лидеров."""
+    with _lock_for(user_id):
+        record = load(user_id)
+        if name and record.get("name") != name:
+            record["name"] = name
+            save(user_id, record)
+        elif name:
+            update_leaderboard(
+                user_id,
+                name,
+                record.get("balance", 0),
+                record.get("streak", 0),
+                record.get("best", 0),
+            )
+        return record
 
 
 # =========================

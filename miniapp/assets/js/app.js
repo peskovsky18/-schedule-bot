@@ -39,6 +39,20 @@
     return !!(tg && typeof tg[method] === "function");
   }
 
+  function haptic(type) {
+    if (inTelegram && tg.HapticFeedback) {
+      try {
+        if (type === "light" || type === "medium" || type === "heavy") {
+          tg.HapticFeedback.impactOccurred(type);
+        } else if (type === "success" || type === "warning" || type === "error") {
+          tg.HapticFeedback.notificationOccurred(type);
+        } else if (type === "selection") {
+          tg.HapticFeedback.selectionChanged();
+        }
+      } catch (e) {}
+    }
+  }
+
   function initTelegram() {
     if (!inTelegram) return;
 
@@ -1692,12 +1706,16 @@
 
     function showResult(result) {
       if (result.multiplier >= 10) {
+        haptic("success");
         showNote("Джекпот! +" + tugriks(result.win), "is-jackpot");
       } else if (result.multiplier > 1) {
+        haptic("success");
         showNote("Выигрыш +" + tugriks(result.win), "is-win");
       } else if (result.multiplier === 1) {
+        haptic("light");
         showNote("Ставка вернулась", "is-lose");
       } else {
+        haptic("light");
         showNote("Мимо", "is-lose");
       }
     }
@@ -1717,6 +1735,7 @@
         return;
       }
 
+      haptic("medium");
       spinning = true;
       showNote("");
       render();
@@ -2128,6 +2147,639 @@
     load();
   }
 
+  /* ---------- Таблица лидеров ---------- */
+
+  function initLeaderboard() {
+    var btn = document.getElementById("casinoLeaderboardBtn");
+    var modal = document.getElementById("leaderboardModal");
+    var backdrop = document.getElementById("leaderboardBackdrop");
+    var closeBtn = document.getElementById("leaderboardClose");
+    var list = document.getElementById("leaderboardList");
+    var foot = document.getElementById("leaderboardFoot");
+
+    if (!btn || !modal || !list) return;
+
+    function open() {
+      modal.hidden = false;
+      list.innerHTML = '<div class="leaderboard__loading">Загрузка рейтинга…</div>';
+      if (foot) foot.innerHTML = "";
+      haptic("light");
+
+      fetchWithRetry((apiBase || "") + "/api/casino/leaderboard", {
+        headers: authHeaders()
+      }, LOAD_TIMEOUT_MS, 2)
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (!data || data.ok !== true) {
+            list.innerHTML = '<div class="leaderboard__empty">Не удалось загрузить рейтинг</div>';
+            return;
+          }
+
+          var leaders = data.leaders || [];
+          var you = data.you || null;
+
+          if (leaders.length === 0) {
+            list.innerHTML = '<div class="leaderboard__empty">Пока нет участников</div>';
+            return;
+          }
+
+          list.innerHTML = "";
+          leaders.forEach(function (item, idx) {
+            var row = document.createElement("div");
+            row.className = "leaderboard__item";
+            if (you && String(item.user_id) === String(you.user_id)) {
+              row.classList.add("is-you");
+            }
+
+            var rankBadge = "#" + (idx + 1);
+            if (idx === 0) rankBadge = "🥇";
+            else if (idx === 1) rankBadge = "🥈";
+            else if (idx === 2) rankBadge = "🥉";
+
+            var rankEl = document.createElement("span");
+            rankEl.className = "leaderboard__rank";
+            rankEl.textContent = rankBadge;
+
+            var infoEl = document.createElement("div");
+            infoEl.className = "leaderboard__info";
+
+            var nameEl = document.createElement("div");
+            nameEl.className = "leaderboard__name";
+            nameEl.textContent = item.name || "Аноним";
+            if (you && String(item.user_id) === String(you.user_id)) {
+              nameEl.textContent += " (Вы)";
+            }
+
+            var extraEl = document.createElement("div");
+            extraEl.className = "leaderboard__extra";
+            if (item.streak > 0) {
+              extraEl.textContent = "🔥 Серия: " + item.streak + " " + core.plural(item.streak, "день", "дня", "дней");
+            }
+
+            infoEl.appendChild(nameEl);
+            if (item.streak > 0) infoEl.appendChild(extraEl);
+
+            var balanceEl = document.createElement("span");
+            balanceEl.className = "leaderboard__balance";
+            balanceEl.textContent = tugriks(item.balance);
+
+            row.appendChild(rankEl);
+            row.appendChild(infoEl);
+            row.appendChild(balanceEl);
+            list.appendChild(row);
+          });
+
+          if (foot && you) {
+            var rankStr = you.rank ? ("Ваше место: #" + you.rank + " • ") : "";
+            foot.textContent = rankStr + "Баланс: " + tugriks(you.balance);
+          }
+        })
+        .catch(function (err) {
+          list.innerHTML = '<div class="leaderboard__empty">Ошибка загрузки: ' + (err && err.message ? err.message : "нет связи") + '</div>';
+        });
+    }
+
+    function close() {
+      modal.hidden = true;
+    }
+
+    btn.addEventListener("click", open);
+    if (closeBtn) closeBtn.addEventListener("click", close);
+    if (backdrop) backdrop.addEventListener("click", close);
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !modal.hidden) close();
+    });
+  }
+
+  /* ---------- Крестики-нолики 3х3 ---------- */
+
+  var TTT_GAME_KEY = "ttt.game";
+  var TTT_POLL_MS = 2000;
+  var TTT_IDLE_MS = 6000;
+
+  function tttFetch(path, options) {
+    var request = options || {};
+    request.headers = chessHeaders();
+
+    return fetchWithTimeout((apiBase || "") + "/api/ttt" + path, request,
+                            CHESS_TIMEOUT_MS)
+      .then(function (response) {
+        return response.json().catch(function () {
+          return { ok: false, error: "Сервер ответил кодом " + response.status };
+        }).then(function (data) {
+          if (!response.ok || data.ok === false) {
+            throw new Error(data.error || ("Ошибка " + response.status));
+          }
+          return data;
+        });
+      });
+  }
+
+  function initTTT() {
+    var box = document.getElementById("ttt");
+    if (!box) return;
+
+    var modeSoloBtn = document.getElementById("tttModeSolo");
+    var modeMultiBtn = document.getElementById("tttModeMulti");
+    var soloBox = document.getElementById("tttSoloBox");
+    var multiBox = document.getElementById("tttMultiBox");
+
+    var soloStatus = document.getElementById("tttSoloStatus");
+    var soloBoard = document.getElementById("tttSoloBoard");
+    var soloReset = document.getElementById("tttSoloReset");
+    var soloCells = soloBoard ? Array.prototype.slice.call(soloBoard.querySelectorAll(".ttt__cell")) : [];
+
+    var multiIntro = document.getElementById("tttMultiIntro");
+    var multiGame = document.getElementById("tttMultiGame");
+    var multiNewBtn = document.getElementById("tttMultiNew");
+    var multiPlayerX = document.getElementById("tttPlayerX");
+    var multiPlayerO = document.getElementById("tttPlayerO");
+    var multiStatus = document.getElementById("tttMultiStatus");
+    var multiBoard = document.getElementById("tttMultiBoard");
+    var multiInviteBtn = document.getElementById("tttMultiInvite");
+    var multiResignBtn = document.getElementById("tttMultiResign");
+    var multiAgainBtn = document.getElementById("tttMultiAgain");
+    var multiError = document.getElementById("tttMultiError");
+    var multiCells = multiBoard ? Array.prototype.slice.call(multiBoard.querySelectorAll(".ttt__cell")) : [];
+
+    /* --- Переключение режимов --- */
+    function switchMode(mode) {
+      if (mode === "solo") {
+        if (modeSoloBtn) modeSoloBtn.classList.add("is-active");
+        if (modeMultiBtn) modeMultiBtn.classList.remove("is-active");
+        if (soloBox) soloBox.hidden = false;
+        if (multiBox) multiBox.hidden = true;
+      } else {
+        if (modeSoloBtn) modeSoloBtn.classList.remove("is-active");
+        if (modeMultiBtn) modeMultiBtn.classList.add("is-active");
+        if (soloBox) soloBox.hidden = true;
+        if (multiBox) multiBox.hidden = false;
+        maybePollMulti();
+      }
+    }
+
+    if (modeSoloBtn) modeSoloBtn.addEventListener("click", function () { switchMode("solo"); });
+    if (modeMultiBtn) modeMultiBtn.addEventListener("click", function () { switchMode("multi"); });
+
+    /* --- Линии победы --- */
+    var WIN_LINES = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
+    ];
+
+    function checkWinner(board) {
+      for (var i = 0; i < WIN_LINES.length; i++) {
+        var line = WIN_LINES[i];
+        var a = board[line[0]];
+        var b = board[line[1]];
+        var c = board[line[2]];
+        if (a && a === b && a === c) {
+          return { winner: a, line: line };
+        }
+      }
+      var full = board.every(function (c) { return c !== null && c !== ""; });
+      if (full) return { winner: null, draw: true };
+      return null;
+    }
+
+    /* === ОДИНОЧНЫЙ РЕЖИМ (С БОТОМ) === */
+    var soloState = [null, null, null, null, null, null, null, null, null];
+    var soloTurn = "X";
+    var soloOver = false;
+
+    function renderSolo() {
+      soloCells.forEach(function (cell, idx) {
+        var val = soloState[idx];
+        cell.textContent = val || "";
+        cell.classList.remove("is-x", "is-o", "is-winner");
+        if (val === "X") cell.classList.add("is-x");
+        if (val === "O") cell.classList.add("is-o");
+        cell.disabled = !!val || soloOver || soloTurn !== "X";
+      });
+    }
+
+    function resetSolo() {
+      soloState = [null, null, null, null, null, null, null, null, null];
+      soloTurn = "X";
+      soloOver = false;
+      if (soloStatus) {
+        soloStatus.textContent = "Ваш ход (X)";
+        soloStatus.className = "ttt__status";
+      }
+      renderSolo();
+    }
+
+    function soloBotMove() {
+      if (soloOver) return;
+
+      var chosen = -1;
+
+      // 1. Попытка выиграть (O) или блокировать игрока (X)
+      var checkSymbols = ["O", "X"];
+      for (var s = 0; s < checkSymbols.length; s++) {
+        var sym = checkSymbols[s];
+        for (var i = 0; i < WIN_LINES.length; i++) {
+          var line = WIN_LINES[i];
+          var a = soloState[line[0]], b = soloState[line[1]], c = soloState[line[2]];
+          var count = (a === sym ? 1 : 0) + (b === sym ? 1 : 0) + (c === sym ? 1 : 0);
+          var empties = line.filter(function (idx) { return !soloState[idx]; });
+          if (count === 2 && empties.length === 1) {
+            chosen = empties[0];
+            break;
+          }
+        }
+        if (chosen !== -1) break;
+      }
+
+      // 2. Центр, затем углы, затем случайная
+      if (chosen === -1) {
+        if (!soloState[4]) {
+          chosen = 4;
+        } else {
+          var corners = [0, 2, 6, 8].filter(function (idx) { return !soloState[idx]; });
+          if (corners.length > 0) {
+            chosen = corners[Math.floor(Math.random() * corners.length)];
+          } else {
+            var left = [];
+            for (var k = 0; k < 9; k++) {
+              if (!soloState[k]) left.push(k);
+            }
+            if (left.length > 0) chosen = left[Math.floor(Math.random() * left.length)];
+          }
+        }
+      }
+
+      if (chosen !== -1) {
+        soloState[chosen] = "O";
+        var res = checkWinner(soloState);
+        if (res) {
+          soloOver = true;
+          if (res.winner === "O") {
+            if (soloStatus) {
+              soloStatus.textContent = "Бот победил! 🤖";
+              soloStatus.className = "ttt__status is-over";
+            }
+            if (res.line) {
+              res.line.forEach(function (idx) {
+                if (soloCells[idx]) soloCells[idx].classList.add("is-winner");
+              });
+            }
+            haptic("warning");
+          } else if (res.draw) {
+            if (soloStatus) {
+              soloStatus.textContent = "Ничья! 🤝";
+              soloStatus.className = "ttt__status is-over";
+            }
+            haptic("light");
+          }
+        } else {
+          soloTurn = "X";
+          if (soloStatus) soloStatus.textContent = "Ваш ход (X)";
+        }
+      }
+      renderSolo();
+    }
+
+    function onSoloCellClick(e) {
+      if (soloOver || soloTurn !== "X") return;
+      var idx = parseInt(e.currentTarget.dataset.idx, 10);
+      if (isNaN(idx) || soloState[idx]) return;
+
+      soloState[idx] = "X";
+      haptic("light");
+      renderSolo();
+
+      var res = checkWinner(soloState);
+      if (res) {
+        soloOver = true;
+        if (res.winner === "X") {
+          if (soloStatus) {
+            soloStatus.textContent = "Победа! 🎉 +25 тугриков";
+            soloStatus.className = "ttt__status is-over";
+          }
+          if (res.line) {
+            res.line.forEach(function (i) {
+              if (soloCells[i]) soloCells[i].classList.add("is-winner");
+            });
+          }
+          haptic("success");
+
+          tttFetch("/solo_reward", { method: "POST" })
+            .then(function (data) {
+              if (data && data.player && typeof casinoPlayer !== "undefined") {
+                casinoPlayer = data.player;
+                if (typeof casinoRender === "function") casinoRender();
+              }
+            })
+            .catch(function () {});
+        } else if (res.draw) {
+          if (soloStatus) {
+            soloStatus.textContent = "Ничья! 🤝";
+            soloStatus.className = "ttt__status is-over";
+          }
+          haptic("light");
+        }
+        renderSolo();
+        return;
+      }
+
+      soloTurn = "O";
+      if (soloStatus) soloStatus.textContent = "Ход бота (O)…";
+      renderSolo();
+
+      setTimeout(soloBotMove, 400);
+    }
+
+    soloCells.forEach(function (cell) {
+      cell.addEventListener("click", onSoloCellClick);
+    });
+    if (soloReset) soloReset.addEventListener("click", resetSolo);
+
+    /* === СЕТЕВОЙ МУЛЬТИПЛЕЕР === */
+    var multiGameId = null;
+    var multiGameData = null;
+    var multiPollTimer = null;
+    var multiBusy = false;
+
+    function rememberMulti(id) {
+      multiGameId = id;
+      try {
+        if (id) localStorage.setItem(TTT_GAME_KEY, id);
+        else localStorage.removeItem(TTT_GAME_KEY);
+      } catch (e) {}
+    }
+
+    function savedMultiId() {
+      try { return localStorage.getItem(TTT_GAME_KEY); } catch (e) { return null; }
+    }
+
+    function showMultiError(msg) {
+      if (!multiError) return;
+      multiError.hidden = !msg;
+      multiError.textContent = msg || "";
+    }
+
+    function renderMulti() {
+      if (!multiGameData) {
+        if (multiIntro) multiIntro.hidden = false;
+        if (multiGame) multiGame.hidden = true;
+        return;
+      }
+
+      if (multiIntro) multiIntro.hidden = true;
+      if (multiGame) multiGame.hidden = false;
+
+      var g = multiGameData;
+      var you = g.you;
+
+      if (multiPlayerX) {
+        multiPlayerX.textContent = "❌ " + (g.player_x ? g.player_x.name : "Ожидание…");
+        multiPlayerX.classList.toggle("is-turn", g.turn === "X" && g.status === "active");
+      }
+      if (multiPlayerO) {
+        multiPlayerO.textContent = "⭕ " + (g.player_o ? g.player_o.name : "Ожидание…");
+        multiPlayerO.classList.toggle("is-turn", g.turn === "O" && g.status === "active");
+      }
+
+      var board = g.board || ["", "", "", "", "", "", "", "", ""];
+      multiCells.forEach(function (cell, idx) {
+        var val = board[idx] || "";
+        cell.textContent = val;
+        cell.classList.remove("is-x", "is-o", "is-winner");
+        if (val === "X") cell.classList.add("is-x");
+        if (val === "O") cell.classList.add("is-o");
+
+        var canMove = g.status === "active" && g.turn === you && !val && !multiBusy;
+        cell.disabled = !canMove;
+      });
+
+      if (multiInviteBtn) multiInviteBtn.hidden = true;
+      if (multiResignBtn) multiResignBtn.hidden = true;
+      if (multiAgainBtn) multiAgainBtn.hidden = true;
+
+      if (multiStatus) {
+        if (g.status === "waiting") {
+          multiStatus.textContent = "Ожидание соперника… Отправьте ссылку!";
+          if (multiInviteBtn) multiInviteBtn.hidden = false;
+        } else if (g.status === "active") {
+          if (multiResignBtn) multiResignBtn.hidden = !you;
+          if (g.turn === you) {
+            multiStatus.textContent = "Ваш ход (" + you + ")!";
+          } else {
+            var opp = you === "X" ? "O" : "X";
+            multiStatus.textContent = "Ходит соперник (" + opp + ")…";
+          }
+        } else if (g.status === "finished") {
+          if (multiAgainBtn) multiAgainBtn.hidden = false;
+          if (g.winner === "draw") {
+            multiStatus.textContent = "Ничья! 🤝";
+          } else if (g.winner === you) {
+            multiStatus.textContent = "Вы победили! 🏆 +100 тугриков";
+          } else if (you) {
+            multiStatus.textContent = "Победил соперник (" + g.winner + ")";
+          } else {
+            multiStatus.textContent = "Партия завершена. Победитель: " + g.winner;
+          }
+
+          var winCheck = checkWinner(board);
+          if (winCheck && winCheck.line) {
+            winCheck.line.forEach(function (i) {
+              if (multiCells[i]) multiCells[i].classList.add("is-winner");
+            });
+          }
+        }
+      }
+    }
+
+    function stopPollingMulti() {
+      if (multiPollTimer) {
+        clearTimeout(multiPollTimer);
+        multiPollTimer = null;
+      }
+    }
+
+    function maybePollMulti() {
+      stopPollingMulti();
+      if (!multiGameId || !multiGameData) return;
+      if (multiGameData.status === "finished") return;
+
+      var delay = (multiGameData.status === "active" && multiGameData.turn !== multiGameData.you)
+        ? TTT_POLL_MS
+        : TTT_IDLE_MS;
+
+      multiPollTimer = setTimeout(function tick() {
+        if (document.visibilityState === "visible") {
+          refreshMulti();
+        }
+        if (multiGameId && multiGameData && multiGameData.status !== "finished") {
+          multiPollTimer = setTimeout(tick, delay);
+        }
+      }, delay);
+    }
+
+    function refreshMulti() {
+      if (!multiGameId) return Promise.resolve();
+      return tttFetch("/" + multiGameId)
+        .then(function (data) {
+          var prevTurn = multiGameData ? multiGameData.turn : null;
+          var prevStatus = multiGameData ? multiGameData.status : null;
+          multiGameData = data.game;
+          renderMulti();
+          if (multiGameData.status === "active" && multiGameData.turn === multiGameData.you && prevTurn !== multiGameData.turn) {
+            haptic("selection");
+          }
+          if (multiGameData.status === "finished" && prevStatus !== "finished") {
+            if (multiGameData.winner === multiGameData.you) haptic("success");
+            else haptic("light");
+          }
+        })
+        .catch(function (err) {
+          showMultiError(err.message);
+        });
+    }
+
+    function createMultiGame() {
+      if (multiBusy) return;
+      multiBusy = true;
+      if (multiNewBtn) {
+        multiNewBtn.disabled = true;
+        multiNewBtn.textContent = "Создаю партию…";
+      }
+      showMultiError("");
+
+      tttFetch("/new", { method: "POST" })
+        .then(function (data) {
+          rememberMulti(data.game.id);
+          multiGameData = data.game;
+          renderMulti();
+          maybePollMulti();
+        })
+        .catch(function (err) {
+          showMultiError(err.message);
+        })
+        .then(function () {
+          multiBusy = false;
+          if (multiNewBtn) {
+            multiNewBtn.disabled = false;
+            multiNewBtn.textContent = "Создать партию";
+          }
+        });
+    }
+
+    function joinMultiGame(id) {
+      showMultiError("");
+      tttFetch("/" + id + "/join", { method: "POST" })
+        .then(function (data) {
+          rememberMulti(id);
+          multiGameData = data.game;
+          renderMulti();
+          maybePollMulti();
+        })
+        .catch(function (err) {
+          rememberMulti(id);
+          refreshMulti().then(function () {
+            maybePollMulti();
+            showMultiError(err.message);
+          });
+        });
+    }
+
+    function inviteMulti() {
+      if (!multiGameId) return;
+      var bot = (window.TTT && window.TTT.bot) || (window.CHESS && window.CHESS.bot) || "pprsd23_bot";
+      var link = "https://t.me/" + bot + "?start=ttt_" + multiGameId;
+      var share = "https://t.me/share/url?url=" + encodeURIComponent(link) +
+        "&text=" + encodeURIComponent("Сыграем в крестики-нолики? За победу — 100 тугриков!");
+
+      if (inTelegram && supports("openTelegramLink")) {
+        try { tg.openTelegramLink(share); return; } catch (e) {}
+      }
+      window.open(share, "_blank");
+    }
+
+    function resignMulti() {
+      if (multiBusy || !multiGameId) return;
+      multiBusy = true;
+      tttFetch("/" + multiGameId + "/resign", { method: "POST" })
+        .then(function (data) {
+          multiGameData = data.game;
+          renderMulti();
+        })
+        .catch(function (err) { showMultiError(err.message); })
+        .then(function () { multiBusy = false; });
+    }
+
+    function onMultiCellClick(e) {
+      if (multiBusy || !multiGameId || !multiGameData) return;
+      if (multiGameData.status !== "active" || multiGameData.turn !== multiGameData.you) return;
+
+      var idx = parseInt(e.currentTarget.dataset.idx, 10);
+      if (isNaN(idx)) return;
+
+      multiBusy = true;
+      haptic("light");
+
+      tttFetch("/" + multiGameId + "/move", {
+        method: "POST",
+        body: JSON.stringify({ cell: idx })
+      })
+        .then(function (data) {
+          multiGameData = data.game;
+          renderMulti();
+          maybePollMulti();
+          if (data.game.status === "finished" && data.game.winner === data.game.you) {
+            haptic("success");
+          }
+        })
+        .catch(function (err) {
+          showMultiError(err.message);
+        })
+        .then(function () {
+          multiBusy = false;
+          renderMulti();
+        });
+    }
+
+    multiCells.forEach(function (cell) {
+      cell.addEventListener("click", onMultiCellClick);
+    });
+
+    if (multiNewBtn) multiNewBtn.addEventListener("click", createMultiGame);
+    if (multiInviteBtn) multiInviteBtn.addEventListener("click", inviteMulti);
+    if (multiResignBtn) multiResignBtn.addEventListener("click", resignMulti);
+    if (multiAgainBtn) multiAgainBtn.addEventListener("click", function () {
+      rememberMulti(null);
+      multiGameData = null;
+      renderMulti();
+    });
+
+    var invitedTTT = null;
+    try {
+      invitedTTT = new URLSearchParams(location.search).get("ttt");
+    } catch (e) {}
+
+    if (invitedTTT) {
+      switchMode("multi");
+      joinMultiGame(invitedTTT);
+
+      var menuBtn = document.getElementById("menuBtn");
+      var funToggle = document.getElementById("funToggle");
+      var funContent = document.getElementById("funContent");
+      var menu = document.getElementById("menu");
+      if (menu && menu.hidden && menuBtn) menuBtn.click();
+      if (funContent && funContent.hidden && funToggle) funToggle.click();
+    } else {
+      var saved = savedMultiId();
+      if (saved) {
+        multiGameId = saved;
+        refreshMulti();
+      }
+    }
+
+    renderSolo();
+  }
+
   function start() {
     initTelegram();
     watchNetlifyBadge();
@@ -2147,8 +2799,10 @@
     initFun();
     initSupport();
     initChess();
+    initTTT();
     initRoulette();
     initCasino();
+    initLeaderboard();
     initPromo();
     initShop();
     initWhatsNew();

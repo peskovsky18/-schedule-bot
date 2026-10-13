@@ -33,7 +33,16 @@ def api_state():
     if failure:
         return failure
 
-    return jsonify({"ok": True, "player": casino.serialize(user["id"])})
+    record = casino.sync_player(user["id"], user.get("name"))
+    return jsonify({"ok": True, "player": casino.serialize(user["id"], record)})
+
+
+@bp.route("/api/casino/leaderboard", methods=["GET"])
+def api_leaderboard():
+    """Таблица лидеров по тугрикам."""
+    user, _ = _player()
+    uid = user["id"] if user else None
+    return jsonify({"ok": True, **casino.get_leaderboard(current_user_id=uid)})
 
 
 @bp.route("/api/casino/claim", methods=["POST"])
