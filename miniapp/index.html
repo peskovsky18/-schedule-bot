@@ -13,7 +13,7 @@
     и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
     поднимайте номер: иначе Telegram покажет старую версию.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=37">
+  <link rel="stylesheet" href="assets/css/styles.css?v=38">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -332,7 +332,10 @@
         <div class="pet__active" id="petActiveBox" hidden>
           <div class="pet__header">
             <div class="pet__info">
-              <span class="pet__name" id="petName"></span>
+              <div class="pet__name-row">
+                <span class="pet__name" id="petName"></span>
+                <span class="pet__level-badge" id="petLevelBadge">⭐ Ур. 1</span>
+              </div>
               <span class="pet__age" id="petAge"></span>
             </div>
             <div class="pet__hearts-wrap">
@@ -345,11 +348,73 @@
             <div class="pet__char" id="petChar" role="button" tabindex="0" title="Нажмите, чтобы погладить">
               <svg class="pet__svg" id="petSvg" viewBox="0 0 160 160" width="160" height="160">
                 <defs>
-                  <linearGradient id="petGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#ff7b54" />
-                    <stop offset="50%" stop-color="#ff5252" />
-                    <stop offset="100%" stop-color="#9c27b0" />
+                  <!-- Уровень 1: Тёплый коралловый персик -->
+                  <linearGradient id="petGradLvl1" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#ff758c" />
+                    <stop offset="50%" stop-color="#ff7eb3" />
+                    <stop offset="100%" stop-color="#fa709a" />
                   </linearGradient>
+
+                  <!-- Уровень 2: Мистическая северная аврора -->
+                  <linearGradient id="petGradLvl2" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#06b6d4" />
+                    <stop offset="45%" stop-color="#4f46e5" />
+                    <stop offset="100%" stop-color="#8b5cf6" />
+                  </linearGradient>
+                  <linearGradient id="petGradLvl2Tail" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#06b6d4" />
+                    <stop offset="60%" stop-color="#6366f1" />
+                    <stop offset="100%" stop-color="#c4b5fd" />
+                  </linearGradient>
+                  <linearGradient id="petGradLvl2Ear" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#0284c7" />
+                    <stop offset="100%" stop-color="#4338ca" />
+                  </linearGradient>
+                  <radialGradient id="petGradEyeLvl2" cx="40%" cy="40%" r="60%">
+                    <stop offset="0%" stop-color="#38bdf8" />
+                    <stop offset="60%" stop-color="#4338ca" />
+                    <stop offset="100%" stop-color="#1e1b4b" />
+                  </radialGradient>
+
+                  <!-- Уровень 3: Космическая звездная туманность -->
+                  <linearGradient id="petGradLvl3" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#312e81" />
+                    <stop offset="35%" stop-color="#7c3aed" />
+                    <stop offset="70%" stop-color="#db2777" />
+                    <stop offset="100%" stop-color="#f59e0b" />
+                  </linearGradient>
+                  <linearGradient id="petGradWingLvl3" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#818cf8" stop-opacity="0.9" />
+                    <stop offset="60%" stop-color="#c084fc" stop-opacity="0.8" />
+                    <stop offset="100%" stop-color="#fbbf24" stop-opacity="0.95" />
+                  </linearGradient>
+                  <linearGradient id="petGradTailLvl3A" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#6366f1" />
+                    <stop offset="50%" stop-color="#ec4899" />
+                    <stop offset="100%" stop-color="#fbbf24" />
+                  </linearGradient>
+                  <linearGradient id="petGradTailLvl3B" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#3b82f6" />
+                    <stop offset="50%" stop-color="#a855f7" />
+                    <stop offset="100%" stop-color="#f59e0b" />
+                  </linearGradient>
+                  <linearGradient id="petGradHorn" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#fef08a" />
+                    <stop offset="40%" stop-color="#f59e0b" />
+                    <stop offset="100%" stop-color="#b45309" />
+                  </linearGradient>
+                  <radialGradient id="petGradEyeLvl3" cx="40%" cy="40%" r="60%">
+                    <stop offset="0%" stop-color="#fef08a" />
+                    <stop offset="50%" stop-color="#f59e0b" />
+                    <stop offset="100%" stop-color="#451a03" />
+                  </radialGradient>
+                  <linearGradient id="petGradAstralRing" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#38bdf8" />
+                    <stop offset="50%" stop-color="#ec4899" />
+                    <stop offset="100%" stop-color="#facc15" />
+                  </linearGradient>
+
+                  <!-- Призрак (погибший питомец) -->
                   <linearGradient id="petGhostGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stop-color="#b2ebf2" />
                     <stop offset="100%" stop-color="#80deea" />
@@ -359,27 +424,23 @@
                 <ellipse class="pet__shadow" cx="80" cy="148" rx="42" ry="7" fill="rgba(0,0,0,0.25)" />
 
                 <g class="pet__body-group" id="petBodyGroup">
-                  <path class="pet__body" id="petBodyPath"
-                    d="M 80 26 C 112 26 132 58 132 94 C 132 126 108 144 80 144 C 52 144 28 126 28 94 C 28 58 48 26 80 26 Z"
-                    fill="url(#petGradient)" />
+                  <!-- Задний план (хвост, крылья, ушки) -->
+                  <g class="pet__layer-back" id="petLayerBack"></g>
 
-                  <circle class="pet__blush" id="petBlushLeft" cx="54" cy="95" r="7" fill="#ff4081" opacity="0.45" />
-                  <circle class="pet__blush" id="petBlushRight" cx="106" cy="95" r="7" fill="#ff4081" opacity="0.45" />
+                  <!-- Основное тело -->
+                  <g class="pet__layer-body" id="petLayerBody"></g>
 
-                  <g class="pet__eyes" id="petEyes">
-                    <circle cx="62" cy="84" r="7.5" fill="#18181b" />
-                    <circle cx="60" cy="81.5" r="3" fill="#ffffff" />
-                    <circle cx="64" cy="85.5" r="1.3" fill="#ffffff" />
+                  <!-- Лицо (глаза, рот, руны, блики, щечки) -->
+                  <g class="pet__layer-face" id="petLayerFace"></g>
 
-                    <circle cx="98" cy="84" r="7.5" fill="#18181b" />
-                    <circle cx="96" cy="81.5" r="3" fill="#ffffff" />
-                    <circle cx="100" cy="85.5" r="1.3" fill="#ffffff" />
-                  </g>
-
-                  <path class="pet__mouth" id="petMouth" d="M 74 98 Q 80 104 86 98" fill="none" stroke="#18181b" stroke-width="2.5" stroke-linecap="round" />
-
+                  <!-- Слой нашейных аксессуаров -->
                   <g class="pet__layer-neck" id="petLayerNeck"></g>
+
+                  <!-- Слой головных аксессуаров -->
                   <g class="pet__layer-hat" id="petLayerHat"></g>
+
+                  <!-- Передний план (передние крылья, корона, рога, лапки) -->
+                  <g class="pet__layer-front" id="petLayerFront"></g>
                 </g>
 
                 <ellipse class="pet__halo" id="petHalo" cx="80" cy="18" rx="28" ry="6" fill="none" stroke="#ffd54f" stroke-width="3.5" opacity="0" />
@@ -390,6 +451,29 @@
           </div>
 
           <div class="pet__alive-box" id="petAliveBox">
+            <!-- Эволюция / Уровни питомца -->
+            <div class="pet__upgrade-card" id="petUpgradeCard">
+              <div class="pet__upgrade-header">
+                <div class="pet__upgrade-title-wrap">
+                  <span class="pet__upgrade-title">Эволюция питомца</span>
+                  <span class="pet__upgrade-step" id="petUpgradeStep">Уровень 1 из 3</span>
+                </div>
+                <div class="pet__level-pills" id="petLevelPills">
+                  <span class="pet__level-pill is-active" id="petLevelPill1" data-level="1">1</span>
+                  <span class="pet__level-pill" id="petLevelPill2" data-level="2">2</span>
+                  <span class="pet__level-pill" id="petLevelPill3" data-level="3">3</span>
+                </div>
+              </div>
+              <p class="pet__upgrade-text" id="petUpgradeText">
+                Откройте 2-й уровень: форма Магического Лиса-Хранителя с пушистым хвостом и светящимися рунами!
+              </p>
+              <button class="pet__upgrade-btn" id="petUpgradeBtn" type="button">
+                <span class="pet__upgrade-btn-icon">⚡</span>
+                <span class="pet__upgrade-btn-text" id="petUpgradeBtnText">Улучшить до 2 уровня</span>
+                <span class="pet__upgrade-btn-price" id="petUpgradeBtnPrice">3 000 тугриков</span>
+              </button>
+            </div>
+
             <button class="pet__feed-btn" id="petFeedBtn" type="button">
               <span class="pet__feed-icon">🍎</span>
               <span class="pet__feed-text">Покормить яблоком</span>
@@ -626,9 +710,9 @@
     </div>
   </div>
 
-  <script src="assets/js/config.js?v=37"></script>
-  <script src="assets/js/core.js?v=37"></script>
-  <script src="assets/js/chess.js?v=37"></script>
-  <script src="assets/js/app.js?v=37"></script>
+  <script src="assets/js/config.js?v=38"></script>
+  <script src="assets/js/core.js?v=38"></script>
+  <script src="assets/js/chess.js?v=38"></script>
+  <script src="assets/js/app.js?v=38"></script>
 </body>
 </html>

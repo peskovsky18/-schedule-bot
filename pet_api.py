@@ -42,6 +42,9 @@ def get_pet_state():
         "balance": balance,
         "adoptCost": pet.ADOPT_COST,
         "appleCost": pet.APPLE_COST,
+        "upgradeCosts": pet.UPGRADE_COSTS,
+        "maxLevel": pet.MAX_LEVEL,
+        "levelTitles": pet.LEVEL_TITLES,
         "catalog": pet.PET_ITEMS,
     })
 
@@ -134,4 +137,25 @@ def equip_item():
     return jsonify({
         "ok": True,
         "pet": pet_data,
+    })
+
+
+@bp.route("/upgrade", methods=["POST", "OPTIONS"])
+def upgrade():
+    if request.method == "OPTIONS":
+        return "", 204
+
+    user, failure = _user_and_error()
+    if failure:
+        return failure
+
+    pet_data, error = pet.upgrade_pet(user["id"])
+    if error:
+        return jsonify({"ok": False, "error": error}), 400
+
+    player = casino.load(user["id"])
+    return jsonify({
+        "ok": True,
+        "pet": pet_data,
+        "balance": int(player.get("balance") or 0),
     })

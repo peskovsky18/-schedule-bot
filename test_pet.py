@@ -68,6 +68,45 @@ def test_pet_lifecycle():
     assert p["equipped"]["hat"] is None
     print("✓ Снятие аксессуара работает")
 
+    # 7.1. Проверка уровней питомца и улучшений
+    assert p["level"] == 1
+    # Попытка улучшить без тугриков (баланс 600, нужно 3000)
+    p_up, err = pet.upgrade_pet(user_id)
+    assert err is not None
+    assert "Не хватает тугриков" in err
+    print("✓ Проверка баланса при улучшении до уровня 2 работает")
+
+    # Добавляем 3000 тугриков и улучшаем до 2 уровня
+    casino.add_coins(user_id, 3000)
+    p_up, err = pet.upgrade_pet(user_id)
+    assert err is None
+    assert p_up["level"] == 2
+    assert p_up["level_title"] == "Хранитель"
+    rec = casino.load(user_id)
+    assert rec["balance"] == 600
+    print("✓ Улучшение до 2 уровня за 3000 тугриков прошло успешно")
+
+    # Попытка улучшить до 3 уровня без тугриков (нужно 6000)
+    p_up, err = pet.upgrade_pet(user_id)
+    assert err is not None
+    assert "Не хватает тугриков" in err
+
+    # Добавляем 6000 тугриков и улучшаем до 3 уровня
+    casino.add_coins(user_id, 6000)
+    p_up, err = pet.upgrade_pet(user_id)
+    assert err is None
+    assert p_up["level"] == 3
+    assert p_up["level_title"] == "Легенда"
+    rec = casino.load(user_id)
+    assert rec["balance"] == 600
+    print("✓ Улучшение до 3 уровня за 6000 тугриков прошло успешно")
+
+    # Попытка улучшить выше 3 уровня
+    p_up, err = pet.upgrade_pet(user_id)
+    assert err is not None
+    assert "максимального уровня" in err
+    print("✓ Проверка ограничения максимального уровня работает")
+
     # 8. Смерть через 5 дней без еды
     pet_raw = pet.get_pet_raw(user_id)
     pet_raw["last_fed_at"] -= 5 * 86400 + 10

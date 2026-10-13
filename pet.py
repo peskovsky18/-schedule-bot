@@ -13,6 +13,18 @@ APPLE_COST = 100
 MAX_HEALTH = 5
 SECONDS_PER_HEART = 86400  # 1 день = 1 сердечко (за 5 дней умирает)
 
+MAX_LEVEL = 3
+UPGRADE_COSTS = {
+    2: 3000,
+    3: 6000,
+}
+
+LEVEL_TITLES = {
+    1: {"name": "Малыш", "badge": "⭐ Ур. 1", "desc": "Милый пушистый малыш"},
+    2: {"name": "Хранитель", "badge": "⭐⭐ Ур. 2", "desc": "Окрепший магический лис-хранитель"},
+    3: {"name": "Легенда", "badge": "⭐⭐⭐ Ур. 3", "desc": "Величественный космический хранитель"},
+}
+
 PET_ITEMS = [
     {
         "id": "cap",
@@ -150,6 +162,18 @@ def get_pet(user_id):
     eq = pet_data.get("equipped") or {"hat": None, "neck": None}
     pet_data["equipped_list"] = [v for v in eq.values() if v]
 
+    lvl = int(pet_data.get("level") or 1)
+    lvl = max(1, min(MAX_LEVEL, lvl))
+    pet_data["level"] = lvl
+    pet_data["max_level"] = MAX_LEVEL
+    next_lvl = (lvl + 1) if lvl < MAX_LEVEL else None
+    pet_data["next_level"] = next_lvl
+    pet_data["upgrade_cost"] = UPGRADE_COSTS.get(next_lvl) if next_lvl else None
+    lvl_info = LEVEL_TITLES.get(lvl, LEVEL_TITLES[1])
+    pet_data["level_title"] = lvl_info["name"]
+    pet_data["level_badge"] = lvl_info["badge"]
+    pet_data["level_desc"] = lvl_info["desc"]
+
     return pet_data
 
 
@@ -172,6 +196,7 @@ def adopt_pet(user_id, name):
         "alive": True,
         "health": MAX_HEALTH,
         "max_health": MAX_HEALTH,
+        "level": 1,
         "created_at": now,
         "last_fed_at": now,
         "inventory": [],
@@ -182,6 +207,31 @@ def adopt_pet(user_id, name):
     }
 
     save_pet_raw(user_id, pet_data)
+    return get_pet(user_id), None
+
+
+def upgrade_pet(user_id):
+    pet_info = get_pet(user_id)
+    if not pet_info:
+        return None, "У вас ещё нет питомца"
+    if not pet_info.get("alive"):
+        return None, "Питомец погиб. Сначала заведите нового"
+
+    cur_lvl = pet_info.get("level", 1)
+    if cur_lvl >= MAX_LEVEL:
+        return None, "Питомец уже достиг максимального уровня"
+
+    next_lvl = cur_lvl + 1
+    cost = UPGRADE_COSTS.get(next_lvl)
+    if not cost:
+        return None, "Неизвестный уровень для улучшения"
+
+    record, error = casino.spend(user_id, cost)
+    if error:
+        return None, error
+
+    pet_info["level"] = next_lvl
+    save_pet_raw(user_id, pet_info)
     return get_pet(user_id), None
 
 

@@ -3335,6 +3335,21 @@
     var timerEl = document.getElementById("petTimer");
 
     var petChar = document.getElementById("petChar");
+    var levelBadge = document.getElementById("petLevelBadge");
+    var upgradeCard = document.getElementById("petUpgradeCard");
+    var upgradeStep = document.getElementById("petUpgradeStep");
+    var upgradeText = document.getElementById("petUpgradeText");
+    var upgradeBtn = document.getElementById("petUpgradeBtn");
+    var upgradeBtnText = document.getElementById("petUpgradeBtnText");
+    var upgradeBtnPrice = document.getElementById("petUpgradeBtnPrice");
+    var pill1 = document.getElementById("petLevelPill1");
+    var pill2 = document.getElementById("petLevelPill2");
+    var pill3 = document.getElementById("petLevelPill3");
+
+    var layerBack = document.getElementById("petLayerBack");
+    var layerBody = document.getElementById("petLayerBody");
+    var layerFace = document.getElementById("petLayerFace");
+    var layerFront = document.getElementById("petLayerFront");
     var layerHat = document.getElementById("petLayerHat");
     var layerNeck = document.getElementById("petLayerNeck");
     var reactionBox = document.getElementById("petReaction");
@@ -3457,6 +3472,172 @@
       }, 700);
     }
 
+    function renderPetCharacter(level, isDead) {
+      if (!layerBody || !layerFace) return;
+      var lvl = Math.max(1, Math.min(3, parseInt(level, 10) || 1));
+
+      if (isDead) {
+        if (layerBack) layerBack.innerHTML = "";
+        if (layerFront) layerFront.innerHTML = "";
+        layerBody.innerHTML = '<path class="pet__body pet__body--dead" d="M 80 26 C 112 26 132 58 132 94 C 132 126 108 144 80 144 C 52 144 28 126 28 94 C 28 58 48 26 80 26 Z" fill="url(#petGhostGradient)" />';
+        layerFace.innerHTML = '<path d="M 54 84 Q 62 76 70 84" fill="none" stroke="#0e7490" stroke-width="2.5" stroke-linecap="round" />' +
+          '<path d="M 90 84 Q 98 76 106 84" fill="none" stroke="#0e7490" stroke-width="2.5" stroke-linecap="round" />' +
+          '<path d="M 76 98 Q 80 94 84 98" fill="none" stroke="#0e7490" stroke-width="2.2" stroke-linecap="round" />' +
+          '<ellipse cx="52" cy="94" rx="6" ry="4" fill="#a5f3fc" opacity="0.6" />' +
+          '<ellipse cx="108" cy="94" rx="6" ry="4" fill="#a5f3fc" opacity="0.6" />';
+        return;
+      }
+
+      if (lvl === 1) {
+        if (layerBack) {
+          layerBack.innerHTML =
+            '<path class="pet__ear pet__ear--left" d="M 52 38 C 40 20 54 12 64 26 C 60 30 56 34 52 38 Z" fill="#ff758c" />' +
+            '<path d="M 53 35 C 45 23 54 17 61 27 Z" fill="#fed7aa" opacity="0.9" />' +
+            '<path class="pet__ear pet__ear--right" d="M 108 38 C 120 20 106 12 96 26 C 100 30 104 34 108 38 Z" fill="#ff758c" />' +
+            '<path d="M 107 35 C 115 23 106 17 99 27 Z" fill="#fed7aa" opacity="0.9" />' +
+            '<path class="pet__tail pet__tail--lvl1" d="M 116 118 C 132 112 136 124 124 128 C 118 130 114 126 116 118 Z" fill="#ff6b8b" />';
+        }
+        layerBody.innerHTML =
+          '<path class="pet__body pet__body--lvl1" d="M 80 26 C 114 26 134 58 134 94 C 134 126 110 144 80 144 C 50 144 26 126 26 94 C 26 58 46 26 80 26 Z" fill="url(#petGradLvl1)" />' +
+          '<path d="M 62 33 C 72 29 88 29 98 33 C 94 37 66 37 62 33 Z" fill="#ffffff" opacity="0.32" />' +
+          '<ellipse cx="80" cy="116" rx="34" ry="22" fill="#fff5f5" opacity="0.55" />';
+        layerFace.innerHTML =
+          '<ellipse class="pet__blush" cx="52" cy="95" rx="8" ry="5.5" fill="#ff3366" opacity="0.45" />' +
+          '<ellipse class="pet__blush" cx="108" cy="95" rx="8" ry="5.5" fill="#ff3366" opacity="0.45" />' +
+          '<polygon points="45,92 46.5,95 45,98 43.5,95" fill="#ffffff" opacity="0.85" />' +
+          '<polygon points="115,92 116.5,95 115,98 113.5,95" fill="#ffffff" opacity="0.85" />' +
+          '<g class="pet__eyes">' +
+            '<circle cx="62" cy="84" r="8" fill="#1e1e24" />' +
+            '<circle cx="62" cy="84" r="7" fill="#3b0764" />' +
+            '<circle cx="60" cy="81" r="3.2" fill="#ffffff" />' +
+            '<circle cx="64.5" cy="86" r="1.5" fill="#ffffff" />' +
+            '<circle cx="59.5" cy="86.5" r="1.1" fill="#f472b6" opacity="0.8" />' +
+            '<circle cx="98" cy="84" r="8" fill="#1e1e24" />' +
+            '<circle cx="98" cy="84" r="7" fill="#3b0764" />' +
+            '<circle cx="96" cy="81" r="3.2" fill="#ffffff" />' +
+            '<circle cx="100.5" cy="86" r="1.5" fill="#ffffff" />' +
+            '<circle cx="95.5" cy="86.5" r="1.1" fill="#f472b6" opacity="0.8" />' +
+          '</g>' +
+          '<path class="pet__mouth" d="M 73 97 Q 77 101 80 98 Q 83 101 87 97" fill="none" stroke="#2d1b36" stroke-width="2.3" stroke-linecap="round" />' +
+          '<path d="M 76 27 C 77 20 83 20 84 27 C 82 24 78 24 76 27 Z" fill="#ff758c" />';
+        if (layerFront) {
+          layerFront.innerHTML =
+            '<ellipse cx="64" cy="138" rx="7.5" ry="5.5" fill="#ff6b8b" />' +
+            '<circle cx="63" cy="136.5" r="2" fill="#ffffff" opacity="0.4" />' +
+            '<ellipse cx="96" cy="138" rx="7.5" ry="5.5" fill="#ff6b8b" />' +
+            '<circle cx="95" cy="136.5" r="2" fill="#ffffff" opacity="0.4" />';
+        }
+      } else if (lvl === 2) {
+        if (layerBack) {
+          layerBack.innerHTML =
+            '<g class="pet__ear pet__ear--lvl2-left">' +
+              '<path d="M 44 46 C 30 16 44 4 58 24 C 52 30 46 38 44 46 Z" fill="url(#petGradLvl2Ear)" />' +
+              '<path d="M 46 42 C 38 20 46 12 54 26 Z" fill="#c4b5fd" opacity="0.85" />' +
+              '<path d="M 45 38 L 51 34 L 47 44 Z" fill="#ffffff" opacity="0.75" />' +
+            '</g>' +
+            '<g class="pet__ear pet__ear--lvl2-right">' +
+              '<path d="M 116 46 C 130 16 116 4 102 24 C 108 30 114 38 116 46 Z" fill="url(#petGradLvl2Ear)" />' +
+              '<path d="M 114 42 C 122 20 114 12 106 26 Z" fill="#c4b5fd" opacity="0.85" />' +
+              '<path d="M 115 38 L 109 34 L 113 44 Z" fill="#ffffff" opacity="0.75" />' +
+            '</g>' +
+            '<g class="pet__tail pet__tail--lvl2">' +
+              '<path d="M 118 114 C 150 102 162 124 144 140 C 128 148 110 134 116 120 Z" fill="url(#petGradLvl2Tail)" />' +
+              '<path d="M 136 114 C 152 120 148 134 140 138 C 132 134 130 124 136 114 Z" fill="#ffffff" opacity="0.85" />' +
+            '</g>' +
+            '<path d="M 28 88 L 16 94 L 28 98 L 20 104 L 32 106 Z" fill="#4338ca" />' +
+            '<path d="M 132 88 L 144 94 L 132 98 L 140 104 L 128 106 Z" fill="#4338ca" />';
+        }
+        layerBody.innerHTML =
+          '<path class="pet__body pet__body--lvl2" d="M 80 26 C 114 26 134 58 134 94 C 134 126 110 144 80 144 C 50 144 26 126 26 94 C 26 58 46 26 80 26 Z" fill="url(#petGradLvl2)" />' +
+          '<path d="M 64 32 C 72 28 88 28 96 32 C 92 36 68 36 64 32 Z" fill="#ffffff" opacity="0.3" />' +
+          '<path d="M 64 102 C 72 112 80 114 80 114 C 80 114 88 112 96 102 C 92 116 80 124 80 124 C 80 124 68 116 64 102 Z" fill="#e0e7ff" opacity="0.9" />';
+        layerFace.innerHTML =
+          '<g class="pet__rune">' +
+            '<polygon points="80,36 83,44 91,48 83,52 80,60 77,52 69,48 77,44" fill="#38bdf8" stroke="#ffffff" stroke-width="0.8" />' +
+            '<circle cx="80" cy="48" r="2" fill="#ffffff" />' +
+          '</g>' +
+          '<path d="M 38 92 Q 48 94 42 99" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" opacity="0.9" />' +
+          '<path d="M 122 92 Q 112 94 118 99" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" opacity="0.9" />' +
+          '<g class="pet__eyes">' +
+            '<circle cx="62" cy="84" r="8" fill="#0f172a" />' +
+            '<circle cx="62" cy="84" r="7" fill="url(#petGradEyeLvl2)" />' +
+            '<circle cx="59.5" cy="81" r="3" fill="#ffffff" />' +
+            '<polygon points="65,85 66.5,83.5 68,85 66.5,86.5" fill="#38bdf8" />' +
+            '<circle cx="98" cy="84" r="8" fill="#0f172a" />' +
+            '<circle cx="98" cy="84" r="7" fill="url(#petGradEyeLvl2)" />' +
+            '<circle cx="95.5" cy="81" r="3" fill="#ffffff" />' +
+            '<polygon points="101,85 102.5,83.5 104,85 102.5,86.5" fill="#38bdf8" />' +
+          '</g>' +
+          '<polygon points="80,94 78,92 82,92" fill="#38bdf8" />' +
+          '<path class="pet__mouth" d="M 74 98 Q 80 103 86 98" fill="none" stroke="#1e1b4b" stroke-width="2.2" stroke-linecap="round" />';
+        if (layerFront) {
+          layerFront.innerHTML =
+            '<ellipse cx="62" cy="138" rx="8" ry="5.5" fill="#312e81" />' +
+            '<circle cx="62" cy="137" r="2" fill="#38bdf8" opacity="0.7" />' +
+            '<ellipse cx="98" cy="138" rx="8" ry="5.5" fill="#312e81" />' +
+            '<circle cx="98" cy="137" r="2" fill="#38bdf8" opacity="0.7" />';
+        }
+      } else if (lvl >= 3) {
+        if (layerBack) {
+          layerBack.innerHTML =
+            '<circle class="pet__astral-ring" cx="80" cy="80" r="66" fill="none" stroke="url(#petGradAstralRing)" stroke-width="2" stroke-dasharray="8 6" opacity="0.65" />' +
+            '<g class="pet__wing pet__wing--left">' +
+              '<path d="M 38 68 C 6 36 -2 64 6 82 C 12 96 32 94 36 86 Z" fill="url(#petGradWingLvl3)" />' +
+              '<path d="M 28 72 C 12 50 8 68 14 80 C 20 86 30 84 32 78 Z" fill="#ffffff" opacity="0.6" />' +
+            '</g>' +
+            '<g class="pet__wing pet__wing--right">' +
+              '<path d="M 122 68 C 154 36 162 64 154 82 C 148 96 128 94 124 86 Z" fill="url(#petGradWingLvl3)" />' +
+              '<path d="M 132 72 C 148 50 152 68 146 80 C 140 86 130 84 128 78 Z" fill="#ffffff" opacity="0.6" />' +
+            '</g>' +
+            '<g class="pet__tail pet__tail--lvl3">' +
+              '<path d="M 116 116 C 150 104 164 126 146 142 C 132 150 112 138 114 124 Z" fill="url(#petGradTailLvl3A)" />' +
+              '<path d="M 44 116 C 10 104 -4 126 14 142 C 28 150 48 138 46 124 Z" fill="url(#petGradTailLvl3B)" />' +
+            '</g>' +
+            '<path class="pet__horn pet__horn--left" d="M 52 36 C 32 12 42 2 52 10 C 58 16 56 26 52 36 Z" fill="url(#petGradHorn)" stroke="#fbbf24" stroke-width="1" />' +
+            '<circle cx="44" cy="5" r="2.5" fill="#fde047" />' +
+            '<path class="pet__horn pet__horn--right" d="M 108 36 C 128 12 118 2 108 10 C 102 16 104 26 108 36 Z" fill="url(#petGradHorn)" stroke="#fbbf24" stroke-width="1" />' +
+            '<circle cx="116" cy="5" r="2.5" fill="#fde047" />';
+        }
+        layerBody.innerHTML =
+          '<path class="pet__body pet__body--lvl3" d="M 80 26 C 114 26 134 58 134 94 C 134 126 110 144 80 144 C 50 144 26 126 26 94 C 26 58 46 26 80 26 Z" fill="url(#petGradLvl3)" />' +
+          '<circle cx="52" cy="60" r="1.2" fill="#ffffff" opacity="0.8" />' +
+          '<circle cx="108" cy="64" r="1.5" fill="#ffffff" opacity="0.85" />' +
+          '<circle cx="40" cy="110" r="1.2" fill="#fde047" opacity="0.9" />' +
+          '<circle cx="120" cy="114" r="1.2" fill="#fde047" opacity="0.9" />' +
+          '<polygon points="70,44 71,46 73,46 71.5,47.5 72,49.5 70,48 68,49.5 68.5,47.5 67,46 69,46" fill="#ffffff" opacity="0.9" />' +
+          '<polygon points="90,44 91,46 93,46 91.5,47.5 92,49.5 90,48 88,49.5 88.5,47.5 87,46 89,46" fill="#ffffff" opacity="0.9" />' +
+          '<g class="pet__core">' +
+            '<circle cx="80" cy="120" r="10" fill="#fbbf24" opacity="0.35" class="pet__core-pulse" />' +
+            '<polygon points="80,111 88,120 80,129 72,120" fill="#fbbf24" stroke="#ffffff" stroke-width="1.2" />' +
+            '<polygon points="80,114 85,120 80,126 75,120" fill="#ffffff" />' +
+          '</g>';
+        layerFace.innerHTML =
+          '<polygon points="80,18 84,26 92,28 85,34 87,42 80,37 73,42 75,34 68,28 76,26" fill="#f59e0b" stroke="#ffffff" stroke-width="0.8" />' +
+          '<circle cx="80" cy="30" r="2.2" fill="#ffffff" />' +
+          '<ellipse class="pet__blush" cx="52" cy="95" rx="7" ry="5" fill="#fbbf24" opacity="0.35" />' +
+          '<ellipse class="pet__blush" cx="108" cy="95" rx="7" ry="5" fill="#fbbf24" opacity="0.35" />' +
+          '<g class="pet__eyes">' +
+            '<circle cx="62" cy="84" r="8" fill="#18181b" />' +
+            '<circle cx="62" cy="84" r="7" fill="url(#petGradEyeLvl3)" />' +
+            '<circle cx="60" cy="81" r="3.2" fill="#ffffff" />' +
+            '<polygon points="65,85 67,83 69,85 67,87" fill="#fbbf24" />' +
+            '<circle cx="98" cy="84" r="8" fill="#18181b" />' +
+            '<circle cx="98" cy="84" r="7" fill="url(#petGradEyeLvl3)" />' +
+            '<circle cx="96" cy="81" r="3.2" fill="#ffffff" />' +
+            '<polygon points="101,85 103,83 105,85 103,87" fill="#fbbf24" />' +
+          '</g>' +
+          '<polygon points="80,94 78,92 82,92" fill="#fbbf24" />' +
+          '<path class="pet__mouth" d="M 74 98 Q 80 102 86 98" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" />';
+        if (layerFront) {
+          layerFront.innerHTML =
+            '<ellipse cx="62" cy="138" rx="8" ry="5.5" fill="#1e1b4b" stroke="#fbbf24" stroke-width="0.8" />' +
+            '<circle cx="62" cy="137" r="2" fill="#fde047" opacity="0.85" />' +
+            '<ellipse cx="98" cy="138" rx="8" ry="5.5" fill="#1e1b4b" stroke="#fbbf24" stroke-width="0.8" />' +
+            '<circle cx="98" cy="137" r="2" fill="#fde047" opacity="0.85" />';
+        }
+      }
+    }
+
     function renderPet() {
       if (loadingEl) loadingEl.hidden = true;
 
@@ -3470,13 +3651,23 @@
       if (activeBox) activeBox.hidden = false;
 
       var isDead = !!petData.dead;
+      var lvl = Math.max(1, Math.min(3, parseInt(petData.level, 10) || 1));
 
       if (nameEl) nameEl.textContent = petData.name || "Стрики";
       if (ageEl) ageEl.textContent = formatPetAge(petData.adopted_at);
 
+      if (levelBadge) {
+        levelBadge.textContent = (lvl === 3 ? "⭐⭐⭐ Ур. 3" : (lvl === 2 ? "⭐⭐ Ур. 2" : "⭐ Ур. 1"));
+        levelBadge.className = "pet__level-badge is-lvl-" + lvl;
+      }
+
       if (petChar) {
         petChar.classList.toggle("is-dead", isDead);
+        petChar.classList.remove("is-lvl-1", "is-lvl-2", "is-lvl-3");
+        petChar.classList.add("is-lvl-" + lvl);
       }
+
+      renderPetCharacter(lvl, isDead);
 
       if (heartsEl) {
         heartsEl.innerHTML = "";
@@ -3514,6 +3705,43 @@
 
       if (aliveBox) aliveBox.hidden = false;
       if (deadBox) deadBox.hidden = true;
+
+      // Обновление карточки улучшения уровня
+      if (upgradeCard) {
+        upgradeCard.hidden = false;
+        if (pill1) pill1.className = "pet__level-pill is-active" + (lvl >= 3 ? " is-max" : "");
+        if (pill2) pill2.className = "pet__level-pill" + (lvl >= 2 ? " is-active" : "") + (lvl >= 3 ? " is-max" : "");
+        if (pill3) pill3.className = "pet__level-pill" + (lvl >= 3 ? " is-active is-max" : "");
+
+        if (lvl === 1) {
+          if (upgradeStep) upgradeStep.textContent = "Уровень 1 из 3";
+          if (upgradeText) upgradeText.textContent = "Откройте 2-й уровень: форма Магического Лиса-Хранителя с пушистым хвостом, ушками и светящимися рунами!";
+          if (upgradeBtn) {
+            upgradeBtn.disabled = false;
+            upgradeBtn.className = "pet__upgrade-btn";
+          }
+          if (upgradeBtnText) upgradeBtnText.textContent = "Улучшить до 2 уровня";
+          if (upgradeBtnPrice) upgradeBtnPrice.textContent = "3 000 тугриков";
+        } else if (lvl === 2) {
+          if (upgradeStep) upgradeStep.textContent = "Уровень 2 из 3";
+          if (upgradeText) upgradeText.textContent = "Откройте 3-й уровень: Легендарный Космический Хранитель с парящими крыльями, звездным сиянием и небесными рогами!";
+          if (upgradeBtn) {
+            upgradeBtn.disabled = false;
+            upgradeBtn.className = "pet__upgrade-btn pet__upgrade-btn--gold";
+          }
+          if (upgradeBtnText) upgradeBtnText.textContent = "Улучшить до 3 уровня";
+          if (upgradeBtnPrice) upgradeBtnPrice.textContent = "6 000 тугриков";
+        } else {
+          if (upgradeStep) upgradeStep.textContent = "Уровень 3 из 3 (МАКС)";
+          if (upgradeText) upgradeText.textContent = "★ Питомец достиг максимального 3-го уровня! Легендарный облик активен.";
+          if (upgradeBtn) {
+            upgradeBtn.disabled = true;
+            upgradeBtn.className = "pet__upgrade-btn is-max";
+          }
+          if (upgradeBtnText) upgradeBtnText.textContent = "Максимальный уровень";
+          if (upgradeBtnPrice) upgradeBtnPrice.textContent = "⭐⭐⭐";
+        }
+      }
 
       var equippedHat = "";
       var equippedNeck = "";
@@ -3787,7 +4015,56 @@
         });
     }
 
+    function upgradePetAction() {
+      if (busy || !petData || petData.dead) return;
+      var curLvl = Math.max(1, Math.min(3, parseInt(petData.level, 10) || 1));
+      if (curLvl >= 3) {
+        showToast("Питомец уже достиг максимального уровня! ⭐⭐⭐");
+        return;
+      }
+      var cost = curLvl === 1 ? 3000 : 6000;
+      if (petBalance < cost) {
+        showToast("Нужно " + cost + " тугриков для улучшения. Не хватает!", true);
+        haptic("error");
+        return;
+      }
+
+      busy = true;
+      petFetch("/upgrade", {
+        method: "POST",
+        body: JSON.stringify({})
+      })
+        .then(function (res) {
+          busy = false;
+          if (!res || !res.ok) {
+            showToast((res && res.error) || "Не удалось улучшить питомца", true);
+            haptic("error");
+            return;
+          }
+          petData = res.pet;
+          syncCasinoBalance(res.balance);
+          cheerPet();
+          spawnReaction("⚡");
+          setTimeout(function () { spawnReaction("⭐"); }, 150);
+          setTimeout(function () { spawnReaction("✨"); }, 300);
+          setTimeout(function () { spawnReaction("🎉"); }, 450);
+          var lvlTitle = (petData && petData.level_title) || ("Уровень " + petData.level);
+          showToast("🎉 Питомец эволюционировал! Новая форма: " + lvlTitle + "!");
+          haptic("success");
+          renderPet();
+        })
+        .catch(function (err) {
+          busy = false;
+          showToast(err && err.message ? err.message : "Ошибка улучшения", true);
+          haptic("error");
+        });
+    }
+
     // Обработчики кликов
+    if (upgradeBtn) {
+      upgradeBtn.addEventListener("click", upgradePetAction);
+    }
+
     if (petChar) {
       petChar.addEventListener("click", function () {
         if (!petData || petData.dead) return;
