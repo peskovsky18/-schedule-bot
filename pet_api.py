@@ -101,7 +101,7 @@ def buy_item():
         return failure
 
     data = request.get_json(silent=True) or {}
-    item_id = data.get("itemId")
+    item_id = data.get("item_id") or data.get("itemId")
 
     pet_data, error = pet.buy_item(user["id"], item_id)
     if error:
@@ -125,7 +125,7 @@ def equip_item():
         return failure
 
     data = request.get_json(silent=True) or {}
-    item_id = data.get("itemId")
+    item_id = data.get("item_id") or data.get("itemId")
 
     pet_data, error = pet.equip_item(user["id"], item_id)
     if error:

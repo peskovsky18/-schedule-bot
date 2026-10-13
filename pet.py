@@ -144,6 +144,11 @@ def get_pet(user_id):
     else:
         seconds_to_next = 0
     pet_data["seconds_to_heart_loss"] = seconds_to_next
+    pet_data["dead"] = not alive
+    pet_data["adopted_at"] = pet_data.get("created_at")
+    pet_data["items"] = pet_data.get("inventory") or []
+    eq = pet_data.get("equipped") or {"hat": None, "neck": None}
+    pet_data["equipped_list"] = [v for v in eq.values() if v]
 
     return pet_data
 

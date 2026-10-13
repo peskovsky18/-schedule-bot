@@ -3350,9 +3350,20 @@
 
     var navBtn = document.getElementById("menuPetNavBtn");
 
+    var DEFAULT_CATALOG = [
+      { id: "cap", name: "Кепка", emoji: "🧢", type: "hat", price: 300, description: "Стильная бейсболка на бок" },
+      { id: "shades", name: "Крутые очки", emoji: "🕶", type: "hat", price: 400, description: "Тёмные очки для важных переговоров" },
+      { id: "grad", name: "Шапка выпускника", emoji: "🎓", type: "hat", price: 500, description: "Конфедератка отличника" },
+      { id: "crown", name: "Золотая корона", emoji: "👑", type: "hat", price: 1500, description: "Настоящее королевское величие" },
+      { id: "headphones", name: "Наушники", emoji: "🎧", type: "hat", price: 600, description: "Геймерские неоновые наушники" },
+      { id: "bow", name: "Бантик", emoji: "🎀", type: "neck", price: 200, description: "Милый розовый бантик" },
+      { id: "tie", name: "Галстук", emoji: "👔", type: "neck", price: 450, description: "Деловой красный галстук" },
+      { id: "scarf", name: "Тёплый шарф", emoji: "🧣", type: "neck", price: 350, description: "Согревает на зимней сессии" }
+    ];
+
     var petData = null;
     var petBalance = 0;
-    var petCatalog = [];
+    var petCatalog = DEFAULT_CATALOG.slice();
     var busy = false;
 
     var ITEM_SVGS = {
@@ -3504,17 +3515,22 @@
       if (aliveBox) aliveBox.hidden = false;
       if (deadBox) deadBox.hidden = true;
 
-      var equipped = petData.equipped || [];
       var equippedHat = "";
       var equippedNeck = "";
 
-      for (var j = 0; j < equipped.length; j++) {
-        var eqId = equipped[j];
-        for (var k = 0; k < petCatalog.length; k++) {
-          if (petCatalog[k].id === eqId) {
-            if (petCatalog[k].type === "hat") equippedHat = eqId;
-            if (petCatalog[k].type === "neck") equippedNeck = eqId;
-          }
+      if (petData && petData.equipped) {
+        if (typeof petData.equipped === "object" && !Array.isArray(petData.equipped)) {
+          equippedHat = petData.equipped.hat || "";
+          equippedNeck = petData.equipped.neck || "";
+        } else if (Array.isArray(petData.equipped)) {
+          petData.equipped.forEach(function (id) {
+            petCatalog.forEach(function (it) {
+              if (it.id === id) {
+                if (it.type === "hat") equippedHat = id;
+                if (it.type === "neck") equippedNeck = id;
+              }
+            });
+          });
         }
       }
 
@@ -3536,54 +3552,81 @@
       if (!itemsGrid) return;
       itemsGrid.innerHTML = "";
 
-      var owned = petData.items || [];
-      var equipped = petData.equipped || [];
+      if (!petData) return;
 
-      petCatalog.forEach(function (item) {
+      var catalog = (petCatalog && petCatalog.length > 0) ? petCatalog : DEFAULT_CATALOG;
+
+      var owned = [];
+      if (Array.isArray(petData.items)) {
+        owned = petData.items;
+      } else if (Array.isArray(petData.inventory)) {
+        owned = petData.inventory;
+      }
+
+      var eqMap = {};
+      if (petData.equipped) {
+        if (Array.isArray(petData.equipped)) {
+          petData.equipped.forEach(function (id) { if (id) eqMap[id] = true; });
+        } else if (typeof petData.equipped === "object") {
+          if (petData.equipped.hat) eqMap[petData.equipped.hat] = true;
+          if (petData.equipped.neck) eqMap[petData.equipped.neck] = true;
+        }
+      }
+
+      catalog.forEach(function (item) {
         var isOwned = owned.indexOf(item.id) !== -1;
-        var isEq = equipped.indexOf(item.id) !== -1;
+        var isEq = !!eqMap[item.id];
 
         var card = document.createElement("div");
         card.className = "pet-card" + (isEq ? " is-equipped" : "");
 
-        var icon = document.createElement("div");
-        icon.className = "pet-card__icon";
-        icon.textContent = item.emoji || "✨";
+        var top = document.createElement("div");
+        top.className = "pet-card__top";
+
+        var emoji = document.createElement("div");
+        emoji.className = "pet-card__emoji";
+        emoji.textContent = item.emoji || "✨";
+
+        var info = document.createElement("div");
+        info.className = "pet-card__info";
 
         var name = document.createElement("div");
         name.className = "pet-card__name";
         name.textContent = item.name;
 
-        var desc = document.createElement("div");
-        desc.className = "pet-card__desc";
-        desc.textContent = item.description || "";
+        var price = document.createElement("div");
+        price.className = "pet-card__price";
+        price.textContent = isOwned ? "В гардеробе" : (item.price + " тугриков");
+
+        info.appendChild(name);
+        info.appendChild(price);
+        top.appendChild(emoji);
+        top.appendChild(info);
 
         var btn = document.createElement("button");
         btn.type = "button";
 
         if (!isOwned) {
-          btn.className = "pet-card__btn pet-card__btn--buy";
-          btn.textContent = "Купить: " + item.price + " 💰";
+          btn.className = "pet-card__btn is-buy";
+          btn.textContent = "Купить (" + item.price + " 💰)";
           btn.addEventListener("click", function () {
             buyItem(item);
           });
         } else if (isEq) {
-          btn.className = "pet-card__btn pet-card__btn--unequip";
+          btn.className = "pet-card__btn is-equipped";
           btn.textContent = "✓ Надет (снять)";
           btn.addEventListener("click", function () {
             toggleEquip(item);
           });
         } else {
-          btn.className = "pet-card__btn pet-card__btn--equip";
+          btn.className = "pet-card__btn";
           btn.textContent = "Надеть";
           btn.addEventListener("click", function () {
             toggleEquip(item);
           });
         }
 
-        card.appendChild(icon);
-        card.appendChild(name);
-        card.appendChild(desc);
+        card.appendChild(top);
         card.appendChild(btn);
         itemsGrid.appendChild(card);
       });
@@ -3600,7 +3643,7 @@
       busy = true;
       petFetch("/buy", {
         method: "POST",
-        body: JSON.stringify({ item_id: item.id })
+        body: JSON.stringify({ item_id: item.id, itemId: item.id })
       })
         .then(function (res) {
           busy = false;
@@ -3630,7 +3673,7 @@
 
       petFetch("/equip", {
         method: "POST",
-        body: JSON.stringify({ item_id: item.id })
+        body: JSON.stringify({ item_id: item.id, itemId: item.id })
       })
         .then(function (res) {
           busy = false;
