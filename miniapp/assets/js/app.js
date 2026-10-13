@@ -1622,6 +1622,48 @@
   var casinoPlayer = null;
   var casinoWelcome = null;
 
+  // Единая синхронизация баланса игрока (тугриков) по всему приложению
+  var globalUserBalance = null;
+  var balanceSubscribers = [];
+
+  function onBalanceUpdate(callback) {
+    if (typeof callback === "function") {
+      balanceSubscribers.push(callback);
+      if (globalUserBalance !== null) {
+        try { callback(globalUserBalance); } catch (e) {}
+      }
+    }
+  }
+
+  function getEffectiveBalance() {
+    if (typeof globalUserBalance === "number") {
+      return globalUserBalance;
+    }
+    if (casinoPlayer && typeof casinoPlayer.balance === "number") {
+      return casinoPlayer.balance;
+    }
+    return 0;
+  }
+
+  function syncCasinoBalance(newBal) {
+    if (typeof newBal !== "number" || isNaN(newBal)) return;
+    newBal = Math.max(0, Math.floor(newBal));
+    globalUserBalance = newBal;
+    if (casinoPlayer) {
+      casinoPlayer.balance = newBal;
+    }
+    if (typeof casinoRender === "function") {
+      casinoRender();
+    }
+    for (var i = 0; i < balanceSubscribers.length; i++) {
+      try {
+        balanceSubscribers[i](newBal);
+      } catch (err) {
+        console.warn("[balance listener error]", err);
+      }
+    }
+  }
+
   // Перерисовку ставит initCasino: тугрики за вход могут прийти как
   // до, так и после того, как раздел построен
   var casinoRender = null;
@@ -1675,6 +1717,9 @@
         if (!data || data.ok !== true) return;
 
         casinoPlayer = data.player;
+        if (data.player && typeof data.player.balance === "number") {
+          syncCasinoBalance(data.player.balance);
+        }
 
         // Сервер сам решает, положен ли подарок: приходит только
         // при первом входе, дальше там null
@@ -1931,6 +1976,9 @@
           }
 
           casinoPlayer = data.player;
+          if (data.player && typeof data.player.balance === "number") {
+            syncCasinoBalance(data.player.balance);
+          }
           var result = data.result;
 
           // Мгновенный результат выглядит как подделка, поэтому даём
@@ -1971,6 +2019,9 @@
         .then(function (data) {
           if (!data || data.ok !== true) return;
           casinoPlayer = data.player;
+          if (data.player && typeof data.player.balance === "number") {
+            syncCasinoBalance(data.player.balance);
+          }
           render();
         })
         .catch(function (error) {
@@ -2064,9 +2115,13 @@
           input.value = "";
 
           // Баланс в казино изменился — покажем это сразу
-          if (result.data.player && typeof casinoRender === "function") {
+          if (result.data.player) {
             casinoPlayer = result.data.player;
-            casinoRender();
+            if (typeof result.data.player.balance === "number") {
+              syncCasinoBalance(result.data.player.balance);
+            } else if (typeof casinoRender === "function") {
+              casinoRender();
+            }
           }
         })
         .catch(function () {
@@ -2242,7 +2297,10 @@
           if (!data || data.ok !== true) return;
 
           products = data.products || [];
-          balance = data.balance || 0;
+          balance = typeof data.balance === "number" ? data.balance : (balance || 0);
+          if (typeof data.balance === "number") {
+            syncCasinoBalance(data.balance);
+          }
           render();
         })
         .catch(function (error) {
@@ -2293,7 +2351,15 @@
             return;
           }
 
-          balance = data.player ? data.player.balance : balance;
+          if (data.player && typeof data.player.balance === "number") {
+            balance = data.player.balance;
+            syncCasinoBalance(data.player.balance);
+          } else if (typeof data.balance === "number") {
+            balance = data.balance;
+            syncCasinoBalance(data.balance);
+          } else {
+            balance = data.player ? data.player.balance : balance;
+          }
           closeForm();
           render();
           showNote("Готово! Заказ " + data.order.id + " принят, с вами свяжутся.", "is-done");
@@ -2306,6 +2372,11 @@
     });
 
     if (cancelBtn) cancelBtn.addEventListener("click", closeForm);
+
+    onBalanceUpdate(function (bal) {
+      balance = bal;
+      render();
+    });
 
     load();
   }
@@ -2630,9 +2701,13 @@
 
           tttFetch("/solo_reward", { method: "POST" })
             .then(function (data) {
-              if (data && data.player && typeof casinoPlayer !== "undefined") {
+              if (data && data.player) {
                 casinoPlayer = data.player;
-                if (typeof casinoRender === "function") casinoRender();
+                if (typeof data.player.balance === "number") {
+                  syncCasinoBalance(data.player.balance);
+                } else if (typeof casinoRender === "function") {
+                  casinoRender();
+                }
               }
             })
             .catch(function () {});
@@ -3377,9 +3452,19 @@
     ];
 
     var petData = null;
-    var petBalance = 0;
     var petCatalog = DEFAULT_CATALOG.slice();
     var busy = false;
+
+    function renderPetBalance() {
+      var badgeVal = document.getElementById("petBalanceVal");
+      if (badgeVal) {
+        badgeVal.textContent = tugriks(getEffectiveBalance());
+      }
+    }
+
+    onBalanceUpdate(function () {
+      renderPetBalance();
+    });
 
     var ITEM_SVGS = {
       cap: '<path d="M 50 36 C 50 20 110 20 110 36 Z" fill="#2563eb" />' +
@@ -3422,18 +3507,6 @@
       opt.headers = chessHeaders();
       return fetchWithRetry((apiBase || "") + "/api/pet" + path, opt, LOAD_TIMEOUT_MS, 1)
         .then(function (r) { return r.json(); });
-    }
-
-    function syncCasinoBalance(newBal) {
-      if (typeof newBal === "number") {
-        petBalance = newBal;
-        if (typeof casinoPlayer !== "undefined" && casinoPlayer) {
-          casinoPlayer.balance = newBal;
-        }
-        if (typeof casinoRender === "function") {
-          casinoRender();
-        }
-      }
     }
 
     function formatPetAge(adoptedAt) {
@@ -3774,6 +3847,7 @@
       }
 
       renderWardrobe();
+      renderPetBalance();
     }
 
     function renderWardrobe() {
@@ -3862,8 +3936,9 @@
 
     function buyItem(item) {
       if (busy) return;
-      if (petBalance < item.price) {
-        showToast("Нужно " + item.price + " тугриков. Не хватает!", true);
+      var curBal = getEffectiveBalance();
+      if (globalUserBalance !== null && curBal < item.price) {
+        showToast("Нужно " + item.price + " тугриков (у вас " + curBal + "). Не хватает!", true);
         haptic("error");
         return;
       }
@@ -3875,13 +3950,16 @@
       })
         .then(function (res) {
           busy = false;
+          if (res && typeof res.balance === "number") {
+            syncCasinoBalance(res.balance);
+          }
           if (!res || !res.ok) {
             showToast((res && res.error) || "Не удалось купить", true);
             haptic("error");
+            renderPet();
             return;
           }
           petData = res.pet;
-          syncCasinoBalance(res.balance);
           cheerPet();
           spawnReaction("✨");
           showToast("Куплено: " + item.name + " 🎉");
@@ -3935,6 +4013,18 @@
       }
       if (errEl) errEl.hidden = true;
 
+      var curBal = getEffectiveBalance();
+      if (globalUserBalance !== null && curBal < 1000) {
+        var msg = "Нужно 1 000 тугриков для приюта (у вас " + curBal + "). Сыграйте в казино!";
+        if (errEl) {
+          errEl.textContent = msg;
+          errEl.hidden = false;
+        }
+        showToast(msg, true);
+        haptic("error");
+        return;
+      }
+
       busy = true;
       petFetch("/adopt", {
         method: "POST",
@@ -3942,6 +4032,9 @@
       })
         .then(function (res) {
           busy = false;
+          if (res && typeof res.balance === "number") {
+            syncCasinoBalance(res.balance);
+          }
           if (!res || !res.ok) {
             var msg = (res && res.error) || "Не удалось завести питомца";
             if (errEl) {
@@ -3953,7 +4046,6 @@
             return;
           }
           petData = res.pet;
-          syncCasinoBalance(res.balance);
           cheerPet();
           spawnReaction("🎉");
           spawnReaction("❤️");
@@ -3980,8 +4072,9 @@
         haptic("warning");
         return;
       }
-      if (petBalance < 100) {
-        showToast("Нужно 100 тугриков на яблоко. Сыграйте в казино!", true);
+      var curBal = getEffectiveBalance();
+      if (globalUserBalance !== null && curBal < 100) {
+        showToast("Нужно 100 тугриков на яблоко (у вас " + curBal + "). Сыграйте в казино!", true);
         haptic("error");
         return;
       }
@@ -3993,13 +4086,16 @@
       })
         .then(function (res) {
           busy = false;
+          if (res && typeof res.balance === "number") {
+            syncCasinoBalance(res.balance);
+          }
           if (!res || !res.ok) {
             showToast((res && res.error) || "Не удалось покормить", true);
             haptic("error");
+            renderPet();
             return;
           }
           petData = res.pet;
-          syncCasinoBalance(res.balance);
           cheerPet();
           spawnReaction("🍏");
           setTimeout(function () { spawnReaction("❤️"); }, 150);
@@ -4023,8 +4119,9 @@
         return;
       }
       var cost = curLvl === 1 ? 3000 : 6000;
-      if (petBalance < cost) {
-        showToast("Нужно " + cost + " тугриков для улучшения. Не хватает!", true);
+      var curBal = getEffectiveBalance();
+      if (globalUserBalance !== null && curBal < cost) {
+        showToast("Нужно " + cost + " тугриков для улучшения (у вас " + curBal + "). Не хватает!", true);
         haptic("error");
         return;
       }
@@ -4036,13 +4133,16 @@
       })
         .then(function (res) {
           busy = false;
+          if (res && typeof res.balance === "number") {
+            syncCasinoBalance(res.balance);
+          }
           if (!res || !res.ok) {
             showToast((res && res.error) || "Не удалось улучшить питомца", true);
             haptic("error");
+            renderPet();
             return;
           }
           petData = res.pet;
-          syncCasinoBalance(res.balance);
           cheerPet();
           spawnReaction("⚡");
           setTimeout(function () { spawnReaction("⭐"); }, 150);
@@ -4129,7 +4229,9 @@
       .then(function (data) {
         if (data && data.ok) {
           petData = data.pet || null;
-          petBalance = typeof data.balance === "number" ? data.balance : 0;
+          if (typeof data.balance === "number") {
+            syncCasinoBalance(data.balance);
+          }
           petCatalog = Array.isArray(data.catalog) ? data.catalog : [];
         }
         renderPet();

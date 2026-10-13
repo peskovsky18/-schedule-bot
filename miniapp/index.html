@@ -13,7 +13,7 @@
     и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
     поднимайте номер: иначе Telegram покажет старую версию.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=38">
+  <link rel="stylesheet" href="assets/css/styles.css?v=39">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -480,7 +480,10 @@
               <span class="pet__feed-price">100 тугриков (+1 ❤️)</span>
             </button>
 
-            <div class="pet__wardrobe-title">Гардероб и аксессуары</div>
+            <div class="pet__wardrobe-header">
+              <span class="pet__wardrobe-title">Гардероб и аксессуары</span>
+              <span class="pet__balance-pill" id="petBalancePill">💰 <span id="petBalanceVal">0</span> тугриков</span>
+            </div>
             <div class="pet__wardrobe" id="petWardrobe">
               <div class="pet__items-grid" id="petItemsGrid"></div>
             </div>
@@ -710,9 +713,9 @@
     </div>
   </div>
 
-  <script src="assets/js/config.js?v=38"></script>
-  <script src="assets/js/core.js?v=38"></script>
-  <script src="assets/js/chess.js?v=38"></script>
-  <script src="assets/js/app.js?v=38"></script>
+  <script src="assets/js/config.js?v=39"></script>
+  <script src="assets/js/core.js?v=39"></script>
+  <script src="assets/js/chess.js?v=39"></script>
+  <script src="assets/js/app.js?v=39"></script>
 </body>
 </html>

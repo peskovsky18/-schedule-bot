@@ -62,14 +62,15 @@ def adopt():
     name = data.get("name")
 
     pet_data, error = pet.adopt_pet(user["id"], name)
-    if error:
-        return jsonify({"ok": False, "error": error}), 400
-
     player = casino.load(user["id"])
+    balance = int(player.get("balance") or 0)
+    if error:
+        return jsonify({"ok": False, "error": error, "balance": balance}), 400
+
     return jsonify({
         "ok": True,
         "pet": pet_data,
-        "balance": int(player.get("balance") or 0),
+        "balance": balance,
     })
 
 
@@ -83,14 +84,15 @@ def feed():
         return failure
 
     pet_data, error = pet.feed_pet(user["id"])
-    if error:
-        return jsonify({"ok": False, "error": error}), 400
-
     player = casino.load(user["id"])
+    balance = int(player.get("balance") or 0)
+    if error:
+        return jsonify({"ok": False, "error": error, "balance": balance}), 400
+
     return jsonify({
         "ok": True,
         "pet": pet_data,
-        "balance": int(player.get("balance") or 0),
+        "balance": balance,
     })
 
 
@@ -107,14 +109,15 @@ def buy_item():
     item_id = data.get("item_id") or data.get("itemId")
 
     pet_data, error = pet.buy_item(user["id"], item_id)
-    if error:
-        return jsonify({"ok": False, "error": error}), 400
-
     player = casino.load(user["id"])
+    balance = int(player.get("balance") or 0)
+    if error:
+        return jsonify({"ok": False, "error": error, "balance": balance}), 400
+
     return jsonify({
         "ok": True,
         "pet": pet_data,
-        "balance": int(player.get("balance") or 0),
+        "balance": balance,
     })
 
 
@@ -150,12 +153,13 @@ def upgrade():
         return failure
 
     pet_data, error = pet.upgrade_pet(user["id"])
-    if error:
-        return jsonify({"ok": False, "error": error}), 400
-
     player = casino.load(user["id"])
+    balance = int(player.get("balance") or 0)
+    if error:
+        return jsonify({"ok": False, "error": error, "balance": balance}), 400
+
     return jsonify({
         "ok": True,
         "pet": pet_data,
-        "balance": int(player.get("balance") or 0),
+        "balance": balance,
     })
