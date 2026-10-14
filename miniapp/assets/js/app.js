@@ -3391,7 +3391,7 @@
     updateNoteBadge();
   }
 
-  /* ---------- Питомец-тамагочи ---------- */
+  /* ---------- ЧЕЛИК ---------- */
 
   function initPet() {
     var section = document.getElementById("petSection");

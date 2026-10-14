@@ -637,7 +637,7 @@ casino_api.init_app(app)
 # Заметки и задания к парам с дедлайнами
 notes_api.init_app(app)
 
-# Питомец-тамагочи
+# ЧЕЛИК
 pet_api.init_app(app)
 
 
