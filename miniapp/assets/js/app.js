@@ -537,7 +537,33 @@
 
   function skeleton() {
     var wrap = el("div", "skeleton");
-    for (var i = 0; i < 3; i++) wrap.appendChild(el("div", "skeleton__row"));
+    for (var i = 0; i < 2; i++) {
+      var card = el("div", "skeleton__card");
+
+      // Шапка карточки дня: дата и бейдж количества пар
+      var head = el("div", "skeleton__head");
+      head.appendChild(el("div", "skeleton__pill skeleton__pill--date"));
+      head.appendChild(el("div", "skeleton__pill skeleton__pill--badge"));
+      card.appendChild(head);
+
+      // 2 пары внутри дня
+      for (var j = 0; j < 2; j++) {
+        var lesson = el("div", "skeleton__lesson");
+        var time = el("div", "skeleton__pill skeleton__pill--time");
+        var body = el("div", "skeleton__lesson-body");
+        var title = el("div", "skeleton__pill skeleton__pill--title");
+        var tags = el("div", "skeleton__tags");
+        tags.appendChild(el("div", "skeleton__pill skeleton__pill--tag"));
+        tags.appendChild(el("div", "skeleton__pill skeleton__pill--room"));
+        body.appendChild(title);
+        body.appendChild(tags);
+        lesson.appendChild(time);
+        lesson.appendChild(body);
+        card.appendChild(lesson);
+      }
+
+      wrap.appendChild(card);
+    }
     return wrap;
   }
 
@@ -3998,6 +4024,13 @@
         petChar.classList.add("is-lvl-" + lvl);
       }
 
+      var petStage = document.getElementById("petStage");
+      if (petStage) {
+        petStage.classList.toggle("is-dead", isDead);
+        petStage.classList.remove("is-lvl-1", "is-lvl-2", "is-lvl-3");
+        petStage.classList.add("is-lvl-" + lvl);
+      }
+
       renderPetCharacter(lvl, isDead);
 
       if (heartsEl) {
@@ -4005,8 +4038,10 @@
         var h = Math.max(0, Math.min(5, petData.health || 0));
         for (var i = 0; i < 5; i++) {
           var sp = document.createElement("span");
-          sp.className = "pet__heart " + (i < h ? "is-filled" : "is-lost");
-          sp.textContent = i < h ? "❤️" : "🤍";
+          var filled = i < h;
+          sp.className = "pet__heart " + (filled ? "is-filled" : "is-lost");
+          sp.style.animationDelay = (i * 0.18) + "s";
+          sp.textContent = filled ? "❤️" : "🤍";
           heartsEl.appendChild(sp);
         }
       }
@@ -4044,6 +4079,10 @@
         if (pill2) pill2.className = "pet__level-pill" + (lvl >= 2 ? " is-active" : "") + (lvl >= 3 ? " is-max" : "");
         if (pill3) pill3.className = "pet__level-pill" + (lvl >= 3 ? " is-active is-max" : "");
 
+        var evoVal = document.getElementById("petEvolutionVal");
+        var evoFill = document.getElementById("petEvolutionFill");
+        var curBal = getEffectiveBalance();
+
         if (lvl === 1) {
           if (upgradeStep) upgradeStep.textContent = "Уровень 1 из 3";
           if (upgradeText) upgradeText.textContent = "Откройте 2-й уровень: форма Магического Лиса-Хранителя с пушистым хвостом, ушками и светящимися рунами!";
@@ -4053,6 +4092,13 @@
           }
           if (upgradeBtnText) upgradeBtnText.textContent = "Улучшить до 2 уровня";
           if (upgradeBtnPrice) upgradeBtnPrice.textContent = "3 000 тугриков";
+
+          var pct1 = Math.min(100, Math.max(0, Math.floor((curBal / 3000) * 100)));
+          if (evoVal) evoVal.textContent = curBal.toLocaleString("ru-RU") + " / 3 000 💰 (" + pct1 + "%)";
+          if (evoFill) {
+            evoFill.style.width = pct1 + "%";
+            evoFill.className = "pet__evolution-fill is-lvl-1";
+          }
         } else if (lvl === 2) {
           if (upgradeStep) upgradeStep.textContent = "Уровень 2 из 3";
           if (upgradeText) upgradeText.textContent = "Откройте 3-й уровень: Легендарный Космический Хранитель с парящими крыльями, звездным сиянием и небесными рогами!";
@@ -4062,6 +4108,13 @@
           }
           if (upgradeBtnText) upgradeBtnText.textContent = "Улучшить до 3 уровня";
           if (upgradeBtnPrice) upgradeBtnPrice.textContent = "6 000 тугриков";
+
+          var pct2 = Math.min(100, Math.max(0, Math.floor((curBal / 6000) * 100)));
+          if (evoVal) evoVal.textContent = curBal.toLocaleString("ru-RU") + " / 6 000 💰 (" + pct2 + "%)";
+          if (evoFill) {
+            evoFill.style.width = pct2 + "%";
+            evoFill.className = "pet__evolution-fill is-lvl-2";
+          }
         } else {
           if (upgradeStep) upgradeStep.textContent = "Уровень 3 из 3 (МАКС)";
           if (upgradeText) upgradeText.textContent = "★ Питомец достиг максимального 3-го уровня! Легендарный облик активен.";
@@ -4071,6 +4124,12 @@
           }
           if (upgradeBtnText) upgradeBtnText.textContent = "Максимальный уровень";
           if (upgradeBtnPrice) upgradeBtnPrice.textContent = "⭐⭐⭐";
+
+          if (evoVal) evoVal.textContent = "Максимальный уровень ⭐⭐⭐";
+          if (evoFill) {
+            evoFill.style.width = "100%";
+            evoFill.className = "pet__evolution-fill is-max";
+          }
         }
       }
 

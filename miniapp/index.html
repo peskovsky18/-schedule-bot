@@ -13,7 +13,7 @@
     и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
     поднимайте номер: иначе Telegram покажет старую версию.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=42">
+  <link rel="stylesheet" href="assets/css/styles.css?v=43">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -344,7 +344,8 @@
             </div>
           </div>
 
-          <div class="pet__stage">
+          <div class="pet__stage" id="petStage">
+            <div class="pet__aura" id="petAura"></div>
             <div class="pet__char" id="petChar" role="button" tabindex="0" title="Нажмите, чтобы погладить">
               <svg class="pet__svg" id="petSvg" viewBox="0 0 160 160" width="160" height="160">
                 <defs>
@@ -462,6 +463,15 @@
                   <span class="pet__level-pill is-active" id="petLevelPill1" data-level="1">1</span>
                   <span class="pet__level-pill" id="petLevelPill2" data-level="2">2</span>
                   <span class="pet__level-pill" id="petLevelPill3" data-level="3">3</span>
+                </div>
+              </div>
+              <div class="pet__evolution-bar-wrap">
+                <div class="pet__evolution-bar-info">
+                  <span class="pet__evolution-bar-label">Прогресс тугриков:</span>
+                  <span class="pet__evolution-bar-val" id="petEvolutionVal">0 / 3 000 💰</span>
+                </div>
+                <div class="pet__evolution-track">
+                  <div class="pet__evolution-fill" id="petEvolutionFill" style="width: 0%"></div>
                 </div>
               </div>
               <p class="pet__upgrade-text" id="petUpgradeText">
@@ -713,9 +723,9 @@
     </div>
   </div>
 
-  <script src="assets/js/config.js?v=42"></script>
-  <script src="assets/js/core.js?v=42"></script>
-  <script src="assets/js/chess.js?v=42"></script>
-  <script src="assets/js/app.js?v=42"></script>
+  <script src="assets/js/config.js?v=43"></script>
+  <script src="assets/js/core.js?v=43"></script>
+  <script src="assets/js/chess.js?v=43"></script>
+  <script src="assets/js/app.js?v=43"></script>
 </body>
 </html>
