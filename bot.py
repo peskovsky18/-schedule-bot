@@ -39,6 +39,8 @@ import ttt_api
 import ttt_game
 import notes_api
 import pet_api
+import homework
+import homework_api
 import parser
 from parser import format_schedule, get_today, get_tomorrow, get_week, parse_schedule
 
@@ -640,6 +642,9 @@ notes_api.init_app(app)
 # ЧЕЛИК
 pet_api.init_app(app)
 
+# Домашние задания из канала группы
+homework_api.init_app(app, bot)
+
 
 def accept_chess_invite(message, game_id):
     """
@@ -824,6 +829,119 @@ def callbacks(call):
     elif call.data == "broadcast":
         broadcast_mode.add(chat_id)
         bot.send_message(chat_id, "📢 Введите текст")
+
+
+# =========================
+# HOMEWORK FROM CHANNEL
+# =========================
+
+def _extract_post_photos(message):
+    photos = []
+    if message.photo:
+        largest = message.photo[-1]
+        photos.append({
+            "file_id": largest.file_id,
+            "file_unique_id": largest.file_unique_id,
+            "width": largest.width,
+            "height": largest.height,
+        })
+    return photos
+
+
+def _extract_post_link(chat, message_id):
+    if not chat or not message_id:
+        return None
+    if getattr(chat, "username", None):
+        return f"https://t.me/{chat.username}/{message_id}"
+    cid_str = str(getattr(chat, "id", ""))
+    if cid_str.startswith("-100"):
+        return f"https://t.me/c/{cid_str[4:]}/{message_id}"
+    return None
+
+
+def process_channel_hw_post(message):
+    text = (message.text or message.caption or "").strip()
+    if not text and not message.photo:
+        return None
+
+    photos = _extract_post_photos(message)
+    post_link = _extract_post_link(message.chat, message.message_id)
+
+    item = homework.parse_homework_post(
+        text=text,
+        photos=photos,
+        post_link=post_link,
+        channel_id=message.chat.id if message.chat else None,
+        message_id=message.message_id,
+        message_date=getattr(message, "date", None),
+    )
+    if item:
+        homework.save_homework(item)
+        print(f"[HOMEWORK] Сохранено ДЗ из канала: {item['subject']} на {item['date']}")
+    return item
+
+
+@bot.channel_post_handler(content_types=["text", "photo"])
+def on_channel_post(message):
+    try:
+        process_channel_hw_post(message)
+    except Exception as e:
+        print("[HOMEWORK] Ошибка обработки поста канала:", e)
+        traceback.print_exc()
+
+
+@bot.edited_channel_post_handler(content_types=["text", "photo"])
+def on_edited_channel_post(message):
+    try:
+        process_channel_hw_post(message)
+    except Exception as e:
+        print("[HOMEWORK] Ошибка обработки отредактированного поста:", e)
+        traceback.print_exc()
+
+
+# Ручное добавление или пересылка ДЗ администратором в ЛС боту (для теста без прав в канале)
+@bot.message_handler(func=lambda msg: msg.from_user and msg.from_user.id == ADMIN_ID and (
+    getattr(msg, "forward_from_chat", None) is not None or
+    ((msg.text or msg.caption or "").strip().startswith("/add_hw") or (msg.text or "").strip().startswith("📌"))
+), content_types=["text", "photo"])
+def on_admin_hw_forward(message):
+    try:
+        raw_text = (message.text or message.caption or "").strip()
+        if raw_text.startswith("/add_hw"):
+            raw_text = raw_text[len("/add_hw"):].strip()
+
+        photos = _extract_post_photos(message)
+        f_chat = getattr(message, "forward_from_chat", None)
+        f_msg_id = getattr(message, "forward_from_message_id", None)
+        post_link = _extract_post_link(f_chat, f_msg_id)
+
+        item = homework.parse_homework_post(
+            text=raw_text,
+            photos=photos,
+            post_link=post_link,
+            channel_id=f_chat.id if f_chat else None,
+            message_id=f_msg_id or message.message_id,
+            message_date=getattr(message, "forward_date", None) or getattr(message, "date", None),
+        )
+        if item:
+            homework.save_homework(item)
+            links_cnt = len(item.get("links") or [])
+            photos_cnt = len(item.get("photos") or [])
+            date_str = item.get("date") or "Дата не определена"
+            bot.reply_to(
+                message,
+                f"✅ <b>ДЗ успешно сохранено и привязано к расписанию!</b>\n\n"
+                f"📌 <b>Предмет:</b> {item['subject']}\n"
+                f"🗓 <b>Дата пары:</b> {date_str}\n"
+                f"📎 <b>Ссылок:</b> {links_cnt}\n"
+                f"🖼 <b>Фотографий:</b> {photos_cnt}\n\n"
+                f"<i>Задание сразу отображается в мини-аппе в карточке этой пары!</i>",
+                parse_mode="HTML"
+            )
+        else:
+            bot.reply_to(message, "⚠️ Не удалось распознать задание в сообщении.")
+    except Exception as e:
+        bot.reply_to(message, f"❌ Ошибка обработки ДЗ: {e}")
 
 
 # =========================

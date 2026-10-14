@@ -365,6 +365,91 @@
 
   loadStoredNotes();
 
+  /* ---------- ДЗ из Telegram-канала группы ---------- */
+
+  var channelHomeworkList = [];
+  var userDoneHomework = {};
+
+  function normSubj(s) {
+    if (!s) return "";
+    return String(s).toLowerCase().replace(/ё/g, "е").replace(/[^\w\sа-яa-z0-9]/gi, " ").replace(/\s+/g, " ").trim();
+  }
+
+  function getHomeworkForLesson(lessonSubject, dayDate) {
+    if (!lessonSubject || !dayDate || !channelHomeworkList.length) return [];
+    var normLesson = normSubj(lessonSubject);
+    return channelHomeworkList.filter(function (hw) {
+      if (!hw.date || hw.date !== dayDate) return false;
+      var normHw = normSubj(hw.subject);
+      if (normLesson.indexOf(normHw) !== -1 || normHw.indexOf(normLesson) !== -1) return true;
+      var hwWords = normHw.split(" ").filter(function (w) { return w.length > 2; });
+      var lessonWords = normLesson.split(" ").filter(function (w) { return w.length > 2; });
+      if (!hwWords.length || !lessonWords.length) return false;
+      var matches = hwWords.filter(function (hwW) {
+        return lessonWords.some(function (lwW) {
+          return lwW.indexOf(hwW) !== -1 || hwW.indexOf(lwW) !== -1;
+        });
+      });
+      return matches.length >= Math.min(2, hwWords.length);
+    });
+  }
+
+  function toggleHomeworkDone(hwId) {
+    userDoneHomework[hwId] = !userDoneHomework[hwId];
+    haptic("light");
+    renderDays();
+
+    fetchWithTimeout((apiBase || "") + "/api/homework/toggle", {
+      method: "POST",
+      headers: chessHeaders(),
+      body: JSON.stringify({ id: hwId })
+    }, 10000).catch(function () {});
+  }
+
+  function openExternal(url, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (inTelegram && supports("openLink")) {
+      try { tg.openLink(url); return; } catch (e) {}
+    }
+    window.open(url, "_blank");
+  }
+
+  function openPhotoModal(src) {
+    var overlay = document.getElementById("photoOverlay");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "photoOverlay";
+      overlay.className = "photo-overlay";
+      overlay.innerHTML = '<div class="photo-overlay__backdrop"></div><div class="photo-overlay__body"><img class="photo-overlay__img" src="" /><button class="photo-overlay__close" type="button">✕</button></div>';
+      document.body.appendChild(overlay);
+      overlay.addEventListener("click", function () { overlay.hidden = true; });
+    }
+    var img = overlay.querySelector("img");
+    if (img) img.src = src;
+    overlay.hidden = false;
+  }
+
+  function loadChannelHomework() {
+    fetchWithRetry((apiBase || "") + "/api/homework", {
+      headers: authHeaders()
+    }, LOAD_TIMEOUT_MS, 2)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data && data.ok && Array.isArray(data.homework)) {
+          channelHomeworkList = data.homework;
+          userDoneHomework = {};
+          if (Array.isArray(data.user_done)) {
+            data.user_done.forEach(function (id) { userDoneHomework[id] = true; });
+          }
+          renderDays();
+        }
+      })
+      .catch(function () {});
+  }
+
   function getNotesForSubject(subject) {
     if (!subject) return [];
     var norm = String(subject).trim().toLowerCase();
@@ -493,14 +578,14 @@
 
     var list = el("div", "lessons");
     day.lessons.forEach(function (lesson) {
-      list.appendChild(lessonCard(lesson));
+      list.appendChild(lessonCard(lesson, day));
     });
     card.appendChild(list);
 
     return card;
   }
 
-  function lessonCard(lesson) {
+  function lessonCard(lesson, day) {
     var card = el("article", "lesson");
 
     card.appendChild(el("div", "lesson__time", lesson.time));
@@ -603,6 +688,113 @@
         notesWrap.appendChild(item);
       });
       body.appendChild(notesWrap);
+    }
+
+    // Домашнее задание из Telegram-канала группы
+    if (day && day.date) {
+      var channelHw = getHomeworkForLesson(lesson.subject, day.date);
+      if (channelHw && channelHw.length > 0) {
+        var hwWrap = el("div", "lesson__hw-list");
+        channelHw.forEach(function (hw) {
+          var isDone = !!userDoneHomework[hw.id];
+          var hwCard = el("div", "lesson__hw" + (isDone ? " is-done" : ""));
+
+          var hwHead = el("div", "lesson__hw-head");
+          var hwTitleWrap = el("div", "lesson__hw-title-wrap");
+          var hwBadge = el("span", "lesson__hw-badge", "📌 Задание из канала");
+          hwTitleWrap.appendChild(hwBadge);
+
+          if (hw.deadline_str) {
+            var dlBadge = el("span", "lesson__hw-deadline", "❗️Дедлайн: " + hw.deadline_str);
+            hwTitleWrap.appendChild(dlBadge);
+          }
+          hwHead.appendChild(hwTitleWrap);
+
+          var checkWrap = el("label", "lesson__hw-check-label");
+          var check = document.createElement("input");
+          check.type = "checkbox";
+          check.className = "lesson__hw-check";
+          check.checked = isDone;
+          check.addEventListener("change", function (e) {
+            e.stopPropagation();
+            toggleHomeworkDone(hw.id);
+          });
+          var checkText = el("span", "lesson__hw-check-text", isDone ? "Сделано" : "Сделать");
+          checkWrap.appendChild(check);
+          checkWrap.appendChild(checkText);
+          hwHead.appendChild(checkWrap);
+
+          hwCard.appendChild(hwHead);
+
+          if (hw.text) {
+            var hwText = el("div", "lesson__hw-text", hw.text);
+            hwCard.appendChild(hwText);
+          }
+
+          // Ссылки
+          if (Array.isArray(hw.links) && hw.links.length > 0) {
+            var linksWrap = el("div", "lesson__hw-links");
+            hw.links.forEach(function (linkItem) {
+              var a = el("a", "lesson__hw-link-btn");
+              a.href = linkItem.url;
+              a.target = "_blank";
+              a.rel = "noopener noreferrer";
+              a.title = linkItem.title || linkItem.url;
+
+              var iconSpan = el("span", "lesson__hw-link-icon", linkItem.icon || "🔗");
+              var titleSpan = el("span", "lesson__hw-link-title", linkItem.title || linkItem.url);
+              a.appendChild(iconSpan);
+              a.appendChild(titleSpan);
+
+              a.addEventListener("click", function (e) {
+                openExternal(linkItem.url, e);
+              });
+
+              linksWrap.appendChild(a);
+            });
+            hwCard.appendChild(linksWrap);
+          }
+
+          // Фото
+          if (Array.isArray(hw.photos) && hw.photos.length > 0) {
+            var photosWrap = el("div", "lesson__hw-photos");
+            hw.photos.forEach(function (photo) {
+              var photoUrl = photo.proxy_url;
+              if (photoUrl && photoUrl.indexOf("http") !== 0) {
+                photoUrl = (apiBase || "") + photoUrl;
+              }
+              var imgWrap = el("div", "lesson__hw-photo-wrap");
+              var img = document.createElement("img");
+              img.className = "lesson__hw-photo";
+              img.src = photoUrl;
+              img.alt = "Фото к заданию";
+              img.loading = "lazy";
+              img.addEventListener("click", function (e) {
+                e.stopPropagation();
+                openPhotoModal(photoUrl);
+              });
+              imgWrap.appendChild(img);
+              photosWrap.appendChild(imgWrap);
+            });
+            hwCard.appendChild(photosWrap);
+          }
+
+          // Ссылка на оригинальный пост в канале
+          if (hw.post_url) {
+            var postLink = el("a", "lesson__hw-post-link", "📢 Открыть в канале");
+            postLink.href = hw.post_url;
+            postLink.target = "_blank";
+            postLink.rel = "noopener noreferrer";
+            postLink.addEventListener("click", function (e) {
+              openExternal(hw.post_url, e);
+            });
+            hwCard.appendChild(postLink);
+          }
+
+          hwWrap.appendChild(hwCard);
+        });
+        body.appendChild(hwWrap);
+      }
     }
 
     card.appendChild(body);
@@ -1554,6 +1746,7 @@
 
     btn.addEventListener("click", function () {
       btn.classList.add("is-spinning");
+      loadChannelHomework();
       fetchSchedule().then(function () {
         setTimeout(function () { btn.classList.remove("is-spinning"); }, 400);
       });
@@ -1564,6 +1757,7 @@
   function bindVisibility() {
     document.addEventListener("visibilitychange", function () {
       if (document.visibilityState !== "visible") return;
+      loadChannelHomework();
       if (!state.data || !state.data.cache_age) return;
 
       if (state.data.cache_age * 1000 > CACHE_TTL) fetchSchedule();
@@ -4269,6 +4463,7 @@
     initNotes();
     initPet();
     initWhatsNew();
+    loadChannelHomework();
 
     // Монеты за вход начисляем при каждом запуске: сервер сам решит,
     // положено ли что-то сегодня
