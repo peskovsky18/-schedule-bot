@@ -292,6 +292,7 @@ def register_webhook():
             url=WEBHOOK_URL,
             secret_token=TELEGRAM_SECRET or None,
             drop_pending_updates=True,
+            allowed_updates=["message", "edited_message", "channel_post", "edited_channel_post", "callback_query"],
         )
         print(f"[WEBHOOK] зарегистрирован: {WEBHOOK_URL}")
         return True
@@ -1031,7 +1032,7 @@ if __name__ == "__main__":
     if USE_POLLING:
         print("BOT STARTED (polling)")
         bot.remove_webhook()
-        bot.infinity_polling()
+        bot.infinity_polling(allowed_updates=["message", "edited_message", "channel_post", "edited_channel_post", "callback_query"])
     else:
         print(f"BOT STARTED (webhook) on port {port}")
         app.run(host="0.0.0.0", port=port)
