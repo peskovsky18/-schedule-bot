@@ -369,6 +369,7 @@
 
   var channelHomeworkList = [];
   var userDoneHomework = {};
+  var hwExpandedMap = {};
 
   function normSubj(s) {
     if (!s) return "";
@@ -697,24 +698,47 @@
         var hwWrap = el("div", "lesson__hw-list");
         channelHw.forEach(function (hw) {
           var isDone = !!userDoneHomework[hw.id];
-          var hwCard = el("div", "lesson__hw" + (isDone ? " is-done" : ""));
+          var isExpanded = !!hwExpandedMap[hw.id];
+          var hwCard = el("div", "lesson__hw" + (isDone ? " is-done" : "") + (isExpanded ? " is-expanded" : " is-collapsed"));
 
           var hwHead = el("div", "lesson__hw-head");
+          hwHead.setAttribute("role", "button");
+          hwHead.setAttribute("tabindex", "0");
+          hwHead.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+
           var hwTitleWrap = el("div", "lesson__hw-title-wrap");
-          var hwBadge = el("span", "lesson__hw-badge", "📌 Задание из канала");
+          var hwBadge = el("span", "lesson__hw-badge", "📌 Задание");
           hwTitleWrap.appendChild(hwBadge);
 
           if (hw.deadline_str) {
             var dlBadge = el("span", "lesson__hw-deadline", "❗️Дедлайн: " + hw.deadline_str);
             hwTitleWrap.appendChild(dlBadge);
           }
+
+          var linksCount = (Array.isArray(hw.links) && hw.links.length) || 0;
+          var photosCount = (Array.isArray(hw.photos) && hw.photos.length) || 0;
+          if (linksCount > 0) {
+            var linkBadge = el("span", "lesson__hw-attach-badge", "📎 " + linksCount);
+            linkBadge.title = linksCount + " вложений-ссылок";
+            hwTitleWrap.appendChild(linkBadge);
+          }
+          if (photosCount > 0) {
+            var photoBadge = el("span", "lesson__hw-attach-badge", "🖼 " + photosCount);
+            photoBadge.title = photosCount + " прикрепленных фото";
+            hwTitleWrap.appendChild(photoBadge);
+          }
           hwHead.appendChild(hwTitleWrap);
+
+          var hwActions = el("div", "lesson__hw-actions");
 
           var checkWrap = el("label", "lesson__hw-check-label");
           var check = document.createElement("input");
           check.type = "checkbox";
           check.className = "lesson__hw-check";
           check.checked = isDone;
+          check.addEventListener("click", function (e) {
+            e.stopPropagation();
+          });
           check.addEventListener("change", function (e) {
             e.stopPropagation();
             toggleHomeworkDone(hw.id);
@@ -722,13 +746,32 @@
           var checkText = el("span", "lesson__hw-check-text", isDone ? "Сделано" : "Сделать");
           checkWrap.appendChild(check);
           checkWrap.appendChild(checkText);
-          hwHead.appendChild(checkWrap);
+          hwActions.appendChild(checkWrap);
 
+          var chevron = el("span", "lesson__hw-chevron", isExpanded ? "▲" : "▼");
+          hwActions.appendChild(chevron);
+
+          hwHead.appendChild(hwActions);
           hwCard.appendChild(hwHead);
+
+          // 1-строчный превью-тизер, если свернуто
+          var previewEl = null;
+          if (hw.text) {
+            var firstLine = hw.text.split("\n")[0].trim();
+            if (firstLine) {
+              previewEl = el("div", "lesson__hw-preview", firstLine);
+              if (isExpanded) previewEl.hidden = true;
+              hwCard.appendChild(previewEl);
+            }
+          }
+
+          // Раскрывающееся тело задания
+          var hwBody = el("div", "lesson__hw-body");
+          if (!isExpanded) hwBody.hidden = true;
 
           if (hw.text) {
             var hwText = el("div", "lesson__hw-text", hw.text);
-            hwCard.appendChild(hwText);
+            hwBody.appendChild(hwText);
           }
 
           // Ссылки
@@ -752,7 +795,7 @@
 
               linksWrap.appendChild(a);
             });
-            hwCard.appendChild(linksWrap);
+            hwBody.appendChild(linksWrap);
           }
 
           // Фото
@@ -776,7 +819,7 @@
               imgWrap.appendChild(img);
               photosWrap.appendChild(imgWrap);
             });
-            hwCard.appendChild(photosWrap);
+            hwBody.appendChild(photosWrap);
           }
 
           // Ссылка на оригинальный пост в канале
@@ -788,7 +831,28 @@
             postLink.addEventListener("click", function (e) {
               openExternal(hw.post_url, e);
             });
-            hwCard.appendChild(postLink);
+            hwBody.appendChild(postLink);
+          }
+
+          hwCard.appendChild(hwBody);
+
+          // Переключатель сворачивания/разворачивания
+          function toggleExpand(e) {
+            if (e && (e.target === check || e.target === checkText || e.target === checkWrap)) return;
+            var nowExpanded = !hwExpandedMap[hw.id];
+            hwExpandedMap[hw.id] = nowExpanded;
+            hwCard.classList.toggle("is-expanded", nowExpanded);
+            hwCard.classList.toggle("is-collapsed", !nowExpanded);
+            hwHead.setAttribute("aria-expanded", nowExpanded ? "true" : "false");
+            chevron.textContent = nowExpanded ? "▲" : "▼";
+            if (previewEl) previewEl.hidden = nowExpanded;
+            hwBody.hidden = !nowExpanded;
+            haptic("selection");
+          }
+
+          hwHead.addEventListener("click", toggleExpand);
+          if (previewEl) {
+            previewEl.addEventListener("click", toggleExpand);
           }
 
           hwWrap.appendChild(hwCard);

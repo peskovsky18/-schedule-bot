@@ -3407,9 +3407,13 @@ body.has-netlify-badge .app {
 .lesson__hw {
   background: var(--bg-soft);
   border-radius: 12px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-left: 3px solid #6366f1;
-  transition: opacity 0.2s ease, background 0.2s ease;
+  transition: opacity 0.2s ease, background 0.2s ease, padding 0.2s ease;
+}
+
+.lesson__hw.is-expanded {
+  padding: 10px 12px;
 }
 
 .lesson__hw.is-done {
@@ -3421,6 +3425,16 @@ body.has-netlify-badge .app {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  min-height: 24px;
+}
+
+.lesson__hw-head:active {
+  opacity: 0.75;
+}
+
+.lesson__hw.is-expanded .lesson__hw-head {
   margin-bottom: 6px;
 }
 
@@ -3429,6 +3443,14 @@ body.has-netlify-badge .app {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  min-width: 0;
+}
+
+.lesson__hw-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .lesson__hw-badge {
@@ -3454,6 +3476,25 @@ body.has-netlify-badge .app {
   color: #ef4444;
 }
 
+.lesson__hw-attach-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--line);
+  color: var(--text-dim, var(--hint));
+}
+
+.lesson__hw-chevron {
+  font-size: 9px;
+  color: var(--text-dim, var(--hint));
+  width: 14px;
+  text-align: center;
+  transition: transform 0.2s ease;
+}
+
 .lesson__hw-check-label {
   display: inline-flex;
   align-items: center;
@@ -3472,6 +3513,40 @@ body.has-netlify-badge .app {
 
 .lesson__hw-check-text {
   font-weight: 500;
+}
+
+.lesson__hw-preview {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text-dim, var(--hint));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 5px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--line);
+  cursor: pointer;
+}
+
+.lesson__hw-preview:active {
+  opacity: 0.75;
+}
+
+.lesson__hw-preview[hidden] {
+  display: none !important;
+}
+
+.lesson__hw-body {
+  animation: hwFadeIn 0.2s ease;
+}
+
+.lesson__hw-body[hidden] {
+  display: none !important;
+}
+
+@keyframes hwFadeIn {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .lesson__hw-text {
