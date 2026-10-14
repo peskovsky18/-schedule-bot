@@ -97,6 +97,7 @@ def game_over():
     body = request.get_json(silent=True, force=True) or {}
     score = max(0, int(body.get("score", 0)))
     lines = max(0, int(body.get("lines", 0)))
+    client_balance = body.get("client_balance")
 
     data = get_user_bb(user["id"])
     data["games_played"] = data.get("games_played", 0) + 1
@@ -110,18 +111,26 @@ def game_over():
     # Очки в Block Blast приравнены к тугрикам: 1 очко = 1 тугрик
     coins_to_award = score
 
-    new_balance = None
     if coins_to_award > 0:
         data["daily_coins_earned"] = data.get("daily_coins_earned", 0) + coins_to_award
-        player_record = casino.add_coins(user["id"], coins_to_award)
-        if player_record and "balance" in player_record:
-            new_balance = player_record["balance"]
+        casino.add_coins(user["id"], coins_to_award)
 
     save_user_bb(user["id"], data)
 
-    if new_balance is None:
-        rec = casino.load(user["id"])
-        new_balance = rec.get("balance", 0)
+    rec = casino.load(user["id"])
+    server_bal = int(rec.get("balance") or 0)
+
+    # Если передан клиентский баланс и он больше серверного (сервер отстал):
+    if client_balance is not None:
+        try:
+            client_bal_int = int(client_balance)
+            if client_bal_int > server_bal:
+                rec["balance"] = client_bal_int
+                rec["best"] = max(int(rec.get("best") or 0), client_bal_int)
+                casino.save(user["id"], rec)
+                server_bal = client_bal_int
+        except (ValueError, TypeError):
+            pass
 
     return jsonify({
         "ok": True,
@@ -129,7 +138,7 @@ def game_over():
         "best_score": data["best_score"],
         "is_record": is_record,
         "coins_awarded": coins_to_award,
-        "balance": new_balance,
+        "balance": server_bal,
         "daily_coins_earned": data["daily_coins_earned"],
         "daily_limit": DAILY_COINS_LIMIT,
     })

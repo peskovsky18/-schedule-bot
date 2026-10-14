@@ -2389,9 +2389,14 @@
     return 0;
   }
 
-  function syncCasinoBalance(newBal) {
+  function syncCasinoBalance(newBal, allowDecrease) {
     if (typeof newBal !== "number" || isNaN(newBal)) return;
-    newBal = Math.max(0, Math.floor(newBal));
+    newBal = Math.floor(newBal);
+    var cur = getEffectiveBalance();
+    if (!allowDecrease && cur > newBal) {
+      newBal = cur;
+    }
+    newBal = Math.max(0, newBal);
     globalUserBalance = newBal;
     if (!casinoPlayer) {
       casinoPlayer = { balance: newBal };
@@ -2402,7 +2407,11 @@
       localStorage.setItem("schedule_casino_player_v1", JSON.stringify(casinoPlayer));
     } catch (e) {}
     if (typeof casinoRender === "function") {
-      casinoRender();
+      try {
+        casinoRender();
+      } catch (e) {
+        console.warn("[casinoRender error]", e);
+      }
     }
     for (var i = 0; i < balanceSubscribers.length; i++) {
       try {
@@ -2607,9 +2616,11 @@
       if (!casinoPlayer) return;
 
       // Символы приходят с сервера: список и выплаты должны совпадать
-      casinoPlayer.symbols.forEach(function (symbol) {
-        glyphs[symbol.key] = symbol.emoji;
-      });
+      if (Array.isArray(casinoPlayer.symbols)) {
+        casinoPlayer.symbols.forEach(function (symbol) {
+          glyphs[symbol.key] = symbol.emoji;
+        });
+      }
 
       renderBets();
 
@@ -2728,7 +2739,7 @@
 
           casinoPlayer = data.player;
           if (data.player && typeof data.player.balance === "number") {
-            syncCasinoBalance(data.player.balance);
+            syncCasinoBalance(data.player.balance, true);
           }
           var result = data.result;
 
@@ -3948,6 +3959,7 @@
         }, {
           apiBase: apiBase,
           authHeaders: authHeaders,
+          getBalance: getEffectiveBalance,
           onScoreUpdate: function (best) {
             if (menuBestVal) menuBestVal.textContent = best.toLocaleString();
           },
@@ -5293,7 +5305,7 @@
         .then(function (res) {
           busy = false;
           if (res && typeof res.balance === "number") {
-            syncCasinoBalance(res.balance);
+            syncCasinoBalance(res.balance, true);
           }
           if (!res || !res.ok) {
             showToast((res && res.error) || "Не удалось купить", true);
@@ -5375,7 +5387,7 @@
         .then(function (res) {
           busy = false;
           if (res && typeof res.balance === "number") {
-            syncCasinoBalance(res.balance);
+            syncCasinoBalance(res.balance, true);
           }
           if (!res || !res.ok) {
             var msg = (res && res.error) || "Не удалось завести питомца";
@@ -5429,7 +5441,7 @@
         .then(function (res) {
           busy = false;
           if (res && typeof res.balance === "number") {
-            syncCasinoBalance(res.balance);
+            syncCasinoBalance(res.balance, true);
           }
           if (!res || !res.ok) {
             showToast((res && res.error) || "Не удалось покормить", true);
@@ -5476,7 +5488,7 @@
         .then(function (res) {
           busy = false;
           if (res && typeof res.balance === "number") {
-            syncCasinoBalance(res.balance);
+            syncCasinoBalance(res.balance, true);
           }
           if (!res || !res.ok) {
             showToast((res && res.error) || "Не удалось улучшить питомца", true);

@@ -699,13 +699,16 @@
         var authObj = typeof opts.authHeaders === "function" ? opts.authHeaders() : {};
         var headers = Object.assign({ "Content-Type": "application/json" }, authObj);
 
+        var curBal = (typeof opts.getBalance === "function") ? opts.getBalance() : 0;
+
         fetch((apiBase || "") + "/api/blockblast/game_over", {
           method: "POST",
           headers: headers,
           body: JSON.stringify({
             score: scoreCoins,
             lines: state.linesClearedTotal,
-            max_combo: maxComboThisGame
+            max_combo: maxComboThisGame,
+            client_balance: curBal
           })
         })
           .then(function (r) {
