@@ -2765,157 +2765,191 @@ body.has-netlify-badge .app {
   border-color: #ff5252;
 }
 
-/* ---------- ЧЕЛИК ---------- */
+/* ---------- ЧЕЛИК (Apple-inspired Design System) ---------- */
 
 .pet {
-  padding: 16px;
-  border-radius: 18px;
-  background: var(--bg-soft);
-  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 24px;
 }
 
 .pet__loading {
   text-align: center;
-  padding: 24px 0;
+  padding: 32px 16px;
   color: var(--hint);
   font-size: 13.5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-/* Экран создания */
+/* 1. Экран создания питомца (Apple Welcome Card) */
 .pet__adopt {
+  background: var(--bg-surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 28px 20px 24px;
   text-align: center;
-  padding: 8px 0;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
+  position: relative;
+  overflow: hidden;
 }
 
 .pet__preview-avatar {
-  width: 90px;
-  height: 90px;
-  margin: 0 auto 12px;
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 16px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
   display: grid;
   place-items: center;
-  font-size: 40px;
-  animation: petIdleFloat 3s ease-in-out infinite;
+  font-size: 38px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+  animation: appleCharFloat 3.6s ease-in-out infinite;
 }
 
 .pet__adopt-title {
   margin: 0 0 6px;
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--text);
 }
 
 .pet__adopt-text {
-  margin: 0 0 12px;
+  margin: 0 auto 16px;
   font-size: 13px;
   line-height: 1.45;
   color: var(--hint);
+  max-width: 320px;
 }
 
 .pet__adopt-cost {
-  margin-bottom: 14px;
-  font-size: 13.5px;
+  margin-bottom: 16px;
+  font-size: 13px;
   color: var(--text);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 14px;
+  background: var(--bg-soft);
+  border-radius: 999px;
+  border: 1px solid var(--line);
 }
 
 .pet__adopt-cost strong {
-  color: #ffb74d;
-  font-size: 15px;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 14px;
 }
 
 .pet__old-price {
   text-decoration: line-through;
   color: var(--hint);
-  opacity: 0.7;
+  opacity: 0.6;
+  font-size: 12px;
 }
 
 .pet__badge-sale {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   padding: 2px 7px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #ef4444, #f97316);
-  color: #fff;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
   font-size: 11px;
-  font-weight: 700;
-  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
-  animation: salePulse 1.8s ease-in-out infinite;
-}
-
-@keyframes salePulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .pet__adopt-row {
   display: flex;
   gap: 8px;
-  margin-top: 6px;
+  max-width: 380px;
+  margin: 0 auto;
 }
 
 .pet__input {
   flex: 1;
-  padding: 11px 14px;
-  border-radius: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
   border: 1px solid var(--line);
-  background: var(--bg-surface);
+  background: var(--bg-soft);
   color: var(--text);
   font: inherit;
   font-size: 14px;
   outline: none;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .pet__input:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .pet__btn {
-  padding: 11px 18px;
+  padding: 12px 20px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--accent);
   color: #fff;
   font: inherit;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.2s ease;
   white-space: nowrap;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .pet__btn:active {
-  transform: scale(0.96);
+  transform: scale(0.97);
 }
 
 .pet__error {
-  color: #ff5252;
-  font-size: 12.5px;
+  color: #ef4444;
+  font-size: 12px;
   margin-top: 8px;
+  font-weight: 500;
 }
 
-/* Активный питомец */
+/* 2. Активный питомец — Витрина героя (Hero Showcase) */
+.pet__active {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pet__showcase {
+  background: var(--bg-surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 16px 16px 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s ease;
+}
+
 .pet__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--line);
+  margin-bottom: 4px;
 }
 
 .pet__info {
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
 .pet__name-row {
@@ -2926,8 +2960,9 @@ body.has-netlify-badge .app {
 }
 
 .pet__name {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--text);
 }
 
@@ -2936,51 +2971,50 @@ body.has-netlify-badge .app {
   align-items: center;
   gap: 3px;
   font-size: 11px;
-  font-weight: 700;
-  padding: 2.5px 8.5px;
+  font-weight: 600;
+  padding: 2px 8px;
   border-radius: 999px;
-  line-height: 1.2;
+  line-height: 1.25;
   letter-spacing: 0.02em;
   user-select: none;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
 }
 
 .pet__level-badge.is-lvl-1 {
-  background: rgba(255, 117, 140, 0.16);
-  color: #ff5277;
-  border: 1px solid rgba(255, 117, 140, 0.35);
+  background: rgba(244, 63, 94, 0.08);
+  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.2);
 }
 
 .pet__level-badge.is-lvl-2 {
-  background: rgba(6, 182, 212, 0.16);
-  color: #06b6d4;
-  border: 1px solid rgba(6, 182, 212, 0.4);
-  box-shadow: 0 0 10px rgba(6, 182, 212, 0.25);
+  background: rgba(59, 130, 246, 0.08);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 .pet__level-badge.is-lvl-3 {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(124, 58, 237, 0.25));
+  background: rgba(245, 158, 11, 0.1);
   color: #f59e0b;
-  border: 1px solid rgba(245, 158, 11, 0.5);
-  box-shadow: 0 0 14px rgba(245, 158, 11, 0.35);
+  border: 1px solid rgba(245, 158, 11, 0.25);
 }
 
 .pet__age {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--hint);
-  margin-top: 2px;
+  font-weight: 400;
 }
 
 .pet__hearts-wrap {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  gap: 3px;
 }
 
 .pet__hearts {
   display: flex;
-  gap: 5px;
-  font-size: 16px;
+  gap: 4px;
+  font-size: 15px;
   user-select: none;
   align-items: center;
 }
@@ -2990,95 +3024,79 @@ body.has-netlify-badge .app {
   align-items: center;
   justify-content: center;
   transform-origin: center center;
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease, filter 0.25s ease;
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .pet__heart.is-filled {
-  animation: heartPulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  filter: drop-shadow(0 2px 7px rgba(239, 68, 68, 0.45));
+  opacity: 1;
+  filter: drop-shadow(0 1px 4px rgba(244, 63, 94, 0.35));
+  animation: heartSoftBreath 3.2s ease-in-out infinite;
 }
 
 .pet__heart.is-lost {
-  opacity: 0.25;
-  filter: grayscale(1) opacity(0.5);
+  opacity: 0.18;
+  filter: grayscale(1);
   transform: scale(0.85);
 }
 
-@keyframes heartPulse {
-  0% { transform: scale(1); }
-  14% { transform: scale(1.22); }
-  28% { transform: scale(1); }
-  42% { transform: scale(1.15); }
-  70% { transform: scale(1); }
-  100% { transform: scale(1); }
+@keyframes heartSoftBreath {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
 }
 
 .pet__timer {
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--hint);
-  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
 }
 
-/* Сцена с анимированным персонажем */
+/* 3. Сцена героя и аура */
 .pet__stage {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16px 0 10px;
+  padding: 8px 0 6px;
   user-select: none;
 }
 
-/* Аура и свечение вокруг питомца */
 .pet__aura {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -52%);
-  width: 170px;
-  height: 170px;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
-  filter: blur(32px);
+  filter: blur(30px);
   pointer-events: none;
   z-index: 0;
-  opacity: 0.85;
-  transition: background 0.6s ease, opacity 0.6s ease, transform 0.6s ease;
-  animation: petAuraBreath 3.6s ease-in-out infinite alternate;
+  opacity: 0.35;
+  transition: background 0.8s ease, opacity 0.8s ease;
+  animation: appleAuraBreath 4.2s ease-in-out infinite alternate;
 }
 
-/* Уровень 1: нежно-фиолетовая аура */
+@keyframes appleAuraBreath {
+  0% { transform: translate(-50%, -52%) scale(0.92); opacity: 0.28; }
+  100% { transform: translate(-50%, -52%) scale(1.08); opacity: 0.42; }
+}
+
 .pet__stage.is-lvl-1 .pet__aura {
-  background: radial-gradient(circle, rgba(168, 85, 247, 0.55) 0%, rgba(236, 72, 153, 0.35) 45%, rgba(139, 92, 246, 0.12) 70%, transparent 80%);
+  background: radial-gradient(circle, rgba(251, 113, 133, 0.45) 0%, rgba(244, 63, 94, 0.15) 50%, transparent 75%);
 }
 
-/* Уровень 2: электрическая сине-голубая аура */
 .pet__stage.is-lvl-2 .pet__aura {
-  background: radial-gradient(circle, rgba(6, 182, 212, 0.65) 0%, rgba(59, 130, 246, 0.45) 45%, rgba(99, 102, 241, 0.2) 70%, transparent 80%);
-  filter: blur(36px);
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.45) 0%, rgba(99, 102, 241, 0.2) 50%, transparent 75%);
 }
 
-/* Уровень 3: космическо-золотая звездная аура */
 .pet__stage.is-lvl-3 .pet__aura {
-  background: radial-gradient(circle, rgba(251, 191, 36, 0.7) 0%, rgba(245, 158, 11, 0.5) 35%, rgba(236, 72, 153, 0.35) 60%, rgba(124, 58, 237, 0.18) 75%, transparent 85%);
-  filter: blur(40px);
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.4) 0%, rgba(168, 85, 247, 0.2) 50%, transparent 75%);
 }
 
-/* Погибший питомец: призрачная дымка */
 .pet__stage.is-dead .pet__aura {
-  background: radial-gradient(circle, rgba(178, 235, 242, 0.45) 0%, rgba(128, 222, 234, 0.2) 50%, transparent 75%);
-  filter: blur(28px);
-}
-
-@keyframes petAuraBreath {
-  0% {
-    transform: translate(-50%, -52%) scale(0.9);
-    opacity: 0.7;
-  }
-  100% {
-    transform: translate(-50%, -52%) scale(1.1);
-    opacity: 0.95;
-  }
+  background: radial-gradient(circle, rgba(148, 163, 184, 0.3) 0%, transparent 70%);
 }
 
 .pet__char {
@@ -3087,145 +3105,84 @@ body.has-netlify-badge .app {
   cursor: pointer;
   outline: none;
   touch-action: manipulation;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .pet__svg {
   display: block;
 }
 
-/* Анимации персонажа */
 .pet__body-group {
   transform-origin: 80px 140px;
-  animation: petIdleFloat 3.2s ease-in-out infinite;
+  animation: appleCharFloat 3.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
-.pet__eyes circle:nth-child(1),
-.pet__eyes circle:nth-child(4) {
-  transform-origin: 80px 84px;
+@keyframes appleCharFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
 }
 
 .pet__char.is-happy .pet__body-group {
-  animation: petHappyBounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: appleHappyBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes appleHappyBounce {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  35% { transform: translateY(-16px) scale(1.06, 0.94); }
+  70% { transform: translateY(2px) scale(0.97, 1.03); }
+}
+
+.pet__char.is-mining .pet__body-group {
+  animation: appleMiningMotion 2.2s ease-in-out infinite;
+}
+
+@keyframes appleMiningMotion {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-4px) rotate(-2.5deg); }
+  50% { transform: translateY(2px) rotate(2.5deg); }
+  75% { transform: translateY(-1px) rotate(0deg); }
+}
+
+.pet__char.is-mining-ready .pet__body-group {
+  animation: appleReadyPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes appleReadyPulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.3)); }
+  50% { transform: scale(1.03); filter: drop-shadow(0 0 16px rgba(245, 158, 11, 0.65)); }
 }
 
 .pet__char.is-dead .pet__body-group {
-  animation: petDeadFloat 4s ease-in-out infinite;
-  opacity: 0.85;
+  animation: appleDeadFloat 4.2s ease-in-out infinite;
+  opacity: 0.82;
 }
 
-.pet__char.is-dead .pet__body {
-  fill: url(#petGhostGradient) !important;
-}
-
-.pet__char.is-dead .pet__halo {
-  opacity: 0.9 !important;
-  animation: petHaloGlow 2.5s ease-in-out infinite;
-}
-
-/* Анимация работы в шахте */
-.pet__char.is-mining .pet__body-group {
-  animation: petMiningWork 2s ease-in-out infinite;
-}
-
-@keyframes petMiningWork {
-  0%, 100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  25% {
-    transform: translateY(-5px) rotate(-3deg);
-  }
-  50% {
-    transform: translateY(2px) rotate(3deg);
-  }
-  75% {
-    transform: translateY(-2px) rotate(0deg);
-  }
-}
-
-/* Анимация готовности забрать добычу */
-.pet__char.is-mining-ready .pet__body-group {
-  animation: petReadyPulse 1.4s ease-in-out infinite;
-}
-
-@keyframes petReadyPulse {
-  0%, 100% {
-    transform: scale(1);
-    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.4));
-  }
-  50% {
-    transform: scale(1.04);
-    filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.8));
-  }
+@keyframes appleDeadFloat {
+  0%, 100% { transform: translateY(-2px) rotate(-2deg); }
+  50% { transform: translateY(-12px) rotate(2deg); }
 }
 
 .pet__miner-helmet {
-  animation: helmetSway 2s ease-in-out infinite;
+  animation: appleHelmetSway 2.2s ease-in-out infinite;
   transform-origin: 80px 38px;
 }
 
-@keyframes helmetSway {
+@keyframes appleHelmetSway {
   0%, 100% { transform: rotate(0deg); }
   50% { transform: rotate(-2deg); }
 }
 
-@keyframes petIdleFloat {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-@keyframes petHappyBounce {
-  0%, 100% {
-    transform: translateY(0) scale(1, 1);
-  }
-  30% {
-    transform: translateY(-20px) scale(1.08, 0.92);
-  }
-  60% {
-    transform: translateY(2px) scale(0.96, 1.04);
-  }
-}
-
-@keyframes petDeadFloat {
-  0%, 100% {
-    transform: translateY(-4px) rotate(-3deg);
-  }
-  50% {
-    transform: translateY(-14px) rotate(3deg);
-  }
-}
-
-@keyframes petHaloGlow {
-  0%, 100% {
-    transform: translateY(0);
-    stroke: #ffd54f;
-  }
-  50% {
-    transform: translateY(-3px);
-    stroke: #fff9c4;
-  }
-}
-
 .pet__shadow {
   transform-origin: 80px 148px;
-  animation: petShadowScale 3.2s ease-in-out infinite;
+  animation: appleShadowScale 3.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
-@keyframes petShadowScale {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.25;
-  }
-  50% {
-    transform: scale(0.85);
-    opacity: 0.15;
-  }
+@keyframes appleShadowScale {
+  0%, 100% { transform: scale(1); opacity: 0.22; }
+  50% { transform: scale(0.88); opacity: 0.13; }
 }
 
-/* Анимации деталей питомца по уровням */
+/* Детали питомца */
 .pet__tail--lvl1 {
   transform-origin: 116px 126px;
   animation: petTailWagLvl1 2.4s ease-in-out infinite;
@@ -3287,62 +3244,52 @@ body.has-netlify-badge .app {
 }
 
 .pet__core-pulse {
-  animation: petCorePulse 1.8s ease-in-out infinite;
+  animation: petCorePulse 2.4s ease-in-out infinite;
 }
 
 @keyframes petCorePulse {
-  0%, 100% { opacity: 0.25; transform: scale(0.9); }
-  50% { opacity: 0.6; transform: scale(1.15); }
+  0%, 100% { opacity: 0.2; transform: scale(0.94); }
+  50% { opacity: 0.45; transform: scale(1.08); }
 }
 
 .pet__rune {
-  animation: petRunePulse 2.2s ease-in-out infinite;
+  animation: petRunePulse 2.8s ease-in-out infinite;
 }
 
 @keyframes petRunePulse {
-  0%, 100% { filter: drop-shadow(0 0 2px #38bdf8); }
-  50% { filter: drop-shadow(0 0 7px #38bdf8); }
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(56, 189, 248, 0.4)); }
+  50% { filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.7)); }
 }
 
-/* Всплывающие сердечки при клике или кормлении */
 .pet__reaction {
   position: absolute;
-  top: 10px;
+  top: 6px;
   pointer-events: none;
 }
 
 .pet__floating-heart {
   position: absolute;
   font-size: 22px;
-  animation: heartFloat 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: appleFloatEmoji 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes heartFloat {
-  0% {
-    opacity: 1;
-    transform: translateY(0) scale(0.6);
-  }
-  50% {
-    opacity: 1;
-    transform: translateY(-30px) scale(1.2);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-55px) scale(0.9);
-  }
+@keyframes appleFloatEmoji {
+  0% { opacity: 1; transform: translateY(0) scale(0.6); }
+  50% { opacity: 1; transform: translateY(-28px) scale(1.15); }
+  100% { opacity: 0; transform: translateY(-50px) scale(0.9); }
 }
 
-/* Карточка эволюции и улучшения уровня */
+/* 4. Карточка эволюции питомца (Apple Level Tracker) */
 .pet__upgrade-card {
-  margin-bottom: 14px;
-  padding: 13px 14px;
-  border-radius: 14px;
   background: var(--bg-surface);
   border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 15px 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  transition: all 0.2s ease;
+  gap: 10px;
+  transition: all 0.25s ease;
 }
 
 .pet__upgrade-header {
@@ -3355,19 +3302,18 @@ body.has-netlify-badge .app {
 .pet__upgrade-title-wrap {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .pet__upgrade-title {
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: -0.01em;
   color: var(--text);
 }
 
 .pet__upgrade-step {
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--hint);
 }
 
@@ -3383,34 +3329,30 @@ body.has-netlify-badge .app {
   display: grid;
   place-items: center;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   background: var(--bg-soft);
   color: var(--hint);
   border: 1px solid var(--line);
-  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.25s ease;
 }
 
 .pet__level-pill.is-active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-  transform: scale(1.08);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 40%, transparent);
+  background: var(--text);
+  color: var(--bg-surface);
+  border-color: var(--text);
+  transform: scale(1.05);
 }
 
 .pet__level-pill.is-active.is-max {
-  background: linear-gradient(135deg, #f59e0b, #fbbf24);
-  color: #451a03;
-  border-color: #f59e0b;
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  border: 0;
 }
 
-/* Прогресс-бар накопления тугриков до эволюции */
 .pet__evolution-bar-wrap {
-  margin: 6px 0 4px;
   background: var(--bg-soft);
-  padding: 8px 10px;
-  border-radius: 10px;
+  padding: 9px 12px;
+  border-radius: 12px;
   border: 1px solid var(--line);
 }
 
@@ -3418,8 +3360,8 @@ body.has-netlify-badge .app {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 11px;
-  margin-bottom: 5px;
+  font-size: 11.5px;
+  margin-bottom: 6px;
 }
 
 .pet__evolution-bar-label {
@@ -3434,8 +3376,8 @@ body.has-netlify-badge .app {
 }
 
 .pet__evolution-track {
-  height: 8px;
-  background: var(--line);
+  height: 6px;
+  background: color-mix(in srgb, var(--line) 60%, transparent);
   border-radius: 999px;
   overflow: hidden;
   position: relative;
@@ -3449,36 +3391,27 @@ body.has-netlify-badge .app {
   overflow: hidden;
 }
 
-/* Уровень 1 -> 2: неоновый кибер-градиент */
 .pet__evolution-fill.is-lvl-1 {
-  background: linear-gradient(90deg, #06b6d4, #6366f1, #8b5cf6);
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+  background: linear-gradient(90deg, #38bdf8, #6366f1);
 }
 
-/* Уровень 2 -> 3: космическо-золотой градиент */
 .pet__evolution-fill.is-lvl-2 {
-  background: linear-gradient(90deg, #3b82f6, #ec4899, #f59e0b);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.55);
+  background: linear-gradient(90deg, #818cf8, #a855f7);
 }
 
-/* Максимальный уровень: сияющее чистое золото */
 .pet__evolution-fill.is-max {
-  background: linear-gradient(90deg, #f59e0b, #fbbf24, #fef08a);
-  box-shadow: 0 0 12px rgba(251, 191, 36, 0.6);
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
 }
 
 .pet__evolution-fill::after {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-  animation: evoBarShimmer 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: appleBarShimmer 2.4s ease-in-out infinite;
 }
 
-@keyframes evoBarShimmer {
+@keyframes appleBarShimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
 }
@@ -3496,32 +3429,31 @@ body.has-netlify-badge .app {
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  padding: 10px 14px;
+  padding: 11px 15px;
   border: 0;
   border-radius: 12px;
-  background: linear-gradient(135deg, #0284c7, #4f46e5);
+  background: var(--accent);
   color: #fff;
   font: inherit;
   font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.2s ease;
-  box-shadow: 0 3px 12px rgba(2, 132, 199, 0.3);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .pet__upgrade-btn:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .pet__upgrade-btn--gold {
-  background: linear-gradient(135deg, #7c3aed, #d97706);
-  box-shadow: 0 3px 14px rgba(217, 119, 6, 0.35);
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
 }
 
 .pet__upgrade-btn.is-max {
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
-  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: var(--bg-soft);
+  color: var(--hint);
+  border: 1px solid var(--line);
   box-shadow: none;
   cursor: default;
 }
@@ -3529,38 +3461,26 @@ body.has-netlify-badge .app {
 .pet__upgrade-btn-cost,
 .pet__upgrade-btn-price {
   font-size: 11.5px;
-  opacity: 0.95;
-  padding: 3px 8px;
+  padding: 2.5px 8px;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, 0.18);
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Шахта ЧЕЛИКА */
+/* 5. Шахта ЧЕЛИКА (Apple Activity Hub) */
 .pet__mine-card {
-  margin-top: 10px;
-  margin-bottom: 10px;
-  padding: 13px 14px;
-  border-radius: 14px;
   background: var(--bg-surface);
   border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 15px 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   display: flex;
   flex-direction: column;
   gap: 10px;
   position: relative;
   overflow: hidden;
   transition: all 0.25s ease;
-}
-
-.pet__mine-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #f59e0b, #d97706, #b45309);
-  opacity: 0.7;
 }
 
 .pet__mine-header {
@@ -3573,13 +3493,18 @@ body.has-netlify-badge .app {
 .pet__mine-title-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .pet__mine-icon {
-  font-size: 22px;
-  line-height: 1;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.1);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  flex-shrink: 0;
 }
 
 .pet__mine-titles {
@@ -3589,10 +3514,9 @@ body.has-netlify-badge .app {
 }
 
 .pet__mine-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: -0.01em;
   color: var(--text);
 }
 
@@ -3622,12 +3546,12 @@ body.has-netlify-badge .app {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 24px;
+  min-width: 26px;
   height: 22px;
-  padding: 0 5px;
+  padding: 0 6px;
   border-radius: 6px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   background: var(--bg-soft);
   color: var(--hint);
   border: 1px solid var(--line);
@@ -3635,21 +3559,21 @@ body.has-netlify-badge .app {
 }
 
 .pet__mine-shift.is-done {
-  background: rgba(34, 197, 94, 0.15);
-  color: #22c55e;
-  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.2);
 }
 
 .pet__mine-shift.is-in-progress {
-  background: rgba(245, 158, 11, 0.2);
+  background: rgba(245, 158, 11, 0.12);
   color: #f59e0b;
-  border-color: rgba(245, 158, 11, 0.5);
-  animation: shiftPulse 1.5s infinite alternate;
+  border-color: rgba(245, 158, 11, 0.25);
+  animation: appleShiftPulse 1.8s infinite alternate;
 }
 
-@keyframes shiftPulse {
-  0% { box-shadow: 0 0 0 rgba(245, 158, 11, 0); }
-  100% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+@keyframes appleShiftPulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.05); }
 }
 
 .pet__mine-body {
@@ -3670,44 +3594,43 @@ body.has-netlify-badge .app {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 8px;
-  border-radius: 8px;
+  padding: 3px 9px;
+  border-radius: 999px;
   background: var(--bg-soft);
   color: var(--text);
-  font-weight: 600;
+  font-weight: 500;
   border: 1px solid var(--line);
 }
 
 .pet__mine-status-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: #94a3b8;
 }
 
 .pet__mine-status-badge.is-idle .pet__mine-status-dot {
-  background: #22c55e;
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+  background: #10b981;
 }
 
 .pet__mine-status-badge.is-working .pet__mine-status-dot {
-  background: #f59e0b;
-  box-shadow: 0 0 6px rgba(245, 158, 11, 0.7);
-  animation: dotPulse 1s infinite alternate;
+  background: #38bdf8;
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+  animation: appleDotPulse 1.2s infinite alternate;
 }
 
 .pet__mine-status-badge.is-ready .pet__mine-status-dot {
-  background: #eab308;
-  box-shadow: 0 0 8px #eab308;
-  animation: dotPulse 0.6s infinite alternate;
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.7);
+  animation: appleDotPulse 0.8s infinite alternate;
 }
 
 .pet__mine-status-badge.is-limit .pet__mine-status-dot {
   background: #64748b;
 }
 
-@keyframes dotPulse {
-  0% { transform: scale(0.85); opacity: 0.7; }
+@keyframes appleDotPulse {
+  0% { transform: scale(0.9); opacity: 0.7; }
   100% { transform: scale(1.2); opacity: 1; }
 }
 
@@ -3716,11 +3639,10 @@ body.has-netlify-badge .app {
   font-size: 11px;
 }
 
-/* Прогресс таймера шахты */
 .pet__mine-progress-box {
   background: var(--bg-soft);
-  padding: 8px 10px;
-  border-radius: 10px;
+  padding: 8px 11px;
+  border-radius: 12px;
   border: 1px solid var(--line);
   display: flex;
   flex-direction: column;
@@ -3728,8 +3650,8 @@ body.has-netlify-badge .app {
 }
 
 .pet__mine-progress-track {
-  height: 8px;
-  background: var(--line);
+  height: 6px;
+  background: color-mix(in srgb, var(--line) 60%, transparent);
   border-radius: 999px;
   overflow: hidden;
   position: relative;
@@ -3738,19 +3660,8 @@ body.has-netlify-badge .app {
 .pet__mine-progress-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #f59e0b, #eab308, #facc15);
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
   transition: width 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.pet__mine-progress-fill::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-  animation: evoBarShimmer 2s infinite;
 }
 
 .pet__mine-progress-meta {
@@ -3765,56 +3676,54 @@ body.has-netlify-badge .app {
 }
 
 .pet__mine-timer {
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: #f59e0b;
 }
 
-/* Кнопка действия шахты */
 .pet__mine-btn {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 11px 14px;
+  padding: 12px 16px;
   border: 0;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #d97706, #b45309);
+  border-radius: 14px;
+  background: var(--accent);
   color: #fff;
   font: inherit;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 3px 12px rgba(180, 83, 9, 0.3);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 25%, transparent);
   transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.2s ease;
 }
 
 .pet__mine-btn:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .pet__mine-btn:disabled {
   opacity: 0.65;
+  background: var(--bg-soft);
+  color: var(--hint);
+  border: 1px solid var(--line);
+  box-shadow: none;
   cursor: not-allowed;
   transform: none;
 }
 
 .pet__mine-btn--claim {
-  background: linear-gradient(135deg, #f59e0b, #eab308, #ca8a04);
-  box-shadow: 0 0 16px rgba(245, 158, 11, 0.6);
-  animation: mineClaimGlow 1.8s ease-in-out infinite;
+  background: linear-gradient(180deg, #f59e0b, #d97706);
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.4);
+  animation: appleClaimGlow 2s ease-in-out infinite;
 }
 
-@keyframes mineClaimGlow {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
-  }
-  50% {
-    transform: scale(1.02);
-    box-shadow: 0 0 22px rgba(245, 158, 11, 0.85);
-  }
+@keyframes appleClaimGlow {
+  0%, 100% { box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35); }
+  50% { box-shadow: 0 4px 22px rgba(245, 158, 11, 0.65); }
 }
 
 .pet__mine-btn-icon {
@@ -3828,10 +3737,11 @@ body.has-netlify-badge .app {
 
 .pet__mine-btn-reward {
   font-size: 12px;
-  padding: 3px 8px;
+  padding: 2.5px 8px;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.25);
-  font-weight: 700;
+  background: rgba(0, 0, 0, 0.18);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .pet__mine-limit-hint {
@@ -3839,56 +3749,73 @@ body.has-netlify-badge .app {
   text-align: center;
   color: var(--hint);
   line-height: 1.4;
-  padding: 6px 8px;
+  padding: 6px 10px;
   background: var(--bg-soft);
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px dashed var(--line);
 }
 
-/* Кнопка кормления */
+/* 6. Кнопка кормления (Apple Action Card) */
 .pet__feed-btn {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 13px 16px;
-  border: 0;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #43a047, #2e7d32);
-  color: #fff;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg-surface);
+  color: var(--text);
   font: inherit;
-  font-size: 14.5px;
-  font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(46, 125, 50, 0.35);
-  transition: transform 0.15s ease, opacity 0.15s ease;
-  margin-top: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
 .pet__feed-btn:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .pet__feed-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: default;
+  transform: none;
 }
 
 .pet__feed-icon {
-  font-size: 20px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.1);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.pet__feed-text {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+  flex: 1;
 }
 
 .pet__feed-price {
-  font-size: 12px;
-  opacity: 0.85;
-  font-weight: 500;
-  padding-left: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 999px;
+  padding: 3.5px 10px;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Гардероб и аксессуары */
+/* 7. Гардероб и аксессуары (Apple App Store Shelf) */
 .pet__wardrobe-header {
-  margin: 18px 0 10px;
+  margin: 16px 0 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3897,56 +3824,65 @@ body.has-netlify-badge .app {
 
 .pet__wardrobe-title {
   margin: 0;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   color: var(--hint);
 }
 
 .pet__balance-pill {
   font-size: 12px;
   font-weight: 600;
-  color: #fbbf24;
-  background: rgba(251, 191, 36, 0.12);
-  border: 1px solid rgba(251, 191, 36, 0.25);
+  color: var(--text);
+  background: var(--bg-surface);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 3px 10px;
+  padding: 3.5px 10px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
 }
 
 .pet__items-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: 10px;
 }
 
 .pet-card {
-  padding: 10px 12px;
+  padding: 12px;
   background: var(--bg-surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  transition: border-color 0.15s ease;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.2s ease, transform 0.15s ease;
 }
 
 .pet-card.is-equipped {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg-surface));
+  background: color-mix(in srgb, var(--accent) 4%, var(--bg-surface));
 }
 
 .pet-card__top {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .pet-card__emoji {
-  font-size: 22px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--bg-soft);
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  flex-shrink: 0;
 }
 
 .pet-card__info {
@@ -3955,7 +3891,7 @@ body.has-netlify-badge .app {
 }
 
 .pet-card__name {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
@@ -3964,14 +3900,17 @@ body.has-netlify-badge .app {
 }
 
 .pet-card__price {
-  font-size: 11px;
-  color: #ffb74d;
-  font-weight: 600;
+  font-size: 11.5px;
+  color: var(--hint);
+  font-weight: 500;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
 }
 
 .pet-card__btn {
-  padding: 7px 10px;
-  border-radius: 8px;
+  width: 100%;
+  padding: 7px 12px;
+  border-radius: 999px;
   border: 1px solid var(--line);
   background: var(--bg-soft);
   color: var(--text);
@@ -3984,59 +3923,71 @@ body.has-netlify-badge .app {
 }
 
 .pet-card__btn:active {
-  transform: scale(0.95);
+  transform: scale(0.96);
 }
 
 .pet-card__btn.is-buy {
+  background: var(--bg-soft);
+  color: var(--accent);
+  border-color: var(--line);
+}
+
+.pet-card__btn.is-owned {
   background: var(--accent);
   color: #fff;
   border-color: var(--accent);
 }
 
 .pet-card__btn.is-equipped {
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  color: var(--accent);
-  border-color: var(--accent);
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.25);
 }
 
-/* Экран смерти */
+/* 8. Экран гибели питомца (Apple Modal Card) */
 .pet__dead-box {
+  background: var(--bg-surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 24px 18px;
   text-align: center;
-  padding: 14px 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
 
 .pet__dead-icon {
-  font-size: 38px;
-  margin-bottom: 6px;
+  font-size: 40px;
+  margin-bottom: 8px;
 }
 
 .pet__dead-title {
   margin: 0 0 6px;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--text);
 }
 
 .pet__dead-text {
-  margin: 0 0 14px;
+  margin: 0 auto 16px;
   font-size: 13px;
   line-height: 1.45;
   color: var(--hint);
+  max-width: 320px;
 }
 
 .pet__note {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--hint);
+  margin-top: 6px;
   text-align: center;
-  margin-top: 10px;
 }
 
 .pet__note.is-error {
-  color: #ff5252;
+  color: #ef4444;
 }
 
 .pet__note.is-done {
-  color: #4caf50;
+  color: #10b981;
 }
 
 /* ---------- Домашние задания из канала группы ---------- */

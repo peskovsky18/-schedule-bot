@@ -13,7 +13,7 @@
     и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
     поднимайте номер: иначе Telegram покажет старую версию.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=44">
+  <link rel="stylesheet" href="assets/css/styles.css?v=45">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -335,135 +335,137 @@
 
         <!-- Питомец существует (жив или погиб) -->
         <div class="pet__active" id="petActiveBox" hidden>
-          <div class="pet__header">
-            <div class="pet__info">
-              <div class="pet__name-row">
-                <span class="pet__name" id="petName"></span>
-                <span class="pet__level-badge" id="petLevelBadge">⭐ Ур. 1</span>
+          <div class="pet__showcase" id="petShowcase">
+            <div class="pet__header">
+              <div class="pet__info">
+                <div class="pet__name-row">
+                  <span class="pet__name" id="petName"></span>
+                  <span class="pet__level-badge" id="petLevelBadge">⭐ Ур. 1</span>
+                </div>
+                <span class="pet__age" id="petAge"></span>
               </div>
-              <span class="pet__age" id="petAge"></span>
-            </div>
-            <div class="pet__hearts-wrap">
-              <div class="pet__hearts" id="petHearts" aria-label="Здоровье питомца"></div>
-              <span class="pet__timer" id="petTimer"></span>
-            </div>
-          </div>
-
-          <div class="pet__stage" id="petStage">
-            <div class="pet__aura" id="petAura"></div>
-            <div class="pet__char" id="petChar" role="button" tabindex="0" title="Нажмите, чтобы погладить">
-              <svg class="pet__svg" id="petSvg" viewBox="0 0 160 160" width="160" height="160">
-                <defs>
-                  <!-- Уровень 1: Тёплый коралловый персик -->
-                  <linearGradient id="petGradLvl1" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#ff758c" />
-                    <stop offset="50%" stop-color="#ff7eb3" />
-                    <stop offset="100%" stop-color="#fa709a" />
-                  </linearGradient>
-
-                  <!-- Уровень 2: Мистическая северная аврора -->
-                  <linearGradient id="petGradLvl2" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#06b6d4" />
-                    <stop offset="45%" stop-color="#4f46e5" />
-                    <stop offset="100%" stop-color="#8b5cf6" />
-                  </linearGradient>
-                  <linearGradient id="petGradLvl2Tail" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#06b6d4" />
-                    <stop offset="60%" stop-color="#6366f1" />
-                    <stop offset="100%" stop-color="#c4b5fd" />
-                  </linearGradient>
-                  <linearGradient id="petGradLvl2Ear" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#0284c7" />
-                    <stop offset="100%" stop-color="#4338ca" />
-                  </linearGradient>
-                  <radialGradient id="petGradEyeLvl2" cx="40%" cy="40%" r="60%">
-                    <stop offset="0%" stop-color="#38bdf8" />
-                    <stop offset="60%" stop-color="#4338ca" />
-                    <stop offset="100%" stop-color="#1e1b4b" />
-                  </radialGradient>
-
-                  <!-- Уровень 3: Космическая звездная туманность -->
-                  <linearGradient id="petGradLvl3" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#312e81" />
-                    <stop offset="35%" stop-color="#7c3aed" />
-                    <stop offset="70%" stop-color="#db2777" />
-                    <stop offset="100%" stop-color="#f59e0b" />
-                  </linearGradient>
-                  <linearGradient id="petGradWingLvl3" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#818cf8" stop-opacity="0.9" />
-                    <stop offset="60%" stop-color="#c084fc" stop-opacity="0.8" />
-                    <stop offset="100%" stop-color="#fbbf24" stop-opacity="0.95" />
-                  </linearGradient>
-                  <linearGradient id="petGradTailLvl3A" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#6366f1" />
-                    <stop offset="50%" stop-color="#ec4899" />
-                    <stop offset="100%" stop-color="#fbbf24" />
-                  </linearGradient>
-                  <linearGradient id="petGradTailLvl3B" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#3b82f6" />
-                    <stop offset="50%" stop-color="#a855f7" />
-                    <stop offset="100%" stop-color="#f59e0b" />
-                  </linearGradient>
-                  <linearGradient id="petGradHorn" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#fef08a" />
-                    <stop offset="40%" stop-color="#f59e0b" />
-                    <stop offset="100%" stop-color="#b45309" />
-                  </linearGradient>
-                  <radialGradient id="petGradEyeLvl3" cx="40%" cy="40%" r="60%">
-                    <stop offset="0%" stop-color="#fef08a" />
-                    <stop offset="50%" stop-color="#f59e0b" />
-                    <stop offset="100%" stop-color="#451a03" />
-                  </radialGradient>
-                  <linearGradient id="petGradAstralRing" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#38bdf8" />
-                    <stop offset="50%" stop-color="#ec4899" />
-                    <stop offset="100%" stop-color="#facc15" />
-                  </linearGradient>
-
-                  <!-- Призрак (погибший питомец) -->
-                  <linearGradient id="petGhostGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#b2ebf2" />
-                    <stop offset="100%" stop-color="#80deea" />
-                  </linearGradient>
-
-                  <!-- Шахтёрский фонарик -->
-                  <radialGradient id="minerLampGlow" cx="50%" cy="0%" r="90%">
-                    <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8" />
-                    <stop offset="40%" stop-color="#67e8f9" stop-opacity="0.35" />
-                    <stop offset="100%" stop-color="#a5f3fc" stop-opacity="0" />
-                  </radialGradient>
-                </defs>
-
-                <ellipse class="pet__shadow" cx="80" cy="148" rx="42" ry="7" fill="rgba(0,0,0,0.25)" />
-
-                <g class="pet__body-group" id="petBodyGroup">
-                  <!-- Задний план (хвост, крылья, ушки) -->
-                  <g class="pet__layer-back" id="petLayerBack"></g>
-
-                  <!-- Основное тело -->
-                  <g class="pet__layer-body" id="petLayerBody"></g>
-
-                  <!-- Лицо (глаза, рот, руны, блики, щечки) -->
-                  <g class="pet__layer-face" id="petLayerFace"></g>
-
-                  <!-- Слой нашейных аксессуаров -->
-                  <g class="pet__layer-neck" id="petLayerNeck"></g>
-
-                  <!-- Слой головных аксессуаров -->
-                  <g class="pet__layer-hat" id="petLayerHat"></g>
-
-                  <!-- Передний план (передние крылья, корона, рога, лапки) -->
-                  <g class="pet__layer-front" id="petLayerFront"></g>
-
-                  <!-- Слой шахтерского снаряжения (каска, фонарь) -->
-                  <g class="pet__layer-work" id="petLayerWork"></g>
-                </g>
-
-                <ellipse class="pet__halo" id="petHalo" cx="80" cy="18" rx="28" ry="6" fill="none" stroke="#ffd54f" stroke-width="3.5" opacity="0" />
-              </svg>
+              <div class="pet__hearts-wrap">
+                <div class="pet__hearts" id="petHearts" aria-label="Здоровье питомца"></div>
+                <span class="pet__timer" id="petTimer"></span>
+              </div>
             </div>
 
-            <div class="pet__reaction" id="petReaction" aria-hidden="true"></div>
+            <div class="pet__stage" id="petStage">
+              <div class="pet__aura" id="petAura"></div>
+              <div class="pet__char" id="petChar" role="button" tabindex="0" title="Нажмите, чтобы погладить">
+                <svg class="pet__svg" id="petSvg" viewBox="0 0 160 160" width="160" height="160">
+                  <defs>
+                    <!-- Уровень 1: Тёплый коралловый персик -->
+                    <linearGradient id="petGradLvl1" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#ff758c" />
+                      <stop offset="50%" stop-color="#ff7eb3" />
+                      <stop offset="100%" stop-color="#fa709a" />
+                    </linearGradient>
+
+                    <!-- Уровень 2: Мистическая северная аврора -->
+                    <linearGradient id="petGradLvl2" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#06b6d4" />
+                      <stop offset="45%" stop-color="#4f46e5" />
+                      <stop offset="100%" stop-color="#8b5cf6" />
+                    </linearGradient>
+                    <linearGradient id="petGradLvl2Tail" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#06b6d4" />
+                      <stop offset="60%" stop-color="#6366f1" />
+                      <stop offset="100%" stop-color="#c4b5fd" />
+                    </linearGradient>
+                    <linearGradient id="petGradLvl2Ear" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#0284c7" />
+                      <stop offset="100%" stop-color="#4338ca" />
+                    </linearGradient>
+                    <radialGradient id="petGradEyeLvl2" cx="40%" cy="40%" r="60%">
+                      <stop offset="0%" stop-color="#38bdf8" />
+                      <stop offset="60%" stop-color="#4338ca" />
+                      <stop offset="100%" stop-color="#1e1b4b" />
+                    </radialGradient>
+
+                    <!-- Уровень 3: Космическая звездная туманность -->
+                    <linearGradient id="petGradLvl3" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#312e81" />
+                      <stop offset="35%" stop-color="#7c3aed" />
+                      <stop offset="70%" stop-color="#db2777" />
+                      <stop offset="100%" stop-color="#f59e0b" />
+                    </linearGradient>
+                    <linearGradient id="petGradWingLvl3" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#818cf8" stop-opacity="0.9" />
+                      <stop offset="60%" stop-color="#c084fc" stop-opacity="0.8" />
+                      <stop offset="100%" stop-color="#fbbf24" stop-opacity="0.95" />
+                    </linearGradient>
+                    <linearGradient id="petGradTailLvl3A" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#6366f1" />
+                      <stop offset="50%" stop-color="#ec4899" />
+                      <stop offset="100%" stop-color="#fbbf24" />
+                    </linearGradient>
+                    <linearGradient id="petGradTailLvl3B" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#3b82f6" />
+                      <stop offset="50%" stop-color="#a855f7" />
+                      <stop offset="100%" stop-color="#f59e0b" />
+                    </linearGradient>
+                    <linearGradient id="petGradHorn" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#fef08a" />
+                      <stop offset="40%" stop-color="#f59e0b" />
+                      <stop offset="100%" stop-color="#b45309" />
+                    </linearGradient>
+                    <radialGradient id="petGradEyeLvl3" cx="40%" cy="40%" r="60%">
+                      <stop offset="0%" stop-color="#fef08a" />
+                      <stop offset="50%" stop-color="#f59e0b" />
+                      <stop offset="100%" stop-color="#451a03" />
+                    </radialGradient>
+                    <linearGradient id="petGradAstralRing" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#38bdf8" />
+                      <stop offset="50%" stop-color="#ec4899" />
+                      <stop offset="100%" stop-color="#facc15" />
+                    </linearGradient>
+
+                    <!-- Призрак (погибший питомец) -->
+                    <linearGradient id="petGhostGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#b2ebf2" />
+                      <stop offset="100%" stop-color="#80deea" />
+                    </linearGradient>
+
+                    <!-- Шахтёрский фонарик -->
+                    <radialGradient id="minerLampGlow" cx="50%" cy="0%" r="90%">
+                      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8" />
+                      <stop offset="40%" stop-color="#67e8f9" stop-opacity="0.35" />
+                      <stop offset="100%" stop-color="#a5f3fc" stop-opacity="0" />
+                    </radialGradient>
+                  </defs>
+
+                  <ellipse class="pet__shadow" cx="80" cy="148" rx="42" ry="7" fill="rgba(0,0,0,0.25)" />
+
+                  <g class="pet__body-group" id="petBodyGroup">
+                    <!-- Задний план (хвост, крылья, ушки) -->
+                    <g class="pet__layer-back" id="petLayerBack"></g>
+
+                    <!-- Основное тело -->
+                    <g class="pet__layer-body" id="petLayerBody"></g>
+
+                    <!-- Лицо (глаза, рот, руны, блики, щечки) -->
+                    <g class="pet__layer-face" id="petLayerFace"></g>
+
+                    <!-- Слой нашейных аксессуаров -->
+                    <g class="pet__layer-neck" id="petLayerNeck"></g>
+
+                    <!-- Слой головных аксессуаров -->
+                    <g class="pet__layer-hat" id="petLayerHat"></g>
+
+                    <!-- Передний план (передние крылья, корона, рога, лапки) -->
+                    <g class="pet__layer-front" id="petLayerFront"></g>
+
+                    <!-- Слой шахтерского снаряжения (каска, фонарь) -->
+                    <g class="pet__layer-work" id="petLayerWork"></g>
+                  </g>
+
+                  <ellipse class="pet__halo" id="petHalo" cx="80" cy="18" rx="28" ry="6" fill="none" stroke="#ffd54f" stroke-width="3.5" opacity="0" />
+                </svg>
+              </div>
+
+              <div class="pet__reaction" id="petReaction" aria-hidden="true"></div>
+            </div>
           </div>
 
           <div class="pet__alive-box" id="petAliveBox">
@@ -788,9 +790,9 @@
     </div>
   </div>
 
-  <script src="assets/js/config.js?v=44"></script>
-  <script src="assets/js/core.js?v=44"></script>
-  <script src="assets/js/chess.js?v=44"></script>
-  <script src="assets/js/app.js?v=44"></script>
+  <script src="assets/js/config.js?v=45"></script>
+  <script src="assets/js/core.js?v=45"></script>
+  <script src="assets/js/chess.js?v=45"></script>
+  <script src="assets/js/app.js?v=45"></script>
 </body>
 </html>
