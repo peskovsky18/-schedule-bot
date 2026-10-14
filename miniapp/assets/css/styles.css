@@ -1916,7 +1916,7 @@ body.has-netlify-badge .app {
 .leaderboard {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: 10020;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4317,14 +4317,210 @@ body.is-page-hidden * {
   animation-play-state: paused !important;
 }
 
-/* Остановка анимаций внутри закрытого меню */
-.menu[hidden] * {
+/* Остановка анимаций внутри закрытых игровых арен и меню */
+.menu[hidden] *,
+.game-modal[hidden] *,
+.bb-arena[hidden] * {
   animation-play-state: paused !important;
 }
 
-/* Остановка анимаций внутри свёрнутого раздела «Приколы» */
-.menu__fun[hidden] * {
-  animation-play-state: paused !important;
+/* ==========================================================================
+   РАЗДЕЛ ИГР: СЕТКА 2х2 И КАРТОЧКИ В СТИЛЕ APPLE
+   ========================================================================== */
+
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 10px 0 24px;
+}
+
+.game-card {
+  aspect-ratio: 1 / 1;
+  background: var(--bg-surface, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px 12px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.18s ease,
+              border-color 0.18s ease,
+              box-shadow 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.game-card:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.game-card:active {
+  transform: scale(0.94);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.game-card__icon-wrap {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 4px 14px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.game-card:hover .game-card__icon-wrap {
+  transform: scale(1.08);
+}
+
+.game-card__icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+/* Индивидуальные градиентные подложки для каждой игры в Apple-стиле */
+.game-card--bb .game-card__icon-wrap {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.35), rgba(59, 130, 246, 0.45));
+  border: 1px solid rgba(6, 182, 212, 0.4);
+}
+
+.game-card--chess .game-card__icon-wrap {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.35), rgba(99, 102, 241, 0.45));
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+.game-card--ttt .game-card__icon-wrap {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(249, 115, 22, 0.4));
+  border: 1px solid rgba(249, 115, 22, 0.4);
+}
+
+.game-card--casino .game-card__icon-wrap {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.35), rgba(245, 158, 11, 0.45));
+  border: 1px solid rgba(234, 179, 8, 0.4);
+}
+
+.game-card__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text, #ffffff);
+  text-align: center;
+  letter-spacing: -0.2px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", sans-serif;
+}
+
+/* ==========================================================================
+   ПОЛНОЭКРАННЫЕ АРЕНЫ ИГР (.game-modal)
+   ========================================================================== */
+
+.game-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: pan-y;
+  animation: game-modal-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.game-modal[hidden] {
+  display: none !important;
+}
+
+@keyframes game-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.game-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 16, 0.88);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+}
+
+.game-modal__card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
+  height: 100%;
+  max-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top, 14px) 16px env(safe-area-inset-bottom, 16px);
+  box-sizing: border-box;
+}
+
+.game-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0 14px;
+  flex-shrink: 0;
+}
+
+.game-modal__close {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--bg-surface, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  color: var(--text, #ffffff);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.game-modal__close:active {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.game-modal__title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text, #ffffff);
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  letter-spacing: -0.3px;
+}
+
+.game-modal__head-spacer {
+  width: 38px;
+  height: 38px;
+  visibility: hidden;
+}
+
+.game-modal__body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px 0 24px;
 }
 
 /* ==========================================================================

@@ -1612,10 +1612,33 @@
       return waitingForOpponent ? CHESS_POLL_MS : CHESS_IDLE_MS;
     }
 
-    /** Доска видна, только когда открыто меню и раскрыты «Приколы». */
+    var chessModal = document.getElementById("chessModal");
+    var chessCard = document.getElementById("gameCardChess");
+    var chessClose = document.getElementById("chessModalClose");
+    var chessBackdrop = document.getElementById("chessModalBackdrop");
+    var chessOpen = false;
+
+    /** Доска видна, только когда открыта модальная арена шахмат. */
     function boardVisible() {
-      return menuOpen && funOpen;
+      return chessOpen && chessModal && !chessModal.hidden;
     }
+
+    function openChessModal() {
+      if (chessModal) chessModal.hidden = false;
+      chessOpen = true;
+      haptic("light");
+      refresh().then(maybePoll);
+    }
+
+    function closeChessModal() {
+      if (chessModal) chessModal.hidden = true;
+      chessOpen = false;
+      stopPolling();
+    }
+
+    if (chessCard) chessCard.addEventListener("click", openChessModal);
+    if (chessClose) chessClose.addEventListener("click", closeChessModal);
+    if (chessBackdrop) chessBackdrop.addEventListener("click", closeChessModal);
 
     function maybePoll() {
       stopPolling();
@@ -1631,17 +1654,8 @@
       }, pollDelay());
     }
 
-    // Опрашиваем, только пока доска на экране: нужно и открытое меню,
-    // и раскрытые «Приколы». В свёрнутом виде запросы были бы впустую.
-    onMenuToggle(function (open) {
-      menuOpen = open;
-      if (open && funOpen) refresh().then(maybePoll);
-      else stopPolling();
-    });
-
-    onFunToggle(function (open) {
-      funOpen = open;
-      if (open && menuOpen) refresh().then(maybePoll);
+    onVisibilityChange(function (isVisible) {
+      if (isVisible && boardVisible()) refresh().then(maybePoll);
       else stopPolling();
     });
 
@@ -1662,6 +1676,7 @@
     } catch (e) {}
 
     if (invited) {
+      openChessModal();
       joinGame(invited);
     } else {
       var saved = savedId();
@@ -2413,11 +2428,26 @@
       spin();
     });
 
-    if (casinoPlayer) render();
+    var casinoModal = document.getElementById("casinoModal");
+    var casinoCard = document.getElementById("gameCardCasino");
+    var casinoClose = document.getElementById("casinoModalClose");
+    var casinoBackdrop = document.getElementById("casinoModalBackdrop");
 
-    onFunToggle(function (open) {
-      if (open) loadState();
-    });
+    function openCasinoModal() {
+      if (casinoModal) casinoModal.hidden = false;
+      haptic("light");
+      loadState(true);
+    }
+
+    function closeCasinoModal() {
+      if (casinoModal) casinoModal.hidden = true;
+    }
+
+    if (casinoCard) casinoCard.addEventListener("click", openCasinoModal);
+    if (casinoClose) casinoClose.addEventListener("click", closeCasinoModal);
+    if (casinoBackdrop) casinoBackdrop.addEventListener("click", closeCasinoModal);
+
+    if (casinoPlayer) render();
   }
 
   /* ---------- Секретный пароль ---------- */
@@ -3372,6 +3402,25 @@
       renderMulti();
     });
 
+    var tttModal = document.getElementById("tttModal");
+    var tttCard = document.getElementById("gameCardTTT");
+    var tttClose = document.getElementById("tttModalClose");
+    var tttBackdrop = document.getElementById("tttModalBackdrop");
+
+    function openTTTModal() {
+      if (tttModal) tttModal.hidden = false;
+      haptic("light");
+    }
+
+    function closeTTTModal() {
+      if (tttModal) tttModal.hidden = true;
+      stopPollingMulti();
+    }
+
+    if (tttCard) tttCard.addEventListener("click", openTTTModal);
+    if (tttClose) tttClose.addEventListener("click", closeTTTModal);
+    if (tttBackdrop) tttBackdrop.addEventListener("click", closeTTTModal);
+
     var invitedTTT = null;
     try {
       invitedTTT = new URLSearchParams(location.search).get("ttt");
@@ -3380,13 +3429,7 @@
     if (invitedTTT) {
       switchMode("multi");
       joinMultiGame(invitedTTT);
-
-      var menuBtn = document.getElementById("menuBtn");
-      var funToggle = document.getElementById("funToggle");
-      var funContent = document.getElementById("funContent");
-      var menu = document.getElementById("menu");
-      if (menu && menu.hidden && menuBtn) menuBtn.click();
-      if (funContent && funContent.hidden && funToggle) funToggle.click();
+      openTTTModal();
     } else {
       var saved = savedMultiId();
       if (saved) {
@@ -3462,6 +3505,8 @@
       updateMenuBest();
     }
 
+    var gameCardBB = document.getElementById("gameCardBB");
+    if (gameCardBB) gameCardBB.addEventListener("click", openArena);
     if (playBtn) playBtn.addEventListener("click", openArena);
     if (launchCard) {
       launchCard.addEventListener("click", function (e) {
@@ -4535,10 +4580,8 @@
         tick();
         stopWorkTimer();
         var menu = document.getElementById("menu");
-        var funContent = document.getElementById("funContent");
         var isMineVisible = document.visibilityState === "visible" &&
-                            menu && !menu.hidden &&
-                            funContent && !funContent.hidden;
+                            menu && !menu.hidden;
         if (isMineVisible) {
           workTimerInterval = setInterval(tick, 1000);
         }
@@ -5049,12 +5092,6 @@
 
     if (navBtn) {
       navBtn.addEventListener("click", function () {
-        var funContent = document.getElementById("funContent");
-        var funToggle = document.getElementById("funToggle");
-        if (funContent && funContent.hidden) {
-          funContent.hidden = false;
-          if (funToggle) funToggle.setAttribute("aria-expanded", "true");
-        }
         section.scrollIntoView({ behavior: "smooth", block: "center" });
         cheerPet();
         haptic("light");
@@ -5085,33 +5122,20 @@
         });
     }
 
-    onFunToggle(function (open) {
-      if (open) {
-        loadPetServer();
-        if (petData && petData.work) renderPetWork(petData.work);
-      } else {
-        stopWorkTimer();
-      }
-    });
-
     onMenuToggle(function (open) {
       if (!open) {
         stopWorkTimer();
       } else {
-        var funContent = document.getElementById("funContent");
-        if (funContent && !funContent.hidden) {
-          loadPetServer();
-          if (petData && petData.work) renderPetWork(petData.work);
-        }
+        loadPetServer();
+        if (petData && petData.work) renderPetWork(petData.work);
       }
     });
 
     onVisibilityChange(function (isVisible) {
       if (isVisible) {
         var menu = document.getElementById("menu");
-        var funContent = document.getElementById("funContent");
-        var isFunVisible = menu && !menu.hidden && funContent && !funContent.hidden;
-        if (isFunVisible && petData && petData.work) {
+        var isMenuVisible = menu && !menu.hidden;
+        if (isMenuVisible && petData && petData.work) {
           renderPetWork(petData.work);
         }
       } else {
@@ -5140,7 +5164,6 @@
     initSupport();
     initChess();
     initTTT();
-    initRoulette();
     initCasino();
     initLeaderboard();
     initPromo();
