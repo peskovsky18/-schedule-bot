@@ -2393,9 +2393,14 @@
     if (typeof newBal !== "number" || isNaN(newBal)) return;
     newBal = Math.max(0, Math.floor(newBal));
     globalUserBalance = newBal;
-    if (casinoPlayer) {
+    if (!casinoPlayer) {
+      casinoPlayer = { balance: newBal };
+    } else {
       casinoPlayer.balance = newBal;
     }
+    try {
+      localStorage.setItem("schedule_casino_player_v1", JSON.stringify(casinoPlayer));
+    } catch (e) {}
     if (typeof casinoRender === "function") {
       casinoRender();
     }
@@ -2460,12 +2465,11 @@
       .then(function (data) {
         if (!data || data.ok !== true) return;
 
-        casinoPlayer = data.player;
         if (data.player && typeof data.player.balance === "number") {
-          syncCasinoBalance(data.player.balance);
-          try {
-            localStorage.setItem("schedule_casino_player_v1", JSON.stringify(data.player));
-          } catch (e) {}
+          var targetBal = Math.max(getEffectiveBalance(), data.player.balance);
+          data.player.balance = targetBal;
+          casinoPlayer = data.player;
+          syncCasinoBalance(targetBal);
         }
 
         // Сервер сам решает, положен ли подарок: приходит только
@@ -2795,10 +2799,13 @@
         .then(function (data) {
           if (!data || data.ok !== true) return;
           casinoLoaded = true;
-          casinoPlayer = data.player;
           if (data.player && typeof data.player.balance === "number") {
-            syncCasinoBalance(data.player.balance);
-            writeCasinoCache(data.player);
+            var targetBal = Math.max(getEffectiveBalance(), data.player.balance);
+            data.player.balance = targetBal;
+            casinoPlayer = data.player;
+            syncCasinoBalance(targetBal);
+          } else {
+            casinoPlayer = data.player;
           }
           render();
         })
@@ -3945,10 +3952,10 @@
             if (menuBestVal) menuBestVal.textContent = best.toLocaleString();
           },
           onReward: function (coins, newBalance) {
+            var cur = getEffectiveBalance();
             if (typeof newBalance === "number") {
-              syncCasinoBalance(newBalance);
+              syncCasinoBalance(Math.max(cur, newBalance));
             } else if (typeof coins === "number" && coins > 0) {
-              var cur = getEffectiveBalance();
               syncCasinoBalance(cur + coins);
             }
           }

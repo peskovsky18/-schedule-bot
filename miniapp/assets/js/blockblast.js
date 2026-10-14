@@ -667,13 +667,15 @@
         if (isRecord) state.bestScore = state.score;
         updateScoreDOM();
 
+        var scoreCoins = Math.max(0, parseInt(state.score, 10) || 0);
+
         if (els.overScore) els.overScore.textContent = state.score.toLocaleString();
         if (els.overLines) els.overLines.textContent = state.linesClearedTotal;
         if (els.overMaxCombo) els.overMaxCombo.textContent = "x" + maxComboThisGame;
 
         // 1 очко = 1 тугрик — показываем сразу
-        if (state.score > 0 && els.overReward) {
-          els.overReward.textContent = "+" + state.score.toLocaleString() + " 💰";
+        if (scoreCoins > 0 && els.overReward) {
+          els.overReward.textContent = "+" + scoreCoins.toLocaleString() + " 💰";
           if (els.overRewardRow) els.overRewardRow.hidden = false;
         } else if (els.overRewardRow) {
           els.overRewardRow.hidden = true;
@@ -683,29 +685,45 @@
           els.gameOverModal.hidden = false;
         }
 
-        // Отправка результата на сервер для начисления тугриков
+        // МГНОВЕННО начисляем тугрики на счет игрока локально
+        if (scoreCoins > 0 && typeof opts.onReward === "function") {
+          try {
+            opts.onReward(scoreCoins);
+          } catch (e) {
+            console.warn("[blockblast] onReward error:", e);
+          }
+        }
+
+        // Синхронизация с сервером для сохранения баланса в БД
         var apiBase = opts.apiBase || "";
-        var headers = typeof opts.authHeaders === "function" ? opts.authHeaders() : { "Content-Type": "application/json" };
+        var authObj = typeof opts.authHeaders === "function" ? opts.authHeaders() : {};
+        var headers = Object.assign({ "Content-Type": "application/json" }, authObj);
 
         fetch((apiBase || "") + "/api/blockblast/game_over", {
           method: "POST",
           headers: headers,
           body: JSON.stringify({
-            score: state.score,
+            score: scoreCoins,
             lines: state.linesClearedTotal,
             max_combo: maxComboThisGame
           })
         })
-          .then(function (r) { return r.json(); })
+          .then(function (r) {
+            if (!r.ok) {
+              throw new Error("HTTP " + r.status);
+            }
+            return r.json();
+          })
           .then(function (data) {
             if (data && data.ok) {
-              var coins = typeof data.coins_awarded === "number" ? data.coins_awarded : state.score;
+              var coins = typeof data.coins_awarded === "number" ? data.coins_awarded : scoreCoins;
               if (coins > 0 && els.overReward) {
                 els.overReward.textContent = "+" + coins.toLocaleString() + " 💰";
                 if (els.overRewardRow) els.overRewardRow.hidden = false;
               }
-              if (typeof data.balance === "number" && opts.onReward) {
-                opts.onReward(coins, data.balance);
+              if (typeof data.balance === "number" && typeof opts.onReward === "function") {
+                // Сервер вернул подтвержденный баланс
+                opts.onReward(0, data.balance);
               }
               if (data.best_score && data.best_score > state.bestScore) {
                 state.bestScore = data.best_score;
@@ -714,11 +732,8 @@
               }
             }
           })
-          .catch(function () {
-            // Офлайн-поддержка: если запрос упал, передаем начисление тугриков локально
-            if (state.score > 0 && opts.onReward) {
-              opts.onReward(state.score);
-            }
+          .catch(function (err) {
+            console.warn("[blockblast] game_over sync notice (coins already credited locally):", err && err.message);
           });
       }
 

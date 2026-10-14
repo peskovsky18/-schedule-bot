@@ -65,8 +65,11 @@ def init_app(app):
     app.register_blueprint(bp)
 
 
-@bp.route("", methods=["GET"])
+@bp.route("", methods=["GET", "OPTIONS"])
 def get_stats():
+    if request.method == "OPTIONS":
+        return "", 204
+
     user, err = auth.current_user()
     if err:
         return jsonify({"ok": False, "error": err}), 401
@@ -82,13 +85,16 @@ def get_stats():
     })
 
 
-@bp.route("/game_over", methods=["POST"])
+@bp.route("/game_over", methods=["POST", "OPTIONS"])
 def game_over():
+    if request.method == "OPTIONS":
+        return "", 204
+
     user, err = auth.current_user()
     if err:
         return jsonify({"ok": False, "error": err}), 401
 
-    body = request.get_json(silent=True) or {}
+    body = request.get_json(silent=True, force=True) or {}
     score = max(0, int(body.get("score", 0)))
     lines = max(0, int(body.get("lines", 0)))
 
