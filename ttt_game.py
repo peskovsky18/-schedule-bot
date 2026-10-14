@@ -21,12 +21,28 @@ ID_LENGTH = 10
 # Награда за победу в мультиплеере (тугрики)
 TTT_WIN_COINS = 100
 
-# Выигрышные линии 3х3
-LINES = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8],  # строки
-    [0, 3, 6], [1, 4, 7], [2, 5, 8],  # столбцы
-    [0, 4, 8], [2, 4, 6],             # диагонали
-]
+# Выигрышные линии 5х5 (4 в ряд для победы)
+def _generate_lines_5x5():
+    res = []
+    # Строки (по 4 в ряд)
+    for r in range(5):
+        for c in range(2):
+            res.append([r * 5 + c + i for i in range(4)])
+    # Столбцы (по 4 в ряд)
+    for c in range(5):
+        for r in range(2):
+            res.append([(r + i) * 5 + c for i in range(4)])
+    # Главные диагонали (dr=1, dc=1)
+    for r in range(2):
+        for c in range(2):
+            res.append([(r + i) * 5 + (c + i) for i in range(4)])
+    # Побочные диагонали (dr=1, dc=-1)
+    for r in range(2):
+        for c in range(3, 5):
+            res.append([(r + i) * 5 + (c - i) for i in range(4)])
+    return res
+
+LINES = _generate_lines_5x5()
 
 
 def _key(game_id):
@@ -67,13 +83,13 @@ def create_game(player):
     """
     game = {
         "id": new_id(),
-        "board": [""] * 9,
+        "board": [""] * 25,
         "x": player,
         "o": None,
         "turn": "X",
         "status": "waiting",  # waiting | active | finished
         "winner": None,       # 'X' | 'O' | 'draw' | None
-        "winning_line": None, # [a, b, c] | None
+        "winning_line": None, # [a, b, c, d] | None
         "moves": 0,
         "reward_given": False,
         "created": int(time.time()),
@@ -136,8 +152,8 @@ def check_board_winner(board):
     Победитель: 'X', 'O', 'draw' или None.
     """
     for line in LINES:
-        a, b, c = line
-        if board[a] and board[a] == board[b] == board[c]:
+        a, b, c, d = line
+        if board[a] and board[a] == board[b] == board[c] == board[d]:
             return board[a], line
 
     if all(cell != "" for cell in board):
@@ -148,7 +164,7 @@ def check_board_winner(board):
 
 def make_move(game, user_id, cell_index):
     """
-    Делает ход в клетку cell_index (0..8).
+    Делает ход в клетку cell_index (0..24).
     Возвращает (game, ошибка, награда_id).
     """
     if game["status"] == "waiting":
@@ -169,8 +185,8 @@ def make_move(game, user_id, cell_index):
     except (TypeError, ValueError):
         return None, "Некорректный номер клетки", None
 
-    if cell_index < 0 or cell_index > 8:
-        return None, "Клетка должна быть от 0 до 8", None
+    if cell_index < 0 or cell_index > 24:
+        return None, "Клетка должна быть от 0 до 24", None
 
     board = list(game["board"])
     if board[cell_index] != "":

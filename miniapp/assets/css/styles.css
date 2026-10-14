@@ -727,6 +727,64 @@ body.has-netlify-badge .app {
 
 .chess { padding: 4px 16px 10px; }
 
+.chess__modes {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.chess__mode {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chess__mode.is-active {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.chess__diffs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  justify-content: center;
+}
+
+.chess__diff {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-soft);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chess__diff.is-active {
+  background: var(--card);
+  color: var(--text);
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.chess__box[hidden] {
+  display: none !important;
+}
+
 .chess__hint {
   margin: 0 0 12px;
   font-size: 13px;
@@ -858,6 +916,13 @@ body.has-netlify-badge .app {
   font-size: 13px;
   font-weight: 600;
   text-align: center;
+  transition: color 0.2s ease;
+}
+
+.chess__turn.is-over {
+  color: #58a6ff;
+  font-size: 14.5px;
+  font-weight: 700;
 }
 
 .chess__actions {
@@ -2087,10 +2152,10 @@ body.has-netlify-badge .app {
 
 .ttt__board {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
   aspect-ratio: 1;
-  max-width: 270px;
+  max-width: 320px;
   margin: 0 auto 12px;
   padding: 8px;
   background: var(--bg-soft);
@@ -2103,10 +2168,10 @@ body.has-netlify-badge .app {
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 12px;
+  border-radius: 9px;
   background: var(--card);
   font-family: inherit;
-  font-size: 36px;
+  font-size: 22px;
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
@@ -4405,6 +4470,14 @@ body.is-page-hidden * {
 .game-card--ttt .game-card__icon-wrap {
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(249, 115, 22, 0.4));
   border: 1px solid rgba(249, 115, 22, 0.4);
+}
+
+.game-card--ttt .game-card__icon {
+  font-size: 19px;
+  letter-spacing: -2.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .game-card--casino .game-card__icon-wrap {

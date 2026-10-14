@@ -13,7 +13,7 @@
     и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
     поднимайте номер: иначе Telegram покажет старую версию.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=48">
+  <link rel="stylesheet" href="assets/css/styles.css?v=49">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -148,7 +148,7 @@
           <div class="game-card__icon-wrap">
             <span class="game-card__icon">❌⭕</span>
           </div>
-          <span class="game-card__title">Крестики</span>
+          <span class="game-card__title">Крестики 5×5</span>
         </button>
 
         <button class="game-card game-card--casino" id="gameCardCasino" type="button" aria-label="Открыть Казино">
@@ -710,49 +710,84 @@
       </header>
       <div class="game-modal__body">
         <div class="chess" id="chess">
-          <!-- Партии ещё нет -->
-          <div class="chess__intro" id="chessIntro" hidden>
-            <p class="chess__hint">
-              Сыграйте с одногруппником. Вы играете белыми и делаете первый ход.
-            </p>
-            <button class="chess__btn" id="chessNew" type="button">Создать партию</button>
+          <div class="chess__modes">
+            <button class="chess__mode is-active" id="chessModeBot" type="button">С ботом</button>
+            <button class="chess__mode" id="chessModeMulti" type="button">С одногруппником</button>
           </div>
 
-          <!-- Идёт партия -->
-          <div class="chess__game" id="chessGame" hidden>
-            <div class="chess__players">
-              <span class="chess__player" id="chessWhite"></span>
-              <span class="chess__player" id="chessBlack"></span>
+          <!-- Режим с ботом -->
+          <div class="chess__box" id="chessBotBox">
+            <div class="chess__diffs">
+              <button class="chess__diff is-active" data-diff="easy" type="button">🟢 Новичок</button>
+              <button class="chess__diff" data-diff="medium" type="button">🟡 Любитель</button>
+              <button class="chess__diff" data-diff="hard" type="button">🔴 Мастер</button>
             </div>
 
-            <div class="chess__board" id="chessBoard" role="grid"
-                 aria-label="Шахматная доска"></div>
+            <div class="chess__players">
+              <span class="chess__player is-turn" id="chessBotWhite">Белые: Вы</span>
+              <span class="chess__player" id="chessBotBlack">Чёрные: Бот (🟢 Новичок)</span>
+            </div>
 
-            <div class="chess__turn" id="chessTurn" role="status" aria-live="polite"></div>
+            <div class="chess__board" id="chessBotBoard" role="grid" aria-label="Шахматная доска с ботом"></div>
+
+            <div class="chess__turn" id="chessBotTurn" role="status" aria-live="polite">Ваш ход (белые)</div>
+
+            <div class="chess__promo" id="chessBotPromo" hidden>
+              <div class="chess__promo-title">Во что превратить пешку?</div>
+              <div class="chess__promo-list" id="chessBotPromoList"></div>
+            </div>
 
             <div class="chess__actions">
-              <button class="chess__btn chess__btn--ghost" id="chessInvite" type="button" hidden>
-                Пригласить
-              </button>
-              <button class="chess__btn chess__btn--ghost" id="chessCancel" type="button" hidden>
-                Отменить партию
-              </button>
-              <button class="chess__btn chess__btn--ghost" id="chessResign" type="button" hidden>
-                Сдаться
-              </button>
-              <button class="chess__btn chess__btn--ghost" id="chessAgain" type="button" hidden>
-                Новая партия
-              </button>
+              <button class="chess__btn chess__btn--ghost" id="chessBotReset" type="button">Новая партия 🔄</button>
             </div>
           </div>
 
-          <!-- Выбор фигуры при превращении пешки -->
-          <div class="chess__promo" id="chessPromo" hidden>
-            <div class="chess__promo-title">Во что превратить пешку?</div>
-            <div class="chess__promo-list" id="chessPromoList"></div>
-          </div>
+          <!-- Режим с одногруппником (сетевой) -->
+          <div class="chess__box" id="chessMultiBox" hidden>
+            <!-- Партии ещё нет -->
+            <div class="chess__intro" id="chessIntro" hidden>
+              <p class="chess__hint">
+                Сыграйте с одногруппником. Вы играете белыми и делаете первый ход.
+              </p>
+              <button class="chess__btn" id="chessNew" type="button">Создать партию</button>
+            </div>
 
-          <p class="chess__error" id="chessError" hidden></p>
+            <!-- Идёт партия -->
+            <div class="chess__game" id="chessGame" hidden>
+              <div class="chess__players">
+                <span class="chess__player" id="chessWhite"></span>
+                <span class="chess__player" id="chessBlack"></span>
+              </div>
+
+              <div class="chess__board" id="chessBoard" role="grid"
+                   aria-label="Шахматная доска"></div>
+
+              <div class="chess__turn" id="chessTurn" role="status" aria-live="polite"></div>
+
+              <div class="chess__actions">
+                <button class="chess__btn chess__btn--ghost" id="chessInvite" type="button" hidden>
+                  Пригласить
+                </button>
+                <button class="chess__btn chess__btn--ghost" id="chessCancel" type="button" hidden>
+                  Отменить партию
+                </button>
+                <button class="chess__btn chess__btn--ghost" id="chessResign" type="button" hidden>
+                  Сдаться
+                </button>
+                <button class="chess__btn chess__btn--ghost" id="chessAgain" type="button" hidden>
+                  Новая партия
+                </button>
+              </div>
+            </div>
+
+            <!-- Выбор фигуры при превращении пешки -->
+            <div class="chess__promo" id="chessPromo" hidden>
+              <div class="chess__promo-title">Во что превратить пешку?</div>
+              <div class="chess__promo-list" id="chessPromoList"></div>
+            </div>
+
+            <p class="chess__error" id="chessError" hidden></p>
+          </div>
         </div>
       </div>
     </div>
@@ -764,7 +799,7 @@
     <div class="game-modal__card" role="dialog" aria-modal="true" aria-label="Крестики-нолики">
       <header class="game-modal__head">
         <button class="game-modal__close" id="tttModalClose" type="button" aria-label="Закрыть">✕</button>
-        <h2 class="game-modal__title">❌⭕ Крестики-нолики</h2>
+        <h2 class="game-modal__title">❌⭕ Крестики-нолики 5×5</h2>
         <div class="game-modal__head-spacer" aria-hidden="true"></div>
       </header>
       <div class="game-modal__body">
@@ -776,8 +811,8 @@
 
           <!-- Одиночный режим с ботом -->
           <div class="ttt__box" id="tttSoloBox">
-            <div class="ttt__status" id="tttSoloStatus" role="status" aria-live="polite">Ваш ход (X)</div>
-            <div class="ttt__board" id="tttSoloBoard" role="grid" aria-label="Поле крестиков-ноликов">
+            <div class="ttt__status" id="tttSoloStatus" role="status" aria-live="polite">Ваш ход (X) · Соберите 4 в ряд</div>
+            <div class="ttt__board" id="tttSoloBoard" role="grid" aria-label="Поле крестиков-ноликов 5х5">
               <button class="ttt__cell" data-idx="0" type="button" aria-label="Клетка 1"></button>
               <button class="ttt__cell" data-idx="1" type="button" aria-label="Клетка 2"></button>
               <button class="ttt__cell" data-idx="2" type="button" aria-label="Клетка 3"></button>
@@ -787,6 +822,22 @@
               <button class="ttt__cell" data-idx="6" type="button" aria-label="Клетка 7"></button>
               <button class="ttt__cell" data-idx="7" type="button" aria-label="Клетка 8"></button>
               <button class="ttt__cell" data-idx="8" type="button" aria-label="Клетка 9"></button>
+              <button class="ttt__cell" data-idx="9" type="button" aria-label="Клетка 10"></button>
+              <button class="ttt__cell" data-idx="10" type="button" aria-label="Клетка 11"></button>
+              <button class="ttt__cell" data-idx="11" type="button" aria-label="Клетка 12"></button>
+              <button class="ttt__cell" data-idx="12" type="button" aria-label="Клетка 13"></button>
+              <button class="ttt__cell" data-idx="13" type="button" aria-label="Клетка 14"></button>
+              <button class="ttt__cell" data-idx="14" type="button" aria-label="Клетка 15"></button>
+              <button class="ttt__cell" data-idx="15" type="button" aria-label="Клетка 16"></button>
+              <button class="ttt__cell" data-idx="16" type="button" aria-label="Клетка 17"></button>
+              <button class="ttt__cell" data-idx="17" type="button" aria-label="Клетка 18"></button>
+              <button class="ttt__cell" data-idx="18" type="button" aria-label="Клетка 19"></button>
+              <button class="ttt__cell" data-idx="19" type="button" aria-label="Клетка 20"></button>
+              <button class="ttt__cell" data-idx="20" type="button" aria-label="Клетка 21"></button>
+              <button class="ttt__cell" data-idx="21" type="button" aria-label="Клетка 22"></button>
+              <button class="ttt__cell" data-idx="22" type="button" aria-label="Клетка 23"></button>
+              <button class="ttt__cell" data-idx="23" type="button" aria-label="Клетка 24"></button>
+              <button class="ttt__cell" data-idx="24" type="button" aria-label="Клетка 25"></button>
             </div>
             <div class="ttt__actions">
               <button class="ttt__btn" id="tttSoloReset" type="button">Новая игра</button>
@@ -796,7 +847,7 @@
           <!-- Мультиплеер с одногруппником -->
           <div class="ttt__box" id="tttMultiBox" hidden>
             <div class="ttt__intro" id="tttMultiIntro">
-              <p class="ttt__hint">Сыграйте по сети. Создайте партию и отправьте ссылку другу.</p>
+              <p class="ttt__hint">Сыграйте по сети 5х5 (4 в ряд). Создайте партию и отправьте ссылку другу.</p>
               <button class="ttt__btn" id="tttMultiNew" type="button">Создать партию</button>
             </div>
 
@@ -806,7 +857,7 @@
                 <span class="ttt__player" id="tttPlayerO"></span>
               </div>
               <div class="ttt__status" id="tttMultiStatus" role="status" aria-live="polite"></div>
-              <div class="ttt__board" id="tttMultiBoard" role="grid" aria-label="Сетевое поле">
+              <div class="ttt__board" id="tttMultiBoard" role="grid" aria-label="Сетевое поле 5х5">
                 <button class="ttt__cell" data-idx="0" type="button" aria-label="Клетка 1"></button>
                 <button class="ttt__cell" data-idx="1" type="button" aria-label="Клетка 2"></button>
                 <button class="ttt__cell" data-idx="2" type="button" aria-label="Клетка 3"></button>
@@ -816,6 +867,22 @@
                 <button class="ttt__cell" data-idx="6" type="button" aria-label="Клетка 7"></button>
                 <button class="ttt__cell" data-idx="7" type="button" aria-label="Клетка 8"></button>
                 <button class="ttt__cell" data-idx="8" type="button" aria-label="Клетка 9"></button>
+                <button class="ttt__cell" data-idx="9" type="button" aria-label="Клетка 10"></button>
+                <button class="ttt__cell" data-idx="10" type="button" aria-label="Клетка 11"></button>
+                <button class="ttt__cell" data-idx="11" type="button" aria-label="Клетка 12"></button>
+                <button class="ttt__cell" data-idx="12" type="button" aria-label="Клетка 13"></button>
+                <button class="ttt__cell" data-idx="13" type="button" aria-label="Клетка 14"></button>
+                <button class="ttt__cell" data-idx="14" type="button" aria-label="Клетка 15"></button>
+                <button class="ttt__cell" data-idx="15" type="button" aria-label="Клетка 16"></button>
+                <button class="ttt__cell" data-idx="16" type="button" aria-label="Клетка 17"></button>
+                <button class="ttt__cell" data-idx="17" type="button" aria-label="Клетка 18"></button>
+                <button class="ttt__cell" data-idx="18" type="button" aria-label="Клетка 19"></button>
+                <button class="ttt__cell" data-idx="19" type="button" aria-label="Клетка 20"></button>
+                <button class="ttt__cell" data-idx="20" type="button" aria-label="Клетка 21"></button>
+                <button class="ttt__cell" data-idx="21" type="button" aria-label="Клетка 22"></button>
+                <button class="ttt__cell" data-idx="22" type="button" aria-label="Клетка 23"></button>
+                <button class="ttt__cell" data-idx="23" type="button" aria-label="Клетка 24"></button>
+                <button class="ttt__cell" data-idx="24" type="button" aria-label="Клетка 25"></button>
               </div>
               <div class="ttt__actions">
                 <button class="ttt__btn ttt__btn--ghost" id="tttMultiInvite" type="button" hidden>Пригласить</button>
@@ -875,10 +942,11 @@
     </div>
   </div>
 
-  <script src="assets/js/config.js?v=48"></script>
-  <script src="assets/js/core.js?v=48"></script>
-  <script src="assets/js/chess.js?v=48"></script>
-  <script src="assets/js/blockblast.js?v=48"></script>
-  <script src="assets/js/app.js?v=48"></script>
+  <script src="assets/js/config.js?v=49"></script>
+  <script src="assets/js/core.js?v=49"></script>
+  <script src="assets/js/chess.js?v=49"></script>
+  <script src="assets/js/chessengine.js?v=49"></script>
+  <script src="assets/js/blockblast.js?v=49"></script>
+  <script src="assets/js/app.js?v=49"></script>
 </body>
 </html>

@@ -1219,6 +1219,22 @@
     var promoEl = document.getElementById("chessPromo");
     var promoList = document.getElementById("chessPromoList");
 
+    // Переключение режимов: Бот / С одногруппником
+    var modeBotBtn = document.getElementById("chessModeBot");
+    var modeMultiBtn = document.getElementById("chessModeMulti");
+    var botBox = document.getElementById("chessBotBox");
+    var multiBox = document.getElementById("chessMultiBox");
+
+    // Элементы игры с ботом
+    var botWhiteEl = document.getElementById("chessBotWhite");
+    var botBlackEl = document.getElementById("chessBotBlack");
+    var botBoardEl = document.getElementById("chessBotBoard");
+    var botTurnEl = document.getElementById("chessBotTurn");
+    var botResetBtn = document.getElementById("chessBotReset");
+    var botPromoEl = document.getElementById("chessBotPromo");
+    var botPromoList = document.getElementById("chessBotPromoList");
+    var diffBtns = botBox ? Array.prototype.slice.call(botBox.querySelectorAll(".chess__diff")) : [];
+
     if (!introEl || !gameEl || !boardEl || !newBtn) return;
 
     var gameId = null;
@@ -1250,6 +1266,339 @@
       } catch (e) {
         return null;
       }
+    }
+
+    /* ---- Переключение режима игры (Бот / Мультиплеер) ---- */
+
+    function switchChessMode(mode) {
+      if (mode === "bot") {
+        if (modeBotBtn) modeBotBtn.classList.add("is-active");
+        if (modeMultiBtn) modeMultiBtn.classList.remove("is-active");
+        if (botBox) botBox.hidden = false;
+        if (multiBox) multiBox.hidden = true;
+        stopPolling();
+        renderBotBoard();
+      } else {
+        if (modeBotBtn) modeBotBtn.classList.remove("is-active");
+        if (modeMultiBtn) modeMultiBtn.classList.add("is-active");
+        if (botBox) botBox.hidden = true;
+        if (multiBox) multiBox.hidden = false;
+        maybePoll();
+      }
+    }
+
+    if (modeBotBtn) modeBotBtn.addEventListener("click", function () { switchChessMode("bot"); });
+    if (modeMultiBtn) modeMultiBtn.addEventListener("click", function () { switchChessMode("multi"); });
+
+    /* ========================================================
+       === ШАХМАТЫ С БОТОМ (3 УРОВНЯ СЛОЖНОСТИ) ===
+       ======================================================== */
+    var botDifficulty = "easy";
+    var botDifficultyLabels = {
+      easy: "🟢 Новичок",
+      medium: "🟡 Любитель",
+      hard: "🔴 Мастер"
+    };
+    var botGameState = null;
+    var botSelected = null;
+    var botPendingPromo = null; // { from, to }
+    var botGameOver = false;
+    var botBusy = false;
+    var botCellNodes = [];
+
+    diffBtns.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var diff = btn.dataset.diff;
+        if (!diff || diff === botDifficulty) return;
+        botDifficulty = diff;
+        diffBtns.forEach(function (b) {
+          b.classList.toggle("is-active", b === btn);
+        });
+        if (botBlackEl) {
+          botBlackEl.textContent = "Чёрные: Бот (" + (botDifficultyLabels[botDifficulty] || "Бот") + ")";
+        }
+        haptic("light");
+      });
+    });
+
+    function buildBotBoard() {
+      if (!botBoardEl) return;
+      botBoardEl.textContent = "";
+      botCellNodes = [];
+
+      for (var i = 0; i < 64; i++) {
+        var file = i % 8;
+        var rank = 7 - Math.floor(i / 8);
+
+        var cell = el("button", "chess__cell");
+        cell.type = "button";
+        cell.dataset.square = chess.squareName(file, rank);
+        cell.addEventListener("click", onBotCellClick);
+
+        botBoardEl.appendChild(cell);
+        botCellNodes.push(cell);
+      }
+    }
+
+    function initBotGame() {
+      if (typeof window.ChessEngine !== "undefined" && window.ChessEngine.createGame) {
+        botGameState = window.ChessEngine.createGame();
+      } else {
+        botGameState = null;
+      }
+      botSelected = null;
+      botPendingPromo = null;
+      botGameOver = false;
+      botBusy = false;
+      if (botPromoEl) botPromoEl.hidden = true;
+      if (botTurnEl) {
+        botTurnEl.textContent = "Ваш ход (белые)";
+        botTurnEl.className = "chess__turn";
+      }
+      renderBotBoard();
+    }
+
+    function renderBotBoard() {
+      if (!botGameState || !botBoardEl || botCellNodes.length < 64 || typeof window.ChessEngine === "undefined") return;
+
+      var fen = window.ChessEngine.boardToFen(botGameState);
+      var cells = chess.boardCells(fen);
+      if (!cells) return;
+
+      var legalDict = window.ChessEngine.getLegalDictionary(botGameState);
+      var targets = botSelected ? (legalDict[botSelected] || []) : [];
+      var isPlayerTurn = botGameState.turn === "w" && !botGameOver && !botBusy;
+      var inCheck = window.ChessEngine.isInCheck(botGameState.board, botGameState.turn);
+      var kingSquare = inCheck ? chess.findKing(fen, botGameState.turn === "w" ? "white" : "black") : null;
+
+      if (botWhiteEl) botWhiteEl.classList.toggle("is-turn", botGameState.turn === "w" && !botGameOver);
+      if (botBlackEl) botBlackEl.classList.toggle("is-turn", botGameState.turn === "b" && !botGameOver);
+
+      cells.forEach(function (info, i) {
+        var node = botCellNodes[i];
+        if (!node) return;
+
+        var classes = ["chess__cell", info.light ? "chess__cell--light" : "chess__cell--dark"];
+
+        if (botGameState.lastMove &&
+            (botGameState.lastMove.from === info.square || botGameState.lastMove.to === info.square)) {
+          classes.push("chess__cell--last");
+        }
+        if (botSelected === info.square) classes.push("chess__cell--selected");
+        if (targets.indexOf(info.square) >= 0) {
+          classes.push(info.code ? "chess__cell--capture" : "chess__cell--target");
+        }
+        if (kingSquare === info.square) classes.push("chess__cell--check");
+        if (info.code) {
+          classes.push(chess.isWhitePiece(info.code) ? "chess__cell--white" : "chess__cell--black");
+        }
+
+        node.className = classes.join(" ");
+        node.textContent = "";
+
+        if (info.code) {
+          node.appendChild(el("span", "chess__piece", chess.pieceGlyph(info.code)));
+          var owner = chess.isWhitePiece(info.code) ? "белая" : "чёрная";
+          node.setAttribute("aria-label", info.square + ", " + owner + " " + chess.pieceName(info.code));
+        } else {
+          node.setAttribute("aria-label", info.square + ", пусто");
+        }
+
+        var mine = isPlayerTurn && info.code && chess.isWhitePiece(info.code) && legalDict[info.square] && legalDict[info.square].length > 0;
+        var isTarget = isPlayerTurn && targets.indexOf(info.square) >= 0;
+        node.disabled = !(mine || isTarget);
+      });
+    }
+
+    function checkBotGameOver() {
+      if (!botGameState) return false;
+      var legalMoves = window.ChessEngine.getLegalMoves(botGameState);
+      if (legalMoves.length === 0) {
+        botGameOver = true;
+        var inCheck = window.ChessEngine.isInCheck(botGameState.board, botGameState.turn);
+        if (inCheck) {
+          if (botGameState.turn === "b") {
+            var rewardTugriks = botDifficulty === "hard" ? 100 : (botDifficulty === "medium" ? 50 : 25);
+            if (botTurnEl) {
+              botTurnEl.textContent = "Мат! Победа над ботом! 🏆 +" + rewardTugriks + " тугриков";
+              botTurnEl.className = "chess__turn is-over";
+            }
+            haptic("success");
+            tttFetch("/solo_reward", { method: "POST" })
+              .then(function (data) {
+                if (data && typeof data.balance === "number") {
+                  syncCasinoBalance(data.balance);
+                }
+              })
+              .catch(function () {});
+          } else {
+            if (botTurnEl) {
+              botTurnEl.textContent = "Мат! Бот победил 🤖";
+              botTurnEl.className = "chess__turn is-over";
+            }
+            haptic("warning");
+          }
+        } else {
+          if (botTurnEl) {
+            botTurnEl.textContent = "Пат! Ничья 🤝";
+            botTurnEl.className = "chess__turn is-over";
+          }
+          haptic("light");
+        }
+        renderBotBoard();
+        return true;
+      }
+
+      if (botGameState.halfMoves >= 100) {
+        botGameOver = true;
+        if (botTurnEl) {
+          botTurnEl.textContent = "Ничья (правило 50 ходов) 🤝";
+          botTurnEl.className = "chess__turn is-over";
+        }
+        haptic("light");
+        renderBotBoard();
+        return true;
+      }
+
+      return false;
+    }
+
+    function askBotPromotion(from, to) {
+      if (!botPromoEl || !botPromoList) return;
+      botPendingPromo = { from: from, to: to };
+      botPromoList.textContent = "";
+
+      ["q", "r", "b", "n"].forEach(function (code) {
+        var btn = el("button", "chess__promo-btn", chess.pieceGlyph(code));
+        btn.type = "button";
+        btn.setAttribute("aria-label", chess.pieceName(code));
+
+        btn.addEventListener("click", function () {
+          botPromoEl.hidden = true;
+          var moveData = botPendingPromo;
+          botPendingPromo = null;
+          if (moveData) {
+            applyPlayerMove(moveData.from, moveData.to, code.toUpperCase());
+          }
+        });
+
+        botPromoList.appendChild(btn);
+      });
+
+      botPromoEl.hidden = false;
+    }
+
+    function applyPlayerMove(fromSquare, toSquare, promoPiece) {
+      if (!botGameState || typeof window.ChessEngine === "undefined") return;
+      var legal = window.ChessEngine.getLegalMoves(botGameState);
+      var fromIdx = window.ChessEngine.nameToSquare(fromSquare);
+      var toIdx = window.ChessEngine.nameToSquare(toSquare);
+
+      var matchedMove = null;
+      for (var i = 0; i < legal.length; i++) {
+        var m = legal[i];
+        if (m.from === fromIdx && m.to === toIdx) {
+          if (promoPiece) {
+            if (m.promo === promoPiece) {
+              matchedMove = m;
+              break;
+            }
+          } else {
+            matchedMove = m;
+            break;
+          }
+        }
+      }
+
+      if (!matchedMove) return;
+
+      botGameState = window.ChessEngine.applyMoveToState(botGameState, matchedMove);
+      botSelected = null;
+      haptic("light");
+
+      if (checkBotGameOver()) return;
+
+      botBusy = true;
+      if (botTurnEl) {
+        var inCheck = window.ChessEngine.isInCheck(botGameState.board, botGameState.turn);
+        botTurnEl.textContent = inCheck ? "Шах боту! Бот думает…" : "Бот думает…";
+      }
+      renderBotBoard();
+
+      var thinkTime = botDifficulty === "hard" ? 450 : (botDifficulty === "medium" ? 300 : 200);
+      setTimeout(function () {
+        if (botGameOver || !botGameState) {
+          botBusy = false;
+          return;
+        }
+
+        var botMove = window.ChessEngine.getBotMove(botGameState, botDifficulty);
+        if (botMove) {
+          botGameState = window.ChessEngine.applyMoveToState(botGameState, botMove);
+          haptic("selection");
+        }
+
+        botBusy = false;
+        if (!checkBotGameOver()) {
+          var playerInCheck = window.ChessEngine.isInCheck(botGameState.board, botGameState.turn);
+          if (botTurnEl) {
+            botTurnEl.textContent = playerInCheck ? "Ваш ход, вам шах!" : "Ваш ход (белые)";
+          }
+        }
+        renderBotBoard();
+      }, thinkTime);
+    }
+
+    function onBotCellClick(event) {
+      if (botGameOver || botBusy || !botGameState || botPendingPromo) return;
+      if (botGameState.turn !== "w") return;
+
+      var square = event.currentTarget.dataset.square;
+      if (!square) return;
+
+      if (square === botSelected) {
+        botSelected = null;
+        renderBotBoard();
+        return;
+      }
+
+      var legalDict = window.ChessEngine ? window.ChessEngine.getLegalDictionary(botGameState) : {};
+      var targets = botSelected ? (legalDict[botSelected] || []) : [];
+
+      if (botSelected && targets.indexOf(square) >= 0) {
+        var fromIdx = window.ChessEngine.nameToSquare(botSelected);
+        var piece = botGameState.board[fromIdx];
+        var toIdx = window.ChessEngine.nameToSquare(square);
+        var toRank = Math.floor(toIdx / 8);
+
+        if (piece === "P" && toRank === 7) {
+          askBotPromotion(botSelected, square);
+          return;
+        }
+
+        applyPlayerMove(botSelected, square, null);
+        return;
+      }
+
+      if (legalDict[square] && legalDict[square].length > 0) {
+        var sqIdx = window.ChessEngine.nameToSquare(square);
+        var p = botGameState.board[sqIdx];
+        if (p && chess.isWhitePiece(p)) {
+          botSelected = square;
+          renderBotBoard();
+          return;
+        }
+      }
+
+      botSelected = null;
+      renderBotBoard();
+    }
+
+    if (botResetBtn) {
+      botResetBtn.addEventListener("click", function () {
+        initBotGame();
+        haptic("light");
+      });
     }
 
     /* ---- отрисовка ---- */
@@ -1627,7 +1976,11 @@
       if (chessModal) chessModal.hidden = false;
       chessOpen = true;
       haptic("light");
-      refresh().then(maybePoll);
+      if (botBox && !botBox.hidden) {
+        renderBotBoard();
+      } else {
+        refresh().then(maybePoll);
+      }
     }
 
     function closeChessModal() {
@@ -1655,11 +2008,21 @@
     }
 
     onVisibilityChange(function (isVisible) {
-      if (isVisible && boardVisible()) refresh().then(maybePoll);
-      else stopPolling();
+      if (isVisible && boardVisible()) {
+        if (botBox && !botBox.hidden) {
+          renderBotBoard();
+        } else {
+          refresh().then(maybePoll);
+        }
+      } else {
+        stopPolling();
+      }
     });
 
     /* ---- запуск ---- */
+
+    buildBotBoard();
+    initBotGame();
 
     buildBoard();
 
@@ -1677,6 +2040,7 @@
 
     if (invited) {
       openChessModal();
+      switchChessMode("multi");
       joinGame(invited);
     } else {
       var saved = savedId();
@@ -2965,12 +3329,37 @@
     if (modeSoloBtn) modeSoloBtn.addEventListener("click", function () { switchMode("solo"); });
     if (modeMultiBtn) modeMultiBtn.addEventListener("click", function () { switchMode("multi"); });
 
-    /* --- Линии победы --- */
-    var WIN_LINES = [
-      [0, 1, 2], [3, 4, 5], [6, 7, 8],
-      [0, 3, 6], [1, 4, 7], [2, 5, 8],
-      [0, 4, 8], [2, 4, 6]
-    ];
+    /* --- Линии победы 5х5 (4 в ряд) --- */
+    function generateLines5x5() {
+      var lines = [];
+      // Строки (по 4 в ряд)
+      for (var r = 0; r < 5; r++) {
+        for (var c = 0; c < 2; c++) {
+          lines.push([r * 5 + c, r * 5 + c + 1, r * 5 + c + 2, r * 5 + c + 3]);
+        }
+      }
+      // Столбцы (по 4 в ряд)
+      for (var c2 = 0; c2 < 5; c2++) {
+        for (var r2 = 0; r2 < 2; r2++) {
+          lines.push([r2 * 5 + c2, (r2 + 1) * 5 + c2, (r2 + 2) * 5 + c2, (r2 + 3) * 5 + c2]);
+        }
+      }
+      // Главные диагонали (dr=1, dc=1)
+      for (var r3 = 0; r3 < 2; r3++) {
+        for (var c3 = 0; c3 < 2; c3++) {
+          lines.push([r3 * 5 + c3, (r3 + 1) * 5 + c3 + 1, (r3 + 2) * 5 + c3 + 2, (r3 + 3) * 5 + c3 + 3]);
+        }
+      }
+      // Побочные диагонали (dr=1, dc=-1)
+      for (var r4 = 0; r4 < 2; r4++) {
+        for (var c4 = 3; c4 < 5; c4++) {
+          lines.push([r4 * 5 + c4, (r4 + 1) * 5 + c4 - 1, (r4 + 2) * 5 + c4 - 2, (r4 + 3) * 5 + c4 - 3]);
+        }
+      }
+      return lines;
+    }
+
+    var WIN_LINES = generateLines5x5();
 
     function checkWinner(board) {
       for (var i = 0; i < WIN_LINES.length; i++) {
@@ -2978,7 +3367,8 @@
         var a = board[line[0]];
         var b = board[line[1]];
         var c = board[line[2]];
-        if (a && a === b && a === c) {
+        var d = board[line[3]];
+        if (a && a === b && a === c && a === d) {
           return { winner: a, line: line };
         }
       }
@@ -2987,8 +3377,14 @@
       return null;
     }
 
-    /* === ОДИНОЧНЫЙ РЕЖИМ (С БОТОМ) === */
-    var soloState = [null, null, null, null, null, null, null, null, null];
+    /* === ОДИНОЧНЫЙ РЕЖИМ (С БОТОМ 5х5) === */
+    function createEmptySoloState() {
+      var arr = [];
+      for (var i = 0; i < 25; i++) arr.push(null);
+      return arr;
+    }
+
+    var soloState = createEmptySoloState();
     var soloTurn = "X";
     var soloOver = false;
 
@@ -3004,11 +3400,11 @@
     }
 
     function resetSolo() {
-      soloState = [null, null, null, null, null, null, null, null, null];
+      soloState = createEmptySoloState();
       soloTurn = "X";
       soloOver = false;
       if (soloStatus) {
-        soloStatus.textContent = "Ваш ход (X)";
+        soloStatus.textContent = "Ваш ход (X) · Соберите 4 в ряд";
         soloStatus.className = "ttt__status";
       }
       renderSolo();
@@ -3019,16 +3415,16 @@
 
       var chosen = -1;
 
-      // 1. Попытка выиграть (O) или блокировать игрока (X)
+      // 1. Попытка выиграть (3 своих O, 1 пустая) или блокировать игрока (3 X, 1 пустая)
       var checkSymbols = ["O", "X"];
       for (var s = 0; s < checkSymbols.length; s++) {
         var sym = checkSymbols[s];
         for (var i = 0; i < WIN_LINES.length; i++) {
           var line = WIN_LINES[i];
-          var a = soloState[line[0]], b = soloState[line[1]], c = soloState[line[2]];
-          var count = (a === sym ? 1 : 0) + (b === sym ? 1 : 0) + (c === sym ? 1 : 0);
+          var a = soloState[line[0]], b = soloState[line[1]], c = soloState[line[2]], d = soloState[line[3]];
+          var count = (a === sym ? 1 : 0) + (b === sym ? 1 : 0) + (c === sym ? 1 : 0) + (d === sym ? 1 : 0);
           var empties = line.filter(function (idx) { return !soloState[idx]; });
-          if (count === 2 && empties.length === 1) {
+          if (count === 3 && empties.length === 1) {
             chosen = empties[0];
             break;
           }
@@ -3036,17 +3432,40 @@
         if (chosen !== -1) break;
       }
 
-      // 2. Центр, затем углы, затем случайная
+      // 2. Развитие своей атаки (2 O, 2 пустые) или блокировка полу-угрозы игрока (2 X, 2 пустые)
       if (chosen === -1) {
-        if (!soloState[4]) {
-          chosen = 4;
+        for (var s2 = 0; s2 < checkSymbols.length; s2++) {
+          var sym2 = checkSymbols[s2];
+          for (var j = 0; j < WIN_LINES.length; j++) {
+            var line2 = WIN_LINES[j];
+            var a2 = soloState[line2[0]], b2 = soloState[line2[1]], c2 = soloState[line2[2]], d2 = soloState[line2[3]];
+            var count2 = (a2 === sym2 ? 1 : 0) + (b2 === sym2 ? 1 : 0) + (c2 === sym2 ? 1 : 0) + (d2 === sym2 ? 1 : 0);
+            var empties2 = line2.filter(function (idx) { return !soloState[idx]; });
+            if (count2 === 2 && empties2.length === 2) {
+              empties2.sort(function (p1, p2) {
+                var dist1 = Math.abs(Math.floor(p1 / 5) - 2) + Math.abs((p1 % 5) - 2);
+                var dist2 = Math.abs(Math.floor(p2 / 5) - 2) + Math.abs((p2 % 5) - 2);
+                return dist1 - dist2;
+              });
+              chosen = empties2[0];
+              break;
+            }
+          }
+          if (chosen !== -1) break;
+        }
+      }
+
+      // 3. Захват центра доски (клетка 12)
+      if (chosen === -1) {
+        if (!soloState[12]) {
+          chosen = 12;
         } else {
-          var corners = [0, 2, 6, 8].filter(function (idx) { return !soloState[idx]; });
-          if (corners.length > 0) {
-            chosen = corners[Math.floor(Math.random() * corners.length)];
+          var innerRing = [6, 7, 8, 11, 13, 16, 17, 18].filter(function (idx) { return !soloState[idx]; });
+          if (innerRing.length > 0) {
+            chosen = innerRing[Math.floor(Math.random() * innerRing.length)];
           } else {
             var left = [];
-            for (var k = 0; k < 9; k++) {
+            for (var k = 0; k < 25; k++) {
               if (!soloState[k]) left.push(k);
             }
             if (left.length > 0) chosen = left[Math.floor(Math.random() * left.length)];
@@ -3079,7 +3498,7 @@
           }
         } else {
           soloTurn = "X";
-          if (soloStatus) soloStatus.textContent = "Ваш ход (X)";
+          if (soloStatus) soloStatus.textContent = "Ваш ход (X) · Соберите 4 в ряд";
         }
       }
       renderSolo();
@@ -3190,7 +3609,7 @@
         multiPlayerO.classList.toggle("is-turn", g.turn === "O" && g.status === "active");
       }
 
-      var board = g.board || ["", "", "", "", "", "", "", "", ""];
+      var board = g.board || ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""];
       multiCells.forEach(function (cell, idx) {
         var val = board[idx] || "";
         cell.textContent = val;

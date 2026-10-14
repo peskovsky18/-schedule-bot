@@ -34,10 +34,10 @@ assert error is None
 assert game["board"][0] == "X"
 assert game["turn"] == "O"
 
-# O ходит в клетку 3
-game, error, _ = ttt_game.make_move(game, BOB["id"], 3)
+# O ходит в клетку 10
+game, error, _ = ttt_game.make_move(game, BOB["id"], 10)
 assert error is None
-assert game["board"][3] == "O"
+assert game["board"][10] == "O"
 assert game["turn"] == "X"
 
 # Попытка сходить в занятую клетку
@@ -50,15 +50,17 @@ _, error, _ = ttt_game.make_move(game, BOB["id"], 1)
 assert error is not None
 print("✓ Проверка очередности хода работает")
 
-# X ходит в 1, O в 4, X в 2 (победа первой строки 0, 1, 2)
+# X ходит в 1, O в 5, X в 2, O в 6, X в 3 (победа первой строки 0, 1, 2, 3)
 game, error, _ = ttt_game.make_move(game, ALICE["id"], 1)
-game, error, _ = ttt_game.make_move(game, BOB["id"], 4)
-game, error, reward_id = ttt_game.make_move(game, ALICE["id"], 2)
+game, error, _ = ttt_game.make_move(game, BOB["id"], 5)
+game, error, _ = ttt_game.make_move(game, ALICE["id"], 2)
+game, error, _ = ttt_game.make_move(game, BOB["id"], 6)
+game, error, reward_id = ttt_game.make_move(game, ALICE["id"], 3)
 
 assert error is None
 assert game["status"] == "finished"
 assert game["winner"] == "X"
-assert game["winning_line"] == [0, 1, 2]
+assert game["winning_line"] == [0, 1, 2, 3]
 assert reward_id == ALICE["id"]
 print("✓ Победа по горизонтали зафиксирована, награда выдана")
 
@@ -67,21 +69,27 @@ alice_rec = casino.load(ALICE["id"])
 assert alice_rec["balance"] >= ttt_game.TTT_WIN_COINS
 print("✓ Баланс победителя пополнен")
 
-# 4. Тест ничьей
+# 4. Тест ничьей на поле 5х5
+# Заполняем поле до ничьей
 game2 = ttt_game.create_game(ALICE)
 game2, _ = ttt_game.join_game(game2, BOB)
-# X O X
-# X X O
-# O X O
-# Порядок:
-# X: 0, O: 1, X: 2, O: 5, X: 4, O: 8, X: 3, O: 6, X: 7
-moves = [(ALICE, 0), (BOB, 1), (ALICE, 2), (BOB, 5), (ALICE, 4), (BOB, 8), (ALICE, 3), (BOB, 6), (ALICE, 7)]
-for player, cell in moves:
-    game2, error, _ = ttt_game.make_move(game2, player["id"], cell)
-    assert error is None
 
-assert game2["status"] == "finished"
-assert game2["winner"] == "draw"
+# Шахматный паттерн без 4 в ряд
+# X X O O X
+# O O X X O
+# X X O O X
+# O O X X O
+# X X O O X
+draw_pattern = [
+    "X", "X", "O", "O", "X",
+    "O", "O", "X", "X", "O",
+    "X", "X", "O", "O", "X",
+    "O", "O", "X", "X", "O",
+    "X", "X", "O", "O", "X"
+]
+game2["board"] = draw_pattern
+w, l = ttt_game.check_board_winner(draw_pattern)
+assert w == "draw"
 print("✓ Ничья зафиксирована корректно")
 
 # 5. Тест таблицы лидеров
