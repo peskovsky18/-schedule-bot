@@ -370,6 +370,38 @@
   var channelHomeworkList = [];
   var userDoneHomework = {};
   var hwExpandedMap = {};
+  var HOMEWORK_CACHE_KEY = "schedule_homework_cache_v1";
+
+  function readStoredHomework() {
+    try {
+      var raw = localStorage.getItem(HOMEWORK_CACHE_KEY);
+      if (!raw) return;
+      var parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.homework)) {
+        channelHomeworkList = parsed.homework;
+      }
+      if (parsed && Array.isArray(parsed.user_done)) {
+        userDoneHomework = {};
+        parsed.user_done.forEach(function (id) { userDoneHomework[id] = true; });
+      }
+    } catch (e) {}
+  }
+
+  function writeStoredHomework(homework, user_done) {
+    try {
+      var doneList = user_done;
+      if (!Array.isArray(doneList)) {
+        doneList = Object.keys(userDoneHomework).filter(function (k) { return userDoneHomework[k]; });
+      }
+      localStorage.setItem(HOMEWORK_CACHE_KEY, JSON.stringify({
+        at: Date.now(),
+        homework: homework || channelHomeworkList,
+        user_done: doneList
+      }));
+    } catch (e) {}
+  }
+
+  readStoredHomework();
 
   function normSubj(s) {
     if (!s) return "";
@@ -397,6 +429,7 @@
 
   function toggleHomeworkDone(hwId) {
     userDoneHomework[hwId] = !userDoneHomework[hwId];
+    writeStoredHomework();
     haptic("light");
     renderDays();
 
@@ -440,11 +473,11 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (data && data.ok && Array.isArray(data.homework)) {
+          var userDone = Array.isArray(data.user_done) ? data.user_done : [];
+          writeStoredHomework(data.homework, userDone);
           channelHomeworkList = data.homework;
           userDoneHomework = {};
-          if (Array.isArray(data.user_done)) {
-            data.user_done.forEach(function (id) { userDoneHomework[id] = true; });
-          }
+          userDone.forEach(function (id) { userDoneHomework[id] = true; });
           renderDays();
         }
       })
@@ -530,9 +563,11 @@
       return;
     }
 
+    var fragment = document.createDocumentFragment();
     view.forEach(function (day) {
-      box.appendChild(dayCard(day));
+      fragment.appendChild(dayCard(day));
     });
+    box.appendChild(fragment);
   }
 
   function skeleton() {
@@ -1843,10 +1878,22 @@
     });
   }
 
+  var visibilityHandlers = [];
+  function onVisibilityChange(fn) {
+    if (typeof fn === "function") visibilityHandlers.push(fn);
+  }
+
   /** Обновляем данные, если приложение вернулось на экран спустя время. */
   function bindVisibility() {
     document.addEventListener("visibilitychange", function () {
-      if (document.visibilityState !== "visible") return;
+      var isVisible = document.visibilityState === "visible";
+      document.body.classList.toggle("is-page-hidden", !isVisible);
+
+      visibilityHandlers.forEach(function (h) {
+        try { h(isVisible); } catch (e) {}
+      });
+
+      if (!isVisible) return;
       loadChannelHomework();
       if (!state.data || !state.data.cache_age) return;
 
@@ -2003,6 +2050,9 @@
         casinoPlayer = data.player;
         if (data.player && typeof data.player.balance === "number") {
           syncCasinoBalance(data.player.balance);
+          try {
+            localStorage.setItem("schedule_casino_player_v1", JSON.stringify(data.player));
+          } catch (e) {}
         }
 
         // Сервер сам решает, положен ли подарок: приходит только
@@ -2296,15 +2346,46 @@
         });
     }
 
-    function loadState() {
+    var CASINO_CACHE_KEY = "schedule_casino_player_v1";
+    var casinoLoaded = false;
+
+    function readCasinoCache() {
+      try {
+        var raw = localStorage.getItem(CASINO_CACHE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function writeCasinoCache(player) {
+      try {
+        localStorage.setItem(CASINO_CACHE_KEY, JSON.stringify(player));
+      } catch (e) {}
+    }
+
+    if (!casinoPlayer) {
+      var cachedPlayer = readCasinoCache();
+      if (cachedPlayer) {
+        casinoPlayer = cachedPlayer;
+        if (typeof casinoPlayer.balance === "number") {
+          syncCasinoBalance(casinoPlayer.balance);
+        }
+      }
+    }
+
+    function loadState(force) {
+      if (casinoLoaded && !force) return Promise.resolve();
       return fetchWithRetry((apiBase || "") + "/api/casino", { headers: authHeaders() },
                             LOAD_TIMEOUT_MS, 3)
         .then(function (response) { return response.json(); })
         .then(function (data) {
           if (!data || data.ok !== true) return;
+          casinoLoaded = true;
           casinoPlayer = data.player;
           if (data.player && typeof data.player.balance === "number") {
             syncCasinoBalance(data.player.balance);
+            writeCasinoCache(data.player);
           }
           render();
         })
@@ -2327,10 +2408,16 @@
       });
     }
 
-    spinBtn.addEventListener("click", spin);
+    spinBtn.addEventListener("click", function () {
+      if (!casinoLoaded) loadState(true);
+      spin();
+    });
 
     if (casinoPlayer) render();
-    loadState();
+
+    onFunToggle(function (open) {
+      if (open) loadState();
+    });
   }
 
   /* ---------- Секретный пароль ---------- */
@@ -2662,7 +2749,16 @@
       render();
     });
 
-    load();
+    var shopLoaded = false;
+    function loadOnce() {
+      if (shopLoaded) return;
+      shopLoaded = true;
+      load();
+    }
+
+    onMenuToggle(function (open) {
+      if (open) loadOnce();
+    });
   }
 
   /* ---------- Таблица лидеров ---------- */
@@ -3769,6 +3865,31 @@
     var petData = null;
     var petCatalog = DEFAULT_CATALOG.slice();
     var busy = false;
+    var petLoaded = false;
+    var PET_CACHE_KEY = "schedule_pet_cache_v1";
+
+    function readPetCache() {
+      try {
+        var raw = localStorage.getItem(PET_CACHE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function writePetCache(data) {
+      try {
+        localStorage.setItem(PET_CACHE_KEY, JSON.stringify(data));
+      } catch (e) {}
+    }
+
+    var cachedPet = readPetCache();
+    if (cachedPet && cachedPet.pet) {
+      petData = cachedPet.pet;
+      if (Array.isArray(cachedPet.catalog)) {
+        petCatalog = cachedPet.catalog;
+      }
+    }
 
     function renderPetBalance() {
       var badgeVal = document.getElementById("petBalanceVal");
@@ -4028,6 +4149,9 @@
 
     function renderPet() {
       if (loadingEl) loadingEl.hidden = true;
+      if (petData) {
+        writePetCache({ pet: petData, catalog: petCatalog });
+      }
 
       if (!petData) {
         if (adoptBox) adoptBox.hidden = false;
@@ -4335,7 +4459,15 @@
         }
 
         tick();
-        workTimerInterval = setInterval(tick, 1000);
+        stopWorkTimer();
+        var menu = document.getElementById("menu");
+        var funContent = document.getElementById("funContent");
+        var isMineVisible = document.visibilityState === "visible" &&
+                            menu && !menu.hidden &&
+                            funContent && !funContent.hidden;
+        if (isMineVisible) {
+          workTimerInterval = setInterval(tick, 1000);
+        }
 
       } else if (status === "ready") {
         stopWorkTimer();
@@ -4852,27 +4984,66 @@
         section.scrollIntoView({ behavior: "smooth", block: "center" });
         cheerPet();
         haptic("light");
+        loadPetServer();
       });
     }
 
-    // Первичная загрузка
-    fetchWithRetry((apiBase || "") + "/api/pet", {
-      headers: authHeaders()
-    }, LOAD_TIMEOUT_MS, 2)
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        if (data && data.ok) {
-          petData = data.pet || null;
-          if (typeof data.balance === "number") {
-            syncCasinoBalance(data.balance);
+    function loadPetServer(force) {
+      if (petLoaded && !force) return Promise.resolve();
+      return fetchWithRetry((apiBase || "") + "/api/pet", {
+        headers: authHeaders()
+      }, LOAD_TIMEOUT_MS, 2)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data && data.ok) {
+            petLoaded = true;
+            petData = data.pet || null;
+            if (typeof data.balance === "number") {
+              syncCasinoBalance(data.balance);
+            }
+            petCatalog = Array.isArray(data.catalog) ? data.catalog : DEFAULT_CATALOG;
+            writePetCache({ pet: petData, catalog: petCatalog });
           }
-          petCatalog = Array.isArray(data.catalog) ? data.catalog : [];
+          renderPet();
+        })
+        .catch(function () {
+          if (!petData && loadingEl) loadingEl.textContent = "Не удалось загрузить питомца";
+        });
+    }
+
+    onFunToggle(function (open) {
+      if (open) {
+        loadPetServer();
+        if (petData && petData.work) renderPetWork(petData.work);
+      } else {
+        stopWorkTimer();
+      }
+    });
+
+    onMenuToggle(function (open) {
+      if (!open) {
+        stopWorkTimer();
+      } else {
+        var funContent = document.getElementById("funContent");
+        if (funContent && !funContent.hidden) {
+          loadPetServer();
+          if (petData && petData.work) renderPetWork(petData.work);
         }
-        renderPet();
-      })
-      .catch(function () {
-        if (loadingEl) loadingEl.textContent = "Не удалось загрузить питомца";
-      });
+      }
+    });
+
+    onVisibilityChange(function (isVisible) {
+      if (isVisible) {
+        var menu = document.getElementById("menu");
+        var funContent = document.getElementById("funContent");
+        var isFunVisible = menu && !menu.hidden && funContent && !funContent.hidden;
+        if (isFunVisible && petData && petData.work) {
+          renderPetWork(petData.work);
+        }
+      } else {
+        stopWorkTimer();
+      }
+    });
   }
 
   function start() {
@@ -4903,13 +5074,14 @@
     initNotes();
     initPet();
     initWhatsNew();
+
+    // Первичные запросы — только критичные для экрана расписания
     loadChannelHomework();
-
-    // Монеты за вход начисляем при каждом запуске: сервер сам решит,
-    // положено ли что-то сегодня
-    casinoClaimDaily();
-
     fetchSchedule();
+
+    // Монеты за вход начисляем с лёгкой задержкой, чтобы освободить
+    // сетевой пул для первого рендера расписания
+    setTimeout(casinoClaimDaily, 2500);
   }
 
   if (document.readyState === "loading") {

@@ -210,6 +210,8 @@ body {
   border-radius: var(--radius);
   padding: 13px 13px 5px;
   box-shadow: var(--shadow);
+  content-visibility: auto;
+  contain-intrinsic-size: 160px;
 }
 
 .day--today { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
@@ -4304,6 +4306,25 @@ body.has-netlify-badge .app {
 @keyframes photoFadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* ==========================================================================
+   Энергосбережение и производительность (Battery & GPU Saver)
+   ========================================================================== */
+
+/* Остановка всех анимаций, когда мини-апп или вкладка свёрнуты */
+body.is-page-hidden * {
+  animation-play-state: paused !important;
+}
+
+/* Остановка анимаций внутри закрытого меню */
+.menu[hidden] * {
+  animation-play-state: paused !important;
+}
+
+/* Остановка анимаций внутри свёрнутого раздела «Приколы» */
+.menu__fun[hidden] * {
+  animation-play-state: paused !important;
 }
 
 
