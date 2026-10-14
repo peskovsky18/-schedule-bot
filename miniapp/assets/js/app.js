@@ -3398,6 +3398,80 @@
     renderSolo();
   }
 
+  /* ---------- Block Blast (Взрыв блоков) ---------- */
+
+  function initBlockBlast() {
+    var launchCard = document.getElementById("bbLaunchCard");
+    var playBtn = document.getElementById("bbPlayBtn");
+    var menuBestVal = document.getElementById("bbMenuBestVal");
+
+    var arenaModal = document.getElementById("bbArenaModal");
+    var arenaBackdrop = document.getElementById("bbArenaBackdrop");
+    var arenaClose = document.getElementById("bbArenaClose");
+    var arenaReset = document.getElementById("bbArenaReset");
+
+    if (!arenaModal) return;
+
+    var gameInstance = null;
+
+    function updateMenuBest() {
+      if (menuBestVal && window.BlockBlast) {
+        menuBestVal.textContent = window.BlockBlast.getBestScore().toLocaleString();
+      }
+    }
+    updateMenuBest();
+
+    function openArena() {
+      arenaModal.hidden = false;
+      haptic("light");
+
+      if (!gameInstance && window.BlockBlast) {
+        gameInstance = window.BlockBlast.initGame({
+          board: document.getElementById("bbBoard"),
+          rack: document.getElementById("bbRack"),
+          scoreVal: document.getElementById("bbScoreVal"),
+          bestVal: document.getElementById("bbBestVal"),
+          comboPill: document.getElementById("bbComboPill"),
+          comboText: document.getElementById("bbComboText"),
+          particles: document.getElementById("bbParticles"),
+          gameOverModal: document.getElementById("bbGameOverModal"),
+          overScore: document.getElementById("bbOverScore"),
+          overLines: document.getElementById("bbOverLines"),
+          overMaxCombo: document.getElementById("bbOverMaxCombo"),
+          overReward: document.getElementById("bbOverReward"),
+          overRewardRow: document.getElementById("bbOverRewardRow"),
+          overRestartBtn: document.getElementById("bbOverRestartBtn"),
+          resetBtn: arenaReset
+        }, {
+          apiBase: apiBase,
+          authHeaders: authHeaders,
+          onScoreUpdate: function (best) {
+            if (menuBestVal) menuBestVal.textContent = best.toLocaleString();
+          },
+          onReward: function (coins, newBalance) {
+            if (typeof newBalance === "number") {
+              syncCasinoBalance(newBalance);
+            }
+          }
+        });
+      }
+    }
+
+    function closeArena() {
+      arenaModal.hidden = true;
+      updateMenuBest();
+    }
+
+    if (playBtn) playBtn.addEventListener("click", openArena);
+    if (launchCard) {
+      launchCard.addEventListener("click", function (e) {
+        if (e.target !== playBtn) openArena();
+      });
+    }
+    if (arenaClose) arenaClose.addEventListener("click", closeArena);
+    if (arenaBackdrop) arenaBackdrop.addEventListener("click", closeArena);
+  }
+
   /* ---------- Заметки и задания к парам ---------- */
 
   function initNotes() {
@@ -5073,6 +5147,7 @@
     initShop();
     initNotes();
     initPet();
+    initBlockBlast();
     initWhatsNew();
 
     // Первичные запросы — только критичные для экрана расписания

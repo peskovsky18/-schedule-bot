@@ -4327,5 +4327,483 @@ body.is-page-hidden * {
   animation-play-state: paused !important;
 }
 
+/* ==========================================================================
+   BLOCK BLAST GAME (Взрыв блоков)
+   ========================================================================== */
+
+/* Карточка запуска в меню */
+.bb-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--bg-surface, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  border-radius: 18px;
+  padding: 14px 16px;
+  margin-top: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.bb-card__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bb-card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #06b6d4, #4f46e5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.35);
+}
+
+.bb-card__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bb-card__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text, #ffffff);
+}
+
+.bb-card__desc {
+  font-size: 12px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.bb-card__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bb-card__record {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.bb-card__record-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+  letter-spacing: 0.5px;
+}
+
+.bb-card__record-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.bb-card__btn {
+  background: linear-gradient(135deg, #06b6d4, #3b82f6);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.3);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.bb-card__btn:active {
+  transform: scale(0.95);
+  opacity: 0.9;
+}
+
+/* --- Игровая арена (Полноэкранный модал) --- */
+.bb-arena {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.bb-arena[hidden] {
+  display: none !important;
+}
+
+.bb-arena__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 15, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.bb-arena__card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 410px;
+  height: 100%;
+  max-height: 840px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 16px);
+  box-sizing: border-box;
+}
+
+/* Шапка арены */
+.bb-arena__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.bb-arena__close,
+.bb-arena__reset {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--bg-surface, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.1));
+  color: var(--text, #ffffff);
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.bb-arena__close:active,
+.bb-arena__reset:active {
+  transform: scale(0.92);
+}
+
+.bb-arena__scores {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bb-arena__score-box {
+  background: var(--bg-surface, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  border-radius: 14px;
+  padding: 6px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 74px;
+}
+
+.bb-arena__score-box--best {
+  border-color: rgba(251, 191, 36, 0.35);
+  background: rgba(251, 191, 36, 0.08);
+}
+
+.bb-arena__score-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+  letter-spacing: 0.6px;
+}
+
+.bb-arena__score-val {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Display", sans-serif;
+}
+
+.bb-arena__score-box--best .bb-arena__score-val {
+  color: #fcd34d;
+}
+
+/* Плашка комбо */
+.bb-combo-pill {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #f97316, #ef4444);
+  color: #ffffff;
+  padding: 6px 18px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.5);
+  margin-bottom: 6px;
+}
+
+.bb-combo-pill.is-popping {
+  animation: bbComboPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes bbComboPop {
+  0% { transform: scale(0.6); opacity: 0; }
+  50% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Игровое поле */
+.bb-board-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: auto 0;
+}
+
+.bb-board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  gap: 4px;
+  padding: 8px;
+  background: rgba(18, 18, 24, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.35);
+  width: min(340px, 92vw);
+  height: min(340px, 92vw);
+  box-sizing: border-box;
+}
+
+.bb-cell {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  transition: transform 0.12s ease, background-color 0.12s ease, opacity 0.12s ease;
+  box-sizing: border-box;
+}
+
+.bb-cell.is-filled {
+  border-radius: 7px;
+  transform: scale(0.98);
+}
+
+.bb-cell.is-ghost {
+  border-radius: 7px;
+  transform: scale(0.95);
+  animation: bbGhostPulse 1.2s infinite ease-in-out;
+}
+
+@keyframes bbGhostPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.65; }
+}
+
+.bb-cell.is-blasting {
+  animation: bbCellBlast 0.24s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes bbCellBlast {
+  0% { transform: scale(1); filter: brightness(2); }
+  50% { transform: scale(1.35); filter: brightness(3.5); opacity: 1; }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+.bb-cell.is-invalid-shake {
+  animation: bbShake 0.28s ease;
+}
+
+@keyframes bbShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+/* Всплывающие очки */
+.bb-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 50;
+}
+
+.bb-floating-score {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 22px;
+  font-weight: 900;
+  color: #fef08a;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 16px rgba(234, 179, 8, 0.8);
+  animation: bbFloatUp 0.85s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes bbFloatUp {
+  0% { transform: translate(-50%, 0) scale(0.7); opacity: 0; }
+  30% { transform: translate(-50%, -20px) scale(1.2); opacity: 1; }
+  100% { transform: translate(-50%, -55px) scale(1); opacity: 0; }
+}
+
+/* Подставка с фигурами (Rack) */
+.bb-rack {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+  height: 120px;
+  margin-top: 6px;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+
+.bb-slot {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: transform 0.2s ease;
+}
+
+.bb-slot.is-selected {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  border: 1px dashed rgba(6, 182, 212, 0.5);
+}
+
+.bb-piece {
+  display: grid;
+  gap: 2.5px;
+  padding: 8px;
+  border-radius: 12px;
+  cursor: grab;
+  touch-action: none;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bb-piece:active {
+  cursor: grabbing;
+}
+
+.bb-mini-block {
+  width: 20px;
+  height: 20px;
+  border-radius: 4.5px;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+}
+
+.bb-mini-block.is-transparent {
+  visibility: hidden;
+}
+
+/* Модалка Game Over */
+.bb-over {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.bb-over[hidden] {
+  display: none !important;
+}
+
+.bb-over__card {
+  width: 88%;
+  max-width: 320px;
+  background: var(--bg-surface, #1e1e24);
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  border-radius: 24px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  animation: bbPopIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes bbPopIn {
+  from { transform: scale(0.75); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.bb-over__badge {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-muted, #94a3b8);
+  margin-bottom: 4px;
+}
+
+.bb-over__score {
+  font-size: 42px;
+  font-weight: 900;
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Display", sans-serif;
+  margin: 6px 0 16px;
+  background: linear-gradient(135deg, #ffffff, #93c5fd);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bb-over__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.bb-over__stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.bb-over__stat-row strong {
+  color: var(--text, #ffffff);
+}
+
+.bb-over__stat-row--reward strong {
+  color: #fbbf24;
+  font-size: 16px;
+}
+
+.bb-over__btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #06b6d4, #3b82f6);
+  color: #ffffff;
+  border: none;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.bb-over__btn:active {
+  transform: scale(0.96);
+}
+
 
 

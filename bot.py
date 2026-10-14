@@ -39,6 +39,7 @@ import ttt_api
 import ttt_game
 import notes_api
 import pet_api
+import blockblast_api
 import homework
 import homework_api
 import parser
@@ -642,6 +643,9 @@ notes_api.init_app(app)
 
 # ЧЕЛИК
 pet_api.init_app(app)
+
+# Block Blast
+blockblast_api.init_app(app)
 
 # Домашние задания из канала группы
 homework_api.init_app(app, bot)

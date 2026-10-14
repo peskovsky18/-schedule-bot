@@ -13,7 +13,7 @@
     и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
     поднимайте номер: иначе Telegram покажет старую версию.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=46">
+  <link rel="stylesheet" href="assets/css/styles.css?v=47">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -246,11 +246,29 @@
               <button class="ttt__btn ttt__btn--ghost" id="tttMultiAgain" type="button" hidden>Новая партия</button>
             </div>
           </div>
-          <p class="ttt__error" id="tttMultiError" hidden></p>
         </div>
       </div>
 
-        <div class="menu__section">Рулетка</div>
+      <!-- Block Blast -->
+      <div class="menu__section">Block Blast</div>
+      <div class="bb-card" id="bbLaunchCard">
+        <div class="bb-card__left">
+          <div class="bb-card__icon" aria-hidden="true">🧩</div>
+          <div class="bb-card__titles">
+            <span class="bb-card__title">Block Blast</span>
+            <span class="bb-card__desc">Взрывайте линии и собирайте комбо</span>
+          </div>
+        </div>
+        <div class="bb-card__right">
+          <div class="bb-card__record">
+            <span class="bb-card__record-label">Рекорд:</span>
+            <span class="bb-card__record-val" id="bbMenuBestVal">0</span>
+          </div>
+          <button class="bb-card__btn" id="bbPlayBtn" type="button">Играть</button>
+        </div>
+      </div>
+
+      <div class="menu__section">Рулетка</div>
         <div class="roulette" id="roulette">
         <div class="wheel">
           <div class="wheel__disc" id="rouletteWheel"></div>
@@ -790,9 +808,70 @@
     </div>
   </div>
 
-  <script src="assets/js/config.js?v=46"></script>
-  <script src="assets/js/core.js?v=46"></script>
-  <script src="assets/js/chess.js?v=46"></script>
-  <script src="assets/js/app.js?v=46"></script>
+  <!-- Игровая арена Block Blast -->
+  <div class="bb-arena" id="bbArenaModal" hidden>
+    <div class="bb-arena__backdrop" id="bbArenaBackdrop"></div>
+    <div class="bb-arena__card" role="dialog" aria-modal="true" aria-label="Block Blast игра">
+      <!-- Шапка арены -->
+      <header class="bb-arena__head">
+        <button class="bb-arena__close" id="bbArenaClose" type="button" aria-label="Закрыть">✕</button>
+        <div class="bb-arena__scores">
+          <div class="bb-arena__score-box">
+            <span class="bb-arena__score-label">СЧЁТ</span>
+            <span class="bb-arena__score-val" id="bbScoreVal">0</span>
+          </div>
+          <div class="bb-arena__score-box bb-arena__score-box--best">
+            <span class="bb-arena__score-label">РЕКОРД 🏆</span>
+            <span class="bb-arena__score-val" id="bbBestVal">0</span>
+          </div>
+        </div>
+        <button class="bb-arena__reset" id="bbArenaReset" type="button" aria-label="Перезапуск" title="Новая игра">🔄</button>
+      </header>
+
+      <!-- Плашка комбо -->
+      <div class="bb-combo-pill" id="bbComboPill" hidden>
+        <span class="bb-combo-icon">🔥</span>
+        <span class="bb-combo-text" id="bbComboText">COMBO x2!</span>
+      </div>
+
+      <!-- Игровое поле 8x8 -->
+      <div class="bb-board-wrap">
+        <div class="bb-board" id="bbBoard" role="grid" aria-label="Игровое поле Block Blast"></div>
+        <div class="bb-particles" id="bbParticles" aria-hidden="true"></div>
+      </div>
+
+      <!-- Подставка с 3 фигурами -->
+      <div class="bb-rack" id="bbRack" aria-label="Доступные фигуры"></div>
+
+      <!-- Модалка Game Over -->
+      <div class="bb-over" id="bbGameOverModal" hidden>
+        <div class="bb-over__card">
+          <div class="bb-over__badge" id="bbOverBadge">🎮 Игра окончена!</div>
+          <div class="bb-over__score" id="bbOverScore">0</div>
+          <div class="bb-over__stats">
+            <div class="bb-over__stat-row">
+              <span>Линий взорвано:</span>
+              <strong id="bbOverLines">0</strong>
+            </div>
+            <div class="bb-over__stat-row">
+              <span>Макс. комбо:</span>
+              <strong id="bbOverMaxCombo">x0</strong>
+            </div>
+            <div class="bb-over__stat-row bb-over__stat-row--reward" id="bbOverRewardRow" hidden>
+              <span>Награда:</span>
+              <strong id="bbOverReward">+0 💰</strong>
+            </div>
+          </div>
+          <button class="bb-over__btn" id="bbOverRestartBtn" type="button">Играть снова 🔄</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/config.js?v=47"></script>
+  <script src="assets/js/core.js?v=47"></script>
+  <script src="assets/js/chess.js?v=47"></script>
+  <script src="assets/js/blockblast.js?v=47"></script>
+  <script src="assets/js/app.js?v=47"></script>
 </body>
 </html>
