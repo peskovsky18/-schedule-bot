@@ -670,7 +670,14 @@
         if (els.overScore) els.overScore.textContent = state.score.toLocaleString();
         if (els.overLines) els.overLines.textContent = state.linesClearedTotal;
         if (els.overMaxCombo) els.overMaxCombo.textContent = "x" + maxComboThisGame;
-        if (els.overRewardRow) els.overRewardRow.hidden = true;
+
+        // 1 очко = 1 тугрик — показываем сразу
+        if (state.score > 0 && els.overReward) {
+          els.overReward.textContent = "+" + state.score.toLocaleString() + " 💰";
+          if (els.overRewardRow) els.overRewardRow.hidden = false;
+        } else if (els.overRewardRow) {
+          els.overRewardRow.hidden = true;
+        }
 
         if (els.gameOverModal) {
           els.gameOverModal.hidden = false;
@@ -692,12 +699,13 @@
           .then(function (r) { return r.json(); })
           .then(function (data) {
             if (data && data.ok) {
-              if (data.coins_awarded > 0 && els.overReward) {
-                els.overReward.textContent = "+" + data.coins_awarded + " 💰";
+              var coins = typeof data.coins_awarded === "number" ? data.coins_awarded : state.score;
+              if (coins > 0 && els.overReward) {
+                els.overReward.textContent = "+" + coins.toLocaleString() + " 💰";
                 if (els.overRewardRow) els.overRewardRow.hidden = false;
               }
               if (typeof data.balance === "number" && opts.onReward) {
-                opts.onReward(data.coins_awarded, data.balance);
+                opts.onReward(coins, data.balance);
               }
               if (data.best_score && data.best_score > state.bestScore) {
                 state.bestScore = data.best_score;
@@ -706,7 +714,12 @@
               }
             }
           })
-          .catch(function () {});
+          .catch(function () {
+            // Офлайн-поддержка: если запрос упал, передаем начисление тугриков локально
+            if (state.score > 0 && opts.onReward) {
+              opts.onReward(state.score);
+            }
+          });
       }
 
       function onBoardCellClick(r, c) {

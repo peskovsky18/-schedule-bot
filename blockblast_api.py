@@ -101,15 +101,12 @@ def game_over():
     if is_record:
         data["best_score"] = score
 
-    # Расчет награды в тугриках: 1 тугрик за каждые 25 очков
-    potential_coins = min(MAX_COINS_PER_GAME, score // 25)
-    earned_today = data.get("daily_coins_earned", 0)
-    available_today = max(0, DAILY_COINS_LIMIT - earned_today)
-    coins_to_award = min(potential_coins, available_today)
+    # Очки в Block Blast приравнены к тугрикам: 1 очко = 1 тугрик
+    coins_to_award = score
 
     new_balance = None
     if coins_to_award > 0:
-        data["daily_coins_earned"] = earned_today + coins_to_award
+        data["daily_coins_earned"] = data.get("daily_coins_earned", 0) + coins_to_award
         player_record = casino.add_coins(user["id"], coins_to_award)
         if player_record and "balance" in player_record:
             new_balance = player_record["balance"]

@@ -2128,11 +2128,39 @@
 
     if (!menu || !openBtn) return;
 
+    /* --- Баланс тугриков в меню --- */
+    var walletVal = document.getElementById("menuWalletVal");
+    var headBalanceVal = document.getElementById("menuHeadBalanceVal");
+    var headBalanceBtn = document.getElementById("menuHeadBalance");
+    var walletBtn = document.getElementById("menuWalletBtn");
+
+    function renderMenuBalance(bal) {
+      var current = (typeof bal === "number" && !isNaN(bal)) ? bal : getEffectiveBalance();
+      var formatted = (current || 0).toLocaleString();
+      if (walletVal) walletVal.textContent = formatted;
+      if (headBalanceVal) headBalanceVal.textContent = formatted;
+    }
+
+    renderMenuBalance();
+    onBalanceUpdate(renderMenuBalance);
+
+    function openCasinoFromMenu() {
+      var card = document.getElementById("gameCardCasino");
+      if (card) {
+        card.click();
+        haptic("light");
+      }
+    }
+
+    if (walletBtn) walletBtn.addEventListener("click", openCasinoFromMenu);
+    if (headBalanceBtn) headBalanceBtn.addEventListener("click", openCasinoFromMenu);
+
     function open() {
       menu.hidden = false;
       if (backdrop) backdrop.hidden = false;
       openBtn.setAttribute("aria-expanded", "true");
       markActive();
+      renderMenuBalance();
       notifyMenu(true);
     }
 
@@ -2334,6 +2362,12 @@
 
   // Единая синхронизация баланса игрока (тугриков) по всему приложению
   var globalUserBalance = null;
+  try {
+    var cachedCasinoUser = JSON.parse(localStorage.getItem("schedule_casino_player_v1") || "null");
+    if (cachedCasinoUser && typeof cachedCasinoUser.balance === "number") {
+      globalUserBalance = cachedCasinoUser.balance;
+    }
+  } catch (e) {}
   var balanceSubscribers = [];
 
   function onBalanceUpdate(callback) {
@@ -3913,6 +3947,9 @@
           onReward: function (coins, newBalance) {
             if (typeof newBalance === "number") {
               syncCasinoBalance(newBalance);
+            } else if (typeof coins === "number" && coins > 0) {
+              var cur = getEffectiveBalance();
+              syncCasinoBalance(cur + coins);
             }
           }
         });
