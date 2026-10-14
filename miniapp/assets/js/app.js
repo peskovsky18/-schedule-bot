@@ -3722,6 +3722,37 @@
     var reviveBtn = document.getElementById("petReviveBtn");
     var reviveErr = document.getElementById("petReviveError");
 
+    var layerWork = document.getElementById("petLayerWork");
+    var mineCard = document.getElementById("petMineCard");
+    var mineSubtitle = document.getElementById("petMineSubtitle");
+    var mineShift1 = document.getElementById("petMineShift1");
+    var mineShift2 = document.getElementById("petMineShift2");
+    var mineShift3 = document.getElementById("petMineShift3");
+    var mineStatusBadge = document.getElementById("petMineStatusBadge");
+    var mineStatusText = document.getElementById("petMineStatusText");
+    var mineHeartCost = document.getElementById("petMineHeartCost");
+    var mineProgressBox = document.getElementById("petMineProgressBox");
+    var mineProgressFill = document.getElementById("petMineProgressFill");
+    var mineTimer = document.getElementById("petMineTimer");
+    var mineBtn = document.getElementById("petMineBtn");
+    var mineBtnIcon = document.getElementById("petMineBtnIcon");
+    var mineBtnText = document.getElementById("petMineBtnText");
+    var mineBtnReward = document.getElementById("petMineBtnReward");
+    var mineLimitHint = document.getElementById("petMineLimitHint");
+
+    var workTimerInterval = null;
+
+    var MINER_HELMET_SVG =
+      '<g class="pet__miner-helmet">' +
+        '<path d="M 48 38 C 48 18, 112 18, 112 38 Z" fill="#facc15" stroke="#ca8a04" stroke-width="1.8" />' +
+        '<path d="M 42 38 C 42 35, 118 35, 118 38 C 118 42, 42 42, 42 38 Z" fill="#eab308" stroke="#a16207" stroke-width="1.2" />' +
+        '<rect x="76" y="16" width="8" height="18" rx="3" fill="#fde047" stroke="#ca8a04" stroke-width="1" />' +
+        '<rect x="73" y="30" width="14" height="11" rx="3" fill="#475569" />' +
+        '<circle cx="80" cy="35" r="5" fill="#38bdf8" stroke="#0284c7" stroke-width="1.2" />' +
+        '<circle cx="80" cy="35" r="3" fill="#ffffff" />' +
+        '<polygon points="76,38 20,135 140,135 84,38" fill="url(#minerLampGlow)" opacity="0.35" />' +
+      '</g>';
+
     var navBtn = document.getElementById("menuPetNavBtn");
 
     var DEFAULT_CATALOG = [
@@ -4066,6 +4097,8 @@
         if (deadBox) deadBox.hidden = false;
         if (layerHat) layerHat.innerHTML = "";
         if (layerNeck) layerNeck.innerHTML = "";
+        if (layerWork) layerWork.innerHTML = "";
+        stopWorkTimer();
         return;
       }
 
@@ -4152,7 +4185,14 @@
         }
       }
 
-      if (layerHat) layerHat.innerHTML = equippedHat ? (ITEM_SVGS[equippedHat] || "") : "";
+      var isMiningState = petData && petData.work && (petData.work.status === "working" || petData.work.status === "ready");
+      if (isMiningState) {
+        if (layerHat) layerHat.innerHTML = "";
+        if (layerWork) layerWork.innerHTML = MINER_HELMET_SVG;
+      } else {
+        if (layerHat) layerHat.innerHTML = equippedHat ? (ITEM_SVGS[equippedHat] || "") : "";
+        if (layerWork) layerWork.innerHTML = "";
+      }
       if (layerNeck) layerNeck.innerHTML = equippedNeck ? (ITEM_SVGS[equippedNeck] || "") : "";
 
       if (feedBtn) {
@@ -4163,8 +4203,281 @@
         }
       }
 
+      renderPetWork(petData.work);
       renderWardrobe();
       renderPetBalance();
+    }
+
+    function formatWorkTime(seconds) {
+      var s = Math.max(0, Math.floor(seconds));
+      var m = Math.floor(s / 60);
+      var remS = s % 60;
+      return (m < 10 ? "0" + m : m) + ":" + (remS < 10 ? "0" + remS : remS);
+    }
+
+    function stopWorkTimer() {
+      if (workTimerInterval) {
+        clearInterval(workTimerInterval);
+        workTimerInterval = null;
+      }
+    }
+
+    function renderPetWork(work) {
+      if (!mineCard) return;
+      if (!petData || petData.dead || !work) {
+        mineCard.hidden = true;
+        stopWorkTimer();
+        if (layerWork) layerWork.innerHTML = "";
+        return;
+      }
+
+      mineCard.hidden = false;
+
+      var status = work.status || "idle";
+      var reward = work.reward || 100;
+      var shiftsToday = Math.max(0, Math.min(3, parseInt(work.shifts_today, 10) || 0));
+      var maxShifts = work.max_shifts || 3;
+      var canWork = !!work.can_work;
+      var heartLostToday = !!work.heart_lost_today;
+      var startedAt = work.started_at;
+      var shiftSec = work.shift_seconds || 3600;
+
+      if (mineSubtitle) {
+        mineSubtitle.textContent = "Добыча: " + reward + " 💰 / час (Ур. " + (petData.level || 1) + ")";
+      }
+
+      // Обновляем индикаторы смен
+      var shiftEls = [mineShift1, mineShift2, mineShift3];
+      for (var sIdx = 0; sIdx < 3; sIdx++) {
+        var el = shiftEls[sIdx];
+        if (!el) continue;
+        var shiftNum = sIdx + 1;
+        if (shiftNum <= shiftsToday) {
+          el.className = "pet__mine-shift is-done";
+          el.textContent = shiftNum + " ✓";
+        } else if (shiftNum === shiftsToday + 1 && status === "working") {
+          el.className = "pet__mine-shift is-in-progress";
+          el.textContent = shiftNum + " ⛏️";
+        } else if (shiftNum === shiftsToday + 1 && status === "ready") {
+          el.className = "pet__mine-shift is-in-progress";
+          el.textContent = shiftNum + " 🎁";
+        } else {
+          el.className = "pet__mine-shift";
+          el.textContent = shiftNum + " ч";
+        }
+      }
+
+      // Информация о сердечках
+      if (mineHeartCost) {
+        if (heartLostToday) {
+          mineHeartCost.textContent = "❤️ за сегодня уже списано (смена бесплатна)";
+        } else {
+          mineHeartCost.textContent = "Расход: 1 ❤️ за первую смену дня";
+        }
+      }
+
+      // Каска и анимации
+      if (status === "working") {
+        if (petChar) {
+          petChar.classList.add("is-mining");
+          petChar.classList.remove("is-mining-ready");
+        }
+        if (layerWork) layerWork.innerHTML = MINER_HELMET_SVG;
+        if (layerHat) layerHat.innerHTML = "";
+      } else if (status === "ready") {
+        if (petChar) {
+          petChar.classList.remove("is-mining");
+          petChar.classList.add("is-mining-ready");
+        }
+        if (layerWork) layerWork.innerHTML = MINER_HELMET_SVG;
+        if (layerHat) layerHat.innerHTML = "";
+      } else {
+        if (petChar) {
+          petChar.classList.remove("is-mining", "is-mining-ready");
+        }
+        if (layerWork) layerWork.innerHTML = "";
+      }
+
+      if (status === "working") {
+        stopWorkTimer();
+        if (mineProgressBox) mineProgressBox.hidden = false;
+        if (mineLimitHint) mineLimitHint.hidden = true;
+        if (mineStatusBadge) mineStatusBadge.className = "pet__mine-status-badge is-working";
+        if (mineStatusText) mineStatusText.textContent = "В шахте (смена " + (shiftsToday + 1) + " из " + maxShifts + ")";
+
+        if (mineBtn) {
+          mineBtn.disabled = true;
+          mineBtn.className = "pet__mine-btn";
+        }
+        if (mineBtnIcon) mineBtnIcon.textContent = "⛏️";
+        if (mineBtnText) mineBtnText.textContent = "Идёт добыча тугриков…";
+        if (mineBtnReward) mineBtnReward.textContent = "+" + reward + " 💰";
+
+        function tick() {
+          var nowSec = Math.floor(Date.now() / 1000);
+          var elapsed = Math.max(0, nowSec - (startedAt || nowSec));
+          var remaining = Math.max(0, shiftSec - elapsed);
+
+          var pct = Math.min(100, Math.max(0, Math.floor(((shiftSec - remaining) / shiftSec) * 100)));
+          if (mineProgressFill) mineProgressFill.style.width = pct + "%";
+          if (mineTimer) mineTimer.textContent = formatWorkTime(remaining);
+
+          if (remaining <= 0) {
+            stopWorkTimer();
+            if (petData && petData.work) {
+              petData.work.status = "ready";
+              cheerPet();
+              spawnReaction("✨");
+              haptic("success");
+              renderPetWork(petData.work);
+            }
+          }
+        }
+
+        tick();
+        workTimerInterval = setInterval(tick, 1000);
+
+      } else if (status === "ready") {
+        stopWorkTimer();
+        if (mineProgressBox) mineProgressBox.hidden = true;
+        if (mineLimitHint) mineLimitHint.hidden = true;
+        if (mineStatusBadge) mineStatusBadge.className = "pet__mine-status-badge is-ready";
+        if (mineStatusText) mineStatusText.textContent = "🎉 Добыча готова!";
+
+        if (mineBtn) {
+          mineBtn.disabled = false;
+          mineBtn.className = "pet__mine-btn pet__mine-btn--claim";
+        }
+        if (mineBtnIcon) mineBtnIcon.textContent = "🎁";
+        if (mineBtnText) mineBtnText.textContent = "Забрать добычу!";
+        if (mineBtnReward) mineBtnReward.textContent = "+" + reward + " 💰";
+
+      } else {
+        // Idle
+        stopWorkTimer();
+        if (mineProgressBox) mineProgressBox.hidden = true;
+
+        if (shiftsToday >= maxShifts) {
+          if (mineLimitHint) mineLimitHint.hidden = false;
+          if (mineStatusBadge) mineStatusBadge.className = "pet__mine-status-badge is-limit";
+          if (mineStatusText) mineStatusText.textContent = "Все 3 смены завершены";
+          if (mineBtn) {
+            mineBtn.disabled = true;
+            mineBtn.className = "pet__mine-btn";
+          }
+          if (mineBtnIcon) mineBtnIcon.textContent = "🌙";
+          if (mineBtnText) mineBtnText.textContent = "Отдых до завтра (00:00 МСК)";
+          if (mineBtnReward) mineBtnReward.textContent = "3/3";
+        } else if (petData.health < 2 && !heartLostToday) {
+          if (mineLimitHint) mineLimitHint.hidden = true;
+          if (mineStatusBadge) mineStatusBadge.className = "pet__mine-status-badge";
+          if (mineStatusText) mineStatusText.textContent = "Мало ❤️ для работы";
+          if (mineBtn) {
+            mineBtn.disabled = true;
+            mineBtn.className = "pet__mine-btn";
+          }
+          if (mineBtnIcon) mineBtnIcon.textContent = "❤️";
+          if (mineBtnText) mineBtnText.textContent = "Нужно минимум 2 ❤️ (покормите)";
+          if (mineBtnReward) mineBtnReward.textContent = "+" + reward + " 💰";
+        } else {
+          if (mineLimitHint) mineLimitHint.hidden = true;
+          if (mineStatusBadge) mineStatusBadge.className = "pet__mine-status-badge is-idle";
+          if (mineStatusText) mineStatusText.textContent = "Готов к смене (" + (shiftsToday + 1) + "-я из " + maxShifts + ")";
+          if (mineBtn) {
+            mineBtn.disabled = false;
+            mineBtn.className = "pet__mine-btn";
+          }
+          if (mineBtnIcon) mineBtnIcon.textContent = "⛏️";
+          if (mineBtnText) mineBtnText.textContent = "Отправить в шахту (1 ч)";
+          if (mineBtnReward) mineBtnReward.textContent = "+" + reward + " 💰";
+        }
+      }
+    }
+
+    function onMineBtnClick() {
+      if (busy || !petData || !petData.work) return;
+      var status = petData.work.status;
+      if (status === "ready") {
+        claimPetWorkAction();
+      } else if (status === "idle" && petData.work.can_work) {
+        startPetWorkAction();
+      }
+    }
+
+    function startPetWorkAction() {
+      if (busy) return;
+      busy = true;
+      petFetch("/work/start", {
+        method: "POST",
+        body: JSON.stringify({})
+      })
+        .then(function (res) {
+          busy = false;
+          if (!res || !res.ok) {
+            showToast((res && res.error) || "Не удалось отправить в шахту", true);
+            haptic("error");
+            renderPet();
+            return;
+          }
+          petData = res.pet;
+          cheerPet();
+          spawnReaction("⛏️");
+          setTimeout(function () { spawnReaction("💪"); }, 150);
+          showToast(res.message || "⛏️ ЧЕЛИК отправился в шахту на 1 час!");
+          haptic("success");
+          renderPet();
+        })
+        .catch(function (err) {
+          busy = false;
+          showToast(err && err.message ? err.message : "Ошибка отправки в шахту", true);
+          haptic("error");
+        });
+    }
+
+    function claimPetWorkAction() {
+      if (busy) return;
+      busy = true;
+      petFetch("/work/claim", {
+        method: "POST",
+        body: JSON.stringify({})
+      })
+        .then(function (res) {
+          busy = false;
+          if (res && typeof res.balance === "number") {
+            syncCasinoBalance(res.balance);
+          }
+          if (!res || !res.ok) {
+            showToast((res && res.error) || "Не удалось забрать награду", true);
+            haptic("error");
+            renderPet();
+            return;
+          }
+          petData = res.pet;
+          cheerPet();
+          spawnReaction("💰");
+          setTimeout(function () { spawnReaction("⛏️"); }, 120);
+          setTimeout(function () { spawnReaction("🎉"); }, 240);
+
+          var drop = res.lucky_drop;
+          if (drop && drop.type === "gem") {
+            setTimeout(function () { spawnReaction("💎"); }, 360);
+            showToast("💎 УДАЧА! В шахте найден " + drop.name + " (+" + drop.reward + " 💰)!");
+          } else if (drop && drop.type === "apple") {
+            setTimeout(function () { spawnReaction("🍏"); }, 360);
+            setTimeout(function () { spawnReaction("❤️"); }, 450);
+            showToast("🍏 НАХОДКА! Шахтёрское яблоко восстановило здоровье (+1 ❤️)!");
+          } else {
+            showToast("💰 Смена завершена! Добыто " + res.reward + " тугриков!");
+          }
+
+          haptic("success");
+          renderPet();
+        })
+        .catch(function (err) {
+          busy = false;
+          showToast(err && err.message ? err.message : "Ошибка сбора награды", true);
+          haptic("error");
+        });
     }
 
     function renderWardrobe() {
@@ -4331,8 +4644,8 @@
       if (errEl) errEl.hidden = true;
 
       var curBal = getEffectiveBalance();
-      if (globalUserBalance !== null && curBal < 1000) {
-        var msg = "Нужно 1 000 тугриков для приюта (у вас " + curBal + "). Сыграйте в казино!";
+      if (globalUserBalance !== null && curBal < 10) {
+        var msg = "Нужно 10 тугриков для создания (у вас " + curBal + "). Сыграйте в казино!";
         if (errEl) {
           errEl.textContent = msg;
           errEl.hidden = false;
@@ -4522,6 +4835,10 @@
 
     if (feedBtn) {
       feedBtn.addEventListener("click", feedPet);
+    }
+
+    if (mineBtn) {
+      mineBtn.addEventListener("click", onMineBtnClick);
     }
 
     if (navBtn) {

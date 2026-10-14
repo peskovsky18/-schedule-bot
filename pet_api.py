@@ -163,3 +163,51 @@ def upgrade():
         "pet": pet_data,
         "balance": balance,
     })
+
+
+@bp.route("/work/start", methods=["POST", "OPTIONS"])
+def work_start():
+    if request.method == "OPTIONS":
+        return "", 204
+
+    user, failure = _user_and_error()
+    if failure:
+        return failure
+
+    pet_data, error = pet.start_work(user["id"])
+    player = casino.load(user["id"])
+    balance = int(player.get("balance") or 0)
+    if error:
+        return jsonify({"ok": False, "error": error, "balance": balance}), 400
+
+    return jsonify({
+        "ok": True,
+        "pet": pet_data,
+        "balance": balance,
+    })
+
+
+@bp.route("/work/claim", methods=["POST", "OPTIONS"])
+def work_claim():
+    if request.method == "OPTIONS":
+        return "", 204
+
+    user, failure = _user_and_error()
+    if failure:
+        return failure
+
+    res, error = pet.claim_work(user["id"])
+    player = casino.load(user["id"])
+    balance = int(player.get("balance") or 0)
+    if error:
+        return jsonify({"ok": False, "error": error, "balance": balance}), 400
+
+    return jsonify({
+        "ok": True,
+        "pet": res["pet"],
+        "reward": res["reward"],
+        "baseReward": res["base_reward"],
+        "balance": res.get("balance", balance),
+        "luckyDrop": res.get("lucky_drop"),
+        "healthLost": res.get("health_lost"),
+    })

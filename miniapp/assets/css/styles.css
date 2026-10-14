@@ -2818,10 +2818,41 @@ body.has-netlify-badge .app {
   margin-bottom: 14px;
   font-size: 13.5px;
   color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .pet__adopt-cost strong {
   color: #ffb74d;
+  font-size: 15px;
+}
+
+.pet__old-price {
+  text-decoration: line-through;
+  color: var(--hint);
+  opacity: 0.7;
+}
+
+.pet__badge-sale {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
+  animation: salePulse 1.8s ease-in-out infinite;
+}
+
+@keyframes salePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
 .pet__adopt-row {
@@ -3089,6 +3120,52 @@ body.has-netlify-badge .app {
 .pet__char.is-dead .pet__halo {
   opacity: 0.9 !important;
   animation: petHaloGlow 2.5s ease-in-out infinite;
+}
+
+/* Анимация работы в шахте */
+.pet__char.is-mining .pet__body-group {
+  animation: petMiningWork 2s ease-in-out infinite;
+}
+
+@keyframes petMiningWork {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-5px) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(2px) rotate(3deg);
+  }
+  75% {
+    transform: translateY(-2px) rotate(0deg);
+  }
+}
+
+/* Анимация готовности забрать добычу */
+.pet__char.is-mining-ready .pet__body-group {
+  animation: petReadyPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes petReadyPulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.4));
+  }
+  50% {
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.8));
+  }
+}
+
+.pet__miner-helmet {
+  animation: helmetSway 2s ease-in-out infinite;
+  transform-origin: 80px 38px;
+}
+
+@keyframes helmetSway {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-2deg); }
 }
 
 @keyframes petIdleFloat {
@@ -3457,6 +3534,315 @@ body.has-netlify-badge .app {
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.22);
   font-weight: 600;
+}
+
+/* Шахта ЧЕЛИКА */
+.pet__mine-card {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.pet__mine-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #f59e0b, #d97706, #b45309);
+  opacity: 0.7;
+}
+
+.pet__mine-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pet__mine-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pet__mine-icon {
+  font-size: 22px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.pet__mine-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pet__mine-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+
+.pet__mine-subtitle {
+  font-size: 11.5px;
+  color: var(--hint);
+}
+
+.pet__mine-shifts-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pet__mine-shifts-label {
+  font-size: 11px;
+  color: var(--hint);
+  font-weight: 600;
+}
+
+.pet__mine-shifts {
+  display: flex;
+  gap: 4px;
+}
+
+.pet__mine-shift {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--bg-soft);
+  color: var(--hint);
+  border: 1px solid var(--line);
+  transition: all 0.2s ease;
+}
+
+.pet__mine-shift.is-done {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.pet__mine-shift.is-in-progress {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.5);
+  animation: shiftPulse 1.5s infinite alternate;
+}
+
+@keyframes shiftPulse {
+  0% { box-shadow: 0 0 0 rgba(245, 158, 11, 0); }
+  100% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+}
+
+.pet__mine-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pet__mine-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+}
+
+.pet__mine-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: var(--bg-soft);
+  color: var(--text);
+  font-weight: 600;
+  border: 1px solid var(--line);
+}
+
+.pet__mine-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.pet__mine-status-badge.is-idle .pet__mine-status-dot {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+}
+
+.pet__mine-status-badge.is-working .pet__mine-status-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.7);
+  animation: dotPulse 1s infinite alternate;
+}
+
+.pet__mine-status-badge.is-ready .pet__mine-status-dot {
+  background: #eab308;
+  box-shadow: 0 0 8px #eab308;
+  animation: dotPulse 0.6s infinite alternate;
+}
+
+.pet__mine-status-badge.is-limit .pet__mine-status-dot {
+  background: #64748b;
+}
+
+@keyframes dotPulse {
+  0% { transform: scale(0.85); opacity: 0.7; }
+  100% { transform: scale(1.2); opacity: 1; }
+}
+
+.pet__mine-heart-cost {
+  color: var(--hint);
+  font-size: 11px;
+}
+
+/* Прогресс таймера шахты */
+.pet__mine-progress-box {
+  background: var(--bg-soft);
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.pet__mine-progress-track {
+  height: 8px;
+  background: var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.pet__mine-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f59e0b, #eab308, #facc15);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  transition: width 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.pet__mine-progress-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: evoBarShimmer 2s infinite;
+}
+
+.pet__mine-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+}
+
+.pet__mine-timer-caption {
+  color: var(--hint);
+}
+
+.pet__mine-timer {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #f59e0b;
+}
+
+/* Кнопка действия шахты */
+.pet__mine-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #d97706, #b45309);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(180, 83, 9, 0.3);
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.2s ease;
+}
+
+.pet__mine-btn:active {
+  transform: scale(0.97);
+}
+
+.pet__mine-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pet__mine-btn--claim {
+  background: linear-gradient(135deg, #f59e0b, #eab308, #ca8a04);
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.6);
+  animation: mineClaimGlow 1.8s ease-in-out infinite;
+}
+
+@keyframes mineClaimGlow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 22px rgba(245, 158, 11, 0.85);
+  }
+}
+
+.pet__mine-btn-icon {
+  font-size: 17px;
+}
+
+.pet__mine-btn-text {
+  flex: 1;
+  text-align: left;
+}
+
+.pet__mine-btn-reward {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  font-weight: 700;
+}
+
+.pet__mine-limit-hint {
+  font-size: 11.5px;
+  text-align: center;
+  color: var(--hint);
+  line-height: 1.4;
+  padding: 6px 8px;
+  background: var(--bg-soft);
+  border-radius: 8px;
+  border: 1px dashed var(--line);
 }
 
 /* Кнопка кормления */

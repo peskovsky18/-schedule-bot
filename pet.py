@@ -8,10 +8,21 @@ import time
 import casino
 import store
 
-ADOPT_COST = 1000
+ADOPT_COST = 10  # Скидка: теперь завести питомца стоит всего 10 тугриков!
 APPLE_COST = 100
 MAX_HEALTH = 5
 SECONDS_PER_HEART = 86400  # 1 день = 1 сердечко (за 5 дней умирает)
+
+# Добыча тугриков в шахте
+WORK_SHIFT_SECONDS = 3600  # 1 смена = 1 час работы
+MAX_WORK_SHIFTS_PER_DAY = 3  # Максимум 3 часа (3 смены) в день
+
+# Доходность за 1 час работы в шахте в зависимости от уровня
+WORK_REWARDS = {
+    1: 100,
+    2: 200,
+    3: 300,
+}
 
 MAX_LEVEL = 3
 UPGRADE_COSTS = {
@@ -137,6 +148,70 @@ def calculate_health(pet_data):
     return health, alive
 
 
+def _moscow_date(ts=None):
+    if ts is None:
+        ts = time.time()
+    t = time.gmtime(ts + 3 * 3600)
+    return time.strftime("%Y-%m-%d", t)
+
+
+def get_work_status(pet_data):
+    if not pet_data:
+        return None
+
+    now = int(time.time())
+    today_str = _moscow_date(now)
+    work = pet_data.get("work") or {}
+
+    # Сброс счетчика дня, если наступили новые сутки
+    if work.get("day_date") != today_str:
+        work["day_date"] = today_str
+        work["shifts_today"] = 0
+        work["heart_lost_today"] = False
+
+    started_at = work.get("started_at")
+    shift_seconds = WORK_SHIFT_SECONDS
+    lvl = max(1, min(MAX_LEVEL, int(pet_data.get("level") or 1)))
+    base_reward = WORK_REWARDS.get(lvl, 100)
+
+    if started_at:
+        elapsed = now - started_at
+        if elapsed >= shift_seconds:
+            status = "ready"
+            remaining_seconds = 0
+        else:
+            status = "working"
+            remaining_seconds = shift_seconds - elapsed
+    else:
+        status = "idle"
+        remaining_seconds = 0
+
+    shifts_today = int(work.get("shifts_today") or 0)
+    alive = bool(pet_data.get("alive", True))
+    health = int(pet_data.get("health") or 0)
+    heart_lost_today = bool(work.get("heart_lost_today"))
+
+    can_work = (
+        alive
+        and status == "idle"
+        and shifts_today < MAX_WORK_SHIFTS_PER_DAY
+        and (health >= 2 or heart_lost_today)
+    )
+
+    return {
+        "status": status,  # "idle" | "working" | "ready"
+        "started_at": started_at,
+        "remaining_seconds": remaining_seconds,
+        "shift_seconds": shift_seconds,
+        "reward": base_reward,
+        "shifts_today": shifts_today,
+        "max_shifts": MAX_WORK_SHIFTS_PER_DAY,
+        "can_work": can_work,
+        "heart_lost_today": heart_lost_today,
+        "day_date": work.get("day_date") or today_str,
+    }
+
+
 def get_pet(user_id):
     pet_data = get_pet_raw(user_id)
     if not pet_data:
@@ -174,6 +249,9 @@ def get_pet(user_id):
     pet_data["level_badge"] = lvl_info["badge"]
     pet_data["level_desc"] = lvl_info["desc"]
 
+    # Статус работы в шахте
+    pet_data["work"] = get_work_status(pet_data)
+
     return pet_data
 
 
@@ -184,7 +262,7 @@ def adopt_pet(user_id, name):
     if len(name) > 30:
         return None, "Имя не должно превышать 30 символов"
 
-    # Списываем 1000 тугриков
+    # Списываем стоимость создания (10 тугриков)
     record, error = casino.spend(user_id, ADOPT_COST)
     if error:
         return None, error
@@ -203,6 +281,13 @@ def adopt_pet(user_id, name):
         "equipped": {
             "hat": None,
             "neck": None,
+        },
+        "work": {
+            "status": "idle",
+            "started_at": None,
+            "day_date": _moscow_date(now),
+            "shifts_today": 0,
+            "heart_lost_today": False,
         },
     }
 
@@ -223,7 +308,7 @@ def upgrade_pet(user_id):
 
     next_lvl = cur_lvl + 1
     cost = UPGRADE_COSTS.get(next_lvl)
-    if not cost:
+    if cost is None:
         return None, "Неизвестный уровень для улучшения"
 
     record, error = casino.spend(user_id, cost)
@@ -322,3 +407,131 @@ def equip_item(user_id, item_id):
     pet["equipped"] = equipped
     save_pet_raw(user_id, pet)
     return get_pet(user_id), None
+
+
+def start_work(user_id):
+    pet_info = get_pet(user_id)
+    if not pet_info:
+        return None, "У вас ещё нет питомца"
+    if not pet_info.get("alive"):
+        return None, "Питомец погиб. Сначала заведите нового"
+
+    work_info = get_work_status(pet_info)
+    if work_info["status"] == "working":
+        return None, "ЧЕЛИК уже работает в шахте"
+    if work_info["status"] == "ready":
+        return None, "Сначала заберите добычу за прошлую смену"
+    if work_info["shifts_today"] >= MAX_WORK_SHIFTS_PER_DAY:
+        return None, "На сегодня рабочий день окончен (максимум 3 смены в день)"
+
+    # Проверка здоровья: нужно минимум 2 сердца, если сердечко за день еще не списывалось
+    if pet_info.get("health", 0) < 2 and not work_info.get("heart_lost_today"):
+        return None, "ЧЕЛИК слишком устал (нужно хотя бы 2 ❤️). Покормите его яблоком перед сменой!"
+
+    now = int(time.time())
+    work = pet_info.get("work") or {}
+    today_str = _moscow_date(now)
+    if work.get("day_date") != today_str:
+        work["day_date"] = today_str
+        work["shifts_today"] = 0
+        work["heart_lost_today"] = False
+
+    work["started_at"] = now
+    work["day_date"] = today_str
+    pet_info["work"] = work
+
+    save_pet_raw(user_id, pet_info)
+    return get_pet(user_id), None
+
+
+def claim_work(user_id):
+    pet_info = get_pet_raw(user_id)
+    if not pet_info:
+        return None, "У вас ещё нет питомца"
+
+    health, alive = calculate_health(pet_info)
+    pet_info["health"] = health
+    pet_info["alive"] = alive
+    if not alive:
+        return None, "Питомец погиб"
+
+    work_info = get_work_status(pet_info)
+    if work_info["status"] != "ready":
+        if work_info["status"] == "working":
+            mins = max(1, (work_info["remaining_seconds"] + 59) // 60)
+            return None, f"Смена ещё не окончена (осталось {mins} мин)"
+        return None, "Нет готовой добычи. Сначала отправьте ЧЕЛИКА в шахту"
+
+    now = int(time.time())
+    work = pet_info.get("work") or {}
+    today_str = _moscow_date(now)
+    if work.get("day_date") != today_str:
+        work["day_date"] = today_str
+        work["shifts_today"] = 0
+        work["heart_lost_today"] = False
+
+    lvl = max(1, min(MAX_LEVEL, int(pet_info.get("level") or 1)))
+    base_reward = WORK_REWARDS.get(lvl, 100)
+
+    # Lucky drop (~10% шанс)
+    import random
+    rnd = random.random()
+    total_reward = base_reward
+    lucky_drop = None
+
+    if rnd < 0.05:
+        # Самоцвет +50 тугриков
+        bonus = 50
+        total_reward += bonus
+        lucky_drop = {
+            "type": "gem",
+            "name": "💎 Драгоценный самоцвет",
+            "bonus": bonus,
+            "text": f"💎 Вау! ЧЕЛИК откопал редкий самоцвет (+{bonus} 💰 бонусом)!",
+        }
+    elif rnd < 0.10 and pet_info.get("health", 0) < MAX_HEALTH:
+        # Шахтерское яблоко +1 сердечко
+        lucky_drop = {
+            "type": "apple",
+            "name": "🍏 Шахтёрское яблоко",
+            "text": "🍏 ЧЕЛИК нашёл в пещере подземное яблоко (+1 ❤️)!",
+        }
+
+    # Начисляем тугрики игроку
+    rec = casino.add_coins(user_id, total_reward)
+
+    # Списываем сердечко, если это первая смена за сегодня
+    health_lost = False
+    if not work.get("heart_lost_today"):
+        cur_health = pet_info.get("health", MAX_HEALTH)
+        new_health = max(1, cur_health - 1)
+        hearts_missing = MAX_HEALTH - new_health
+        pet_info["last_fed_at"] = now - (hearts_missing * SECONDS_PER_HEART)
+        pet_info["health"] = new_health
+        work["heart_lost_today"] = True
+        health_lost = True
+
+    # Если выпало яблоко в lucky_drop, восстанавливаем сердечко
+    if lucky_drop and lucky_drop.get("type") == "apple":
+        cur_health = pet_info.get("health", 1)
+        new_health = min(MAX_HEALTH, cur_health + 1)
+        hearts_missing = MAX_HEALTH - new_health
+        pet_info["last_fed_at"] = now - (hearts_missing * SECONDS_PER_HEART)
+        pet_info["health"] = new_health
+
+    # Фиксируем отработанную смену
+    work["started_at"] = None
+    work["shifts_today"] = int(work.get("shifts_today") or 0) + 1
+    work["day_date"] = _moscow_date(now)
+    pet_info["work"] = work
+
+    save_pet_raw(user_id, pet_info)
+    updated_pet = get_pet(user_id)
+    return {
+        "pet": updated_pet,
+        "reward": total_reward,
+        "base_reward": base_reward,
+        "balance": rec.get("balance"),
+        "lucky_drop": lucky_drop,
+        "health_lost": health_lost,
+    }, None
