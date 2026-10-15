@@ -4080,6 +4080,61 @@
     if (backdrop) backdrop.addEventListener("click", closeWWDate);
   }
 
+  /* ---------- Flappy Челик ---------- */
+
+  function initFlappy() {
+    var cardBtn = document.getElementById("gameCardFlappy");
+    var modal = document.getElementById("flappyModal");
+    var backdrop = document.getElementById("flappyModalBackdrop");
+    var closeBtn = document.getElementById("flappyModalClose");
+
+    if (!modal) return;
+
+    var flappyInstance = null;
+
+    function openFlappy() {
+      modal.hidden = false;
+      haptic("medium");
+
+      if (!flappyInstance && window.FlappyGame) {
+        var canvas = document.getElementById("flappyCanvas");
+        flappyInstance = window.FlappyGame.init(canvas, {
+          scoreVal: document.getElementById("flappyScoreVal"),
+          bestVal: document.getElementById("flappyBestVal"),
+          startHint: document.getElementById("flappyStartHint"),
+          gameOverModal: document.getElementById("flappyGameOverModal"),
+          overBadge: document.getElementById("flappyOverBadge"),
+          overScore: document.getElementById("flappyOverScore"),
+          overBest: document.getElementById("flappyOverBest"),
+          overReward: document.getElementById("flappyOverReward"),
+          restartBtn: document.getElementById("flappyRestartBtn")
+        }, {
+          apiBase: apiBase,
+          authHeaders: authHeaders,
+          getBalance: getEffectiveBalance,
+          onReward: function (coins, newBalance) {
+            var cur = getEffectiveBalance();
+            if (typeof newBalance === "number") {
+              syncCasinoBalance(Math.max(cur, newBalance));
+            } else if (typeof coins === "number" && coins > 0) {
+              syncCasinoBalance(cur + coins);
+            }
+          }
+        });
+      } else if (flappyInstance) {
+        flappyInstance.restart();
+      }
+    }
+
+    function closeFlappy() {
+      modal.hidden = true;
+    }
+
+    if (cardBtn) cardBtn.addEventListener("click", openFlappy);
+    if (closeBtn) closeBtn.addEventListener("click", closeFlappy);
+    if (backdrop) backdrop.addEventListener("click", closeFlappy);
+  }
+
   /* ---------- Заметки и задания к парам ---------- */
 
   function initNotes() {
@@ -5735,6 +5790,7 @@
     initPet();
     initBlockBlast();
     initWWDate();
+    initFlappy();
     initWhatsNew();
 
     // Первичные запросы — только критичные для экрана расписания

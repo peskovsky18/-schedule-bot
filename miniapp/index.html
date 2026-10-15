@@ -13,7 +13,7 @@
     и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
     поднимайте номер: иначе Telegram покажет старую версию.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=59">
+  <link rel="stylesheet" href="assets/css/styles.css?v=60">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -184,6 +184,13 @@
             <span class="game-card__icon">💔</span>
           </div>
           <span class="game-card__title">WW Date</span>
+        </button>
+
+        <button class="game-card game-card--flappy" id="gameCardFlappy" type="button" aria-label="Открыть Flappy Челик">
+          <div class="game-card__icon-wrap">
+            <span class="game-card__icon">🐥</span>
+          </div>
+          <span class="game-card__title">Flappy Челик</span>
         </button>
       </div>
 
@@ -728,6 +735,53 @@
     </div>
   </div>
 
+  <!-- Полноэкранная арена: Flappy Челик -->
+  <div class="game-modal" id="flappyModal" hidden>
+    <div class="game-modal__backdrop" id="flappyModalBackdrop"></div>
+    <div class="game-modal__card flappy-modal__card" role="dialog" aria-modal="true" aria-label="Flappy Челик">
+      <header class="game-modal__head">
+        <button class="game-modal__close" id="flappyModalClose" type="button" aria-label="Закрыть">✕</button>
+        <h2 class="game-modal__title">🐥 Flappy Челик</h2>
+        <div class="game-modal__head-spacer" aria-hidden="true"></div>
+      </header>
+      <div class="game-modal__body flappy-modal__body">
+        <div class="flappy-hud">
+          <div class="flappy-hud__score" id="flappyScoreVal">0</div>
+          <div class="flappy-hud__best">Рекорд: <strong id="flappyBestVal">0</strong></div>
+        </div>
+        <div class="flappy-canvas-wrap">
+          <canvas id="flappyCanvas"></canvas>
+          <div class="flappy-hint" id="flappyStartHint">
+            <span class="flappy-hint__icon">👆</span>
+            <span class="flappy-hint__text">Нажми в любое место, чтобы взлететь!</span>
+          </div>
+        </div>
+
+        <!-- Модалка Game Over -->
+        <div class="flappy-over" id="flappyGameOverModal" hidden>
+          <div class="flappy-over__card">
+            <div class="flappy-over__badge" id="flappyOverBadge">🎮 Игра окончена!</div>
+            <div class="flappy-over__score-box">
+              <span class="flappy-over__score-label">Счёт:</span>
+              <strong class="flappy-over__score" id="flappyOverScore">0</strong>
+            </div>
+            <div class="flappy-over__stats">
+              <div class="flappy-over__stat-row">
+                <span>Лучший результат:</span>
+                <strong id="flappyOverBest">0</strong>
+              </div>
+              <div class="flappy-over__stat-row flappy-over__stat-row--reward" id="flappyOverRewardRow">
+                <span>Награда:</span>
+                <strong id="flappyOverReward">+0 💰</strong>
+              </div>
+            </div>
+            <button class="flappy-over__btn" id="flappyRestartBtn" type="button">Играть снова 🔄</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Полноэкранная арена: WW Date (Тиндер) -->
   <div class="game-modal" id="wwdateModal" hidden>
     <div class="game-modal__backdrop" id="wwdateModalBackdrop"></div>
@@ -1045,12 +1099,13 @@
     </div>
   </div>
 
-  <script src="assets/js/config.js?v=59"></script>
-  <script src="assets/js/core.js?v=59"></script>
-  <script src="assets/js/chess.js?v=59"></script>
-  <script src="assets/js/chessengine.js?v=59"></script>
-  <script src="assets/js/blockblast.js?v=59"></script>
-  <script src="assets/js/wwdate.js?v=59"></script>
-  <script src="assets/js/app.js?v=59"></script>
+  <script src="assets/js/config.js?v=60"></script>
+  <script src="assets/js/core.js?v=60"></script>
+  <script src="assets/js/chess.js?v=60"></script>
+  <script src="assets/js/chessengine.js?v=60"></script>
+  <script src="assets/js/blockblast.js?v=60"></script>
+  <script src="assets/js/wwdate.js?v=60"></script>
+  <script src="assets/js/flappy.js?v=60"></script>
+  <script src="assets/js/app.js?v=60"></script>
 </body>
 </html>

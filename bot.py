@@ -40,6 +40,7 @@ import ttt_game
 import notes_api
 import pet_api
 import blockblast_api
+import flappy_api
 import homework
 import homework_api
 import parser
@@ -661,6 +662,9 @@ pet_api.init_app(app)
 
 # Block Blast
 blockblast_api.init_app(app)
+
+# Flappy Челик
+flappy_api.init_app(app)
 
 # Домашние задания из канала группы
 homework_api.init_app(app, bot)
