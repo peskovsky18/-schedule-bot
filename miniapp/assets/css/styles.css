@@ -6,29 +6,30 @@
    ========================================================= */
 
 :root {
-  --bg: var(--tg-bg, #0e1116);
-  --bg-soft: var(--tg-secondary-bg, #171b22);
-  --card: var(--tg-section-bg, #1c2128);
-  --text: var(--tg-text, #e9edf2);
-  --hint: var(--tg-hint, #8b95a5);
-  --accent: var(--tg-button, #4c8dff);
-  --accent-text: var(--tg-button-text, #ffffff);
+  --bg: #0d1015;
+  --bg-soft: #141820;
+  --card: rgba(22, 27, 36, 0.7);
+  --card-solid: #171b24;
+  --text: var(--tg-text, #f5f5f7);
+  --hint: var(--tg-hint, #8e8e93);
+  --accent: #ffffff;
+  --accent-text: #000000;
   --line: rgba(255, 255, 255, 0.08);
-  --shadow: 0 1px 1px rgba(0, 0, 0, 0.14), 0 10px 30px rgba(0, 0, 0, 0.16);
+  --line-hairline: rgba(255, 255, 255, 0.06);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.26), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.2);
 
-  --radius: 20px;
+  --radius: 22px;
   --radius-sm: 12px;
   --gap: 14px;
 
-  /* Кривая, которой Apple пользуется в анимациях: быстро стартует
-     и мягко тормозит в конце */
-  --ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --glass: saturate(180%) blur(20px);
+  /* Точная кривая Apple (snappy & crisp, без затянутых отскоков) */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --glass: saturate(190%) blur(28px);
 
-  --lecture: #7c6cff;
-  --practice: #2fb27c;
-  --lab: #f0932b;
-  --other: #8b95a5;
+  --lecture: #9d91ff;
+  --practice: #30d158;
+  --lab: #ff9f0a;
+  --other: #8e8e93;
 }
 
 html[data-scheme="light"] {
@@ -58,11 +59,13 @@ html, body {
 }
 
 body {
-  font-family: "Helvetica Neue", Helvetica, "Helvetica CY", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.47;
   letter-spacing: -0.011em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior-y: contain;
 }
@@ -73,57 +76,69 @@ body {
   padding: 0 14px calc(28px + env(safe-area-inset-bottom, 0px));
 }
 
-/* ---------- Шапка ---------- */
+/* ---------- Шапка (Dynamic Glass Island) ---------- */
 
 .appbar {
   position: sticky;
-  top: 0;
-  z-index: 10;
+  top: 10px;
+  z-index: 50;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
-  padding: calc(14px + env(safe-area-inset-top, 0px)) 0 12px;
-  background: linear-gradient(var(--bg) 72%, transparent);
-  backdrop-filter: blur(8px);
+  padding: 8px 14px;
+  margin-top: calc(8px + env(safe-area-inset-top, 0px));
+  margin-bottom: 12px;
+  background: rgba(20, 24, 32, 0.75);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 0.5px solid rgba(255, 255, 255, 0.14);
+  border-radius: 26px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.36), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.24);
 }
 
 .appbar__titles { flex: 1; min-width: 0; }
 
 .appbar__group {
   margin: 0;
-  font-size: 21px;
+  font-size: 16.5px;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.022em;
+  color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .appbar__sub {
-  margin-top: 3px;
-  font-size: 12.5px;
+  margin-top: 2px;
+  font-size: 12px;
   color: var(--hint);
+  letter-spacing: -0.01em;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
 .icon-btn {
   flex: none;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  background: var(--card);
-  color: var(--text);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
   cursor: pointer;
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  transition: transform 0.12s ease, opacity 0.12s ease, background 0.12s ease;
 }
 
-.icon-btn:active { transform: scale(0.94); }
+.icon-btn:active {
+  transform: scale(0.92);
+  opacity: 0.85;
+  background: rgba(255, 255, 255, 0.14);
+}
 
 .icon-btn svg { display: block; }
 
@@ -136,24 +151,22 @@ body {
   * { transition: none !important; }
 }
 
-/* ---------- Переключатель ---------- */
+/* ---------- Переключатель (iOS Segmented Control) ---------- */
 
-/*
-  Вкладок пять, и на узких экранах подписи могут не поместиться.
-  Поэтому flex с запретом сжатия: когда места хватает — кнопки
-  растягиваются поровну, когда нет — полоса прокручивается.
-*/
 .segmented {
   display: flex;
-  gap: 4px;
-  padding: 4px;
-  margin-bottom: 10px;
-  background: var(--bg-soft);
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  gap: 3px;
+  padding: 3px;
+  margin-bottom: 12px;
+  background: rgba(18, 22, 30, 0.65);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 0.5px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  box-shadow: inset 0 0.5px 0.5px rgba(255, 255, 255, 0.12);
 }
 
 .segmented::-webkit-scrollbar { display: none; }
@@ -161,21 +174,28 @@ body {
 .segmented__btn {
   flex: 1 0 auto;
   white-space: nowrap;
-  padding: 9px 8px;
+  padding: 8px 10px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 11px;
   background: transparent;
   color: var(--hint);
   font: inherit;
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.12s ease;
+}
+
+.segmented__btn:active {
+  transform: scale(0.97);
 }
 
 .segmented__btn.is-active {
-  background: var(--accent);
-  color: var(--accent-text);
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.25);
 }
 
 /* ---------- Строка состояния ---------- */
@@ -200,49 +220,67 @@ body {
   cursor: pointer;
 }
 
-/* ---------- Дни ---------- */
+/* ---------- Дни (Unified Apple Glass Card) ---------- */
 
 .days { display: flex; flex-direction: column; gap: var(--gap); }
 
 .day {
   background: var(--card);
-  border: 1px solid var(--line);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 0.5px solid rgba(255, 255, 255, 0.11);
   border-radius: var(--radius);
-  padding: 13px 13px 5px;
+  padding: 16px 16px 8px;
   box-shadow: var(--shadow);
   content-visibility: auto;
   contain-intrinsic-size: 160px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.day--today { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.day--today {
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.35);
+}
 
 .day__head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 2px;
 }
 
 .day__label {
   margin: 0;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
+  letter-spacing: -0.022em;
+  color: #ffffff;
 }
 
-.day--today .day__label { color: var(--accent); }
+.day--today .day__label { color: #ffffff; }
 
 .day__date {
   margin-top: 2px;
-  font-size: 12.5px;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--hint);
   text-transform: capitalize;
+  letter-spacing: -0.01em;
 }
 
 .day__count {
   flex: none;
-  font-size: 12px;
-  color: var(--hint);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #c7c7cc;
+  background: rgba(255, 255, 255, 0.07);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
   white-space: nowrap;
 }
 
@@ -252,66 +290,98 @@ body {
   font-size: 13.5px;
 }
 
-/* ---------- Пары ---------- */
+/* ---------- Пары (Apple Inset Row Items) ---------- */
 
 .lessons { display: flex; flex-direction: column; }
 
 .lesson {
   display: flex;
-  gap: 11px;
-  padding: 11px 0;
-  border-top: 1px solid var(--line);
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 0.5px solid rgba(255, 255, 255, 0.06);
 }
 
 .lesson:first-child { border-top: 0; }
 
 .lesson__time {
   flex: none;
-  width: 88px;
+  width: 84px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--text);
-  padding-top: 1px;
+  color: #c7c7cc;
+  letter-spacing: -0.01em;
+  padding-top: 2px;
 }
 
 .lesson__body { flex: 1; min-width: 0; }
 
 .lesson__subject {
   margin: 0 0 6px;
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 600;
   line-height: 1.35;
+  letter-spacing: -0.015em;
+  color: #ffffff;
 }
 
 .lesson__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 6px;
   margin-bottom: 6px;
 }
 
+/* iOS Tags: мягкие полупрозрачные пилюли с микро-контурами */
 .badge {
-  display: inline-block;
-  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  padding: 2.5px 8.5px;
   border-radius: 999px;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
-  line-height: 1.6;
-  background: rgba(139, 149, 165, 0.16);
-  color: var(--text);
+  letter-spacing: -0.01em;
+  line-height: 1.5;
+  border: 0.5px solid transparent;
   white-space: nowrap;
 }
 
-.badge--lecture { background: rgba(124, 108, 255, 0.18); color: var(--lecture); }
-.badge--practice { background: rgba(47, 178, 124, 0.18); color: var(--practice); }
-.badge--lab { background: rgba(240, 147, 43, 0.18); color: var(--lab); }
-.badge--other { background: rgba(139, 149, 165, 0.16); color: var(--hint); }
-.badge--room { background: rgba(139, 149, 165, 0.12); color: var(--hint); font-weight: 500; }
+.badge--lecture {
+  background: rgba(124, 108, 255, 0.15);
+  color: #9d91ff;
+  border-color: rgba(124, 108, 255, 0.28);
+}
+
+.badge--practice {
+  background: rgba(48, 209, 88, 0.15);
+  color: #30d158;
+  border-color: rgba(48, 209, 88, 0.28);
+}
+
+.badge--lab {
+  background: rgba(255, 159, 10, 0.15);
+  color: #ff9f0a;
+  border-color: rgba(255, 159, 10, 0.28);
+}
+
+.badge--other {
+  background: rgba(255, 255, 255, 0.07);
+  color: #c7c7cc;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.badge--room {
+  background: rgba(255, 255, 255, 0.06);
+  color: #a1a1a6;
+  border-color: rgba(255, 255, 255, 0.09);
+  font-weight: 500;
+}
 
 .lesson__teacher {
   font-size: 13px;
   color: var(--hint);
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 
 .lesson__note {
@@ -325,8 +395,10 @@ body {
   margin-top: 7px;
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--accent);
-  text-decoration: none;
+  color: #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(255, 255, 255, 0.3);
 }
 
 .lesson__link:active { opacity: 0.7; }
@@ -496,7 +568,9 @@ html[data-scheme="light"] .skeleton__card::after {
   position: fixed;
   inset: 0;
   z-index: 70;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
 }
 
 .menu {
@@ -506,21 +580,20 @@ html[data-scheme="light"] .skeleton__card::after {
   bottom: 0;
   z-index: 71;
 
-  /*
-    На весь экран: разделов стало много, и в узкой колонке 330 px они
-    не помещались. На широком экране (например, в Telegram Web)
-    ограничиваем ширину, иначе панель растянется на весь монитор.
-  */
   width: 100%;
   max-width: 560px;
   display: flex;
   flex-direction: column;
-  background: var(--card);
-  border-left: 1px solid var(--line);
-  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.28);
+  background: rgba(18, 22, 30, 0.88);
+  backdrop-filter: blur(36px) saturate(200%);
+  -webkit-backdrop-filter: blur(36px) saturate(200%);
+  border-left: 0.5px solid rgba(255, 255, 255, 0.14);
+  border-top-left-radius: 28px;
+  border-bottom-left-radius: 28px;
+  box-shadow: -16px 0 40px rgba(0, 0, 0, 0.45), inset 0.5px 0 0 rgba(255, 255, 255, 0.18);
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  animation: menu-in 0.18s ease-out;
+  animation: menu-in 0.16s ease-out;
 }
 
 @keyframes menu-in {
@@ -536,53 +609,57 @@ html[data-scheme="light"] .skeleton__card::after {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px 10px;
-  border-bottom: 1px solid var(--line);
+  padding: 16px 18px 12px;
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.08);
 }
 
 .menu__caption {
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--hint);
+  font-weight: 700;
+  color: #8e8e93;
 }
 
 .menu__close {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
-  border: 0;
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
   border-radius: 50%;
-  background: var(--bg-soft);
-  color: var(--text);
-  font-size: 15px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 14px;
   line-height: 1;
   cursor: pointer;
-  transition: transform 0.12s ease;
+  transition: transform 0.12s ease, opacity 0.12s ease;
 }
 
-.menu__close:active { transform: scale(0.92); }
+.menu__close:active {
+  transform: scale(0.92);
+  opacity: 0.8;
+}
 
 /* Баланс тугриков в шапке меню */
 .menu__head-balance {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
-  background: var(--bg-soft);
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
   font-size: 13px;
   font-weight: 700;
-  color: var(--text);
+  color: #ffffff;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.12s ease, opacity 0.12s ease;
 }
 
 .menu__head-balance:active {
   transform: scale(0.95);
-  background: var(--card);
+  opacity: 0.85;
 }
 
 .menu__head-balance-coin {
@@ -590,15 +667,17 @@ html[data-scheme="light"] .skeleton__card::after {
   line-height: 1;
 }
 
-/* Карточка баланса тугриков в теле меню */
+/* Карточка баланса тугриков в теле меню (Apple Luxury Card) */
 .menu__wallet-card {
   position: relative;
-  margin: 12px 16px 8px;
-  padding: 14px 16px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 170, 0, 0.04) 100%), var(--card);
-  border: 1px solid rgba(255, 215, 0, 0.22);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1);
+  margin: 14px 16px 10px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%), rgba(26, 31, 42, 0.65);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 0.5px solid rgba(255, 215, 0, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.22);
   overflow: hidden;
 }
 
@@ -606,25 +685,25 @@ html[data-scheme="light"] .skeleton__card::after {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .menu__wallet-tag {
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: #ffd700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 .menu__wallet-status {
   font-size: 11px;
   font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: rgba(46, 204, 113, 0.15);
-  color: #2ecc71;
-  border: 1px solid rgba(46, 204, 113, 0.3);
+  padding: 2.5px 8px;
+  border-radius: 999px;
+  background: rgba(48, 209, 88, 0.15);
+  color: #30d158;
+  border: 0.5px solid rgba(48, 209, 88, 0.3);
 }
 
 .menu__wallet-main {
@@ -642,78 +721,100 @@ html[data-scheme="light"] .skeleton__card::after {
 }
 
 .menu__wallet-num {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 800;
-  color: var(--text);
-  letter-spacing: -0.5px;
+  color: #ffffff;
+  letter-spacing: -0.03em;
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
 .menu__wallet-curr {
   font-size: 13px;
   font-weight: 600;
-  color: var(--hint);
+  color: #8e8e93;
 }
 
 .menu__wallet-action {
   flex-shrink: 0;
-  padding: 7px 13px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 215, 0, 0.35);
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 0.5px solid rgba(255, 215, 0, 0.4);
   background: rgba(255, 215, 0, 0.15);
   color: #ffd700;
   font: inherit;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
+  letter-spacing: -0.01em;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.12s ease, opacity 0.12s ease;
 }
 
 .menu__wallet-action:active {
   transform: scale(0.95);
-  background: rgba(255, 215, 0, 0.28);
+  opacity: 0.85;
 }
 
 .menu__scroll {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: 12px;
+  padding-bottom: 16px;
 }
 
-/*
-  Плашка Netlify висит поверх страницы в правом нижнем углу, и последние
-  пункты меню оказывались под ней — по ним нельзя было нажать.
-  Оставляем под содержимым место на её высоту (её измеряет app.js).
-*/
 body.has-netlify-badge .menu__scroll {
-  padding-bottom: calc(12px + var(--badge-offset, 0px));
+  padding-bottom: calc(16px + var(--badge-offset, 0px));
 }
 
 .menu__section {
-  padding: 16px 16px 8px;
+  padding: 14px 18px 6px;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--hint);
+  font-weight: 600;
+  color: #8e8e93;
 }
 
-.menu__nav { display: flex; flex-direction: column; }
+/* Inset Grouped секции меню (как в iOS Settings) */
+.menu__nav {
+  display: flex;
+  flex-direction: column;
+  margin: 0 16px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
 
 .menu__item {
   padding: 13px 16px;
   border: 0;
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.05);
   background: transparent;
-  color: var(--text);
+  color: #f5f5f7;
   font: inherit;
-  font-size: 15px;
+  font-size: 14.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   text-align: left;
   cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
 }
 
-.menu__item:active { background: var(--bg-soft); }
+.menu__item:last-child {
+  border-bottom: 0;
+}
+
+.menu__item:active {
+  background: rgba(255, 255, 255, 0.08);
+}
 
 /* Подсвечиваем раздел, который сейчас открыт на экране */
-.menu__item.is-active { color: var(--accent); font-weight: 600; }
+.menu__item.is-active {
+  color: #ffffff;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.07);
+}
 
 /* Плашка Netlify внизу справа не должна закрывать последний день.
    Высоту измеряет app.js и кладёт в --badge-offset. */
@@ -1086,60 +1187,55 @@ body.has-netlify-badge .app {
 
 .chess__promo-btn:active { background: var(--bg-soft); }
 
-/* ---------- Группы в меню ---------- */
+/* ---------- Группы в меню (Apple Inset Grouped Section Labels) ---------- */
 
-/*
-  Заголовок верхнего уровня: «Расписание» и «Приколы». Разделены линией,
-  чтобы несрочное не смешивалось с расписанием.
-*/
 .menu__group {
-  padding: 18px 16px 8px;
-  margin-top: 6px;
-  border-top: 1px solid var(--line);
-  font-size: 12px;
-  font-weight: 700;
+  padding: 14px 20px 6px;
+  margin-top: 4px;
+  border-top: 0;
+  font-size: 11.5px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text);
+  letter-spacing: 0.06em;
+  color: #8e8e93;
 }
 
 .menu__group:first-child {
   margin-top: 0;
-  border-top: 0;
 }
 
 /* Вложенные подписи внутри группы — тише заголовка */
-.menu__group + .menu__section { padding-top: 10px; }
+.menu__group + .menu__section { padding-top: 6px; }
 
 /* ---------- Техподдержка ---------- */
 
 .support {
-  padding: 24px 0 8px;
+  padding: 24px 0 10px;
   text-align: center;
 }
 
-/*
-  Намеренно неприметная: подчёркнутый текст меньшей прозрачности.
-  На глаза попадается, но от расписания не отвлекает.
-*/
 .support__btn {
-  padding: 6px 10px;
+  padding: 6px 12px;
   border: 0;
   background: transparent;
-  color: var(--hint);
-  opacity: 0.45;
+  color: #636366;
+  opacity: 0.75;
   font: inherit;
-  font-size: 12.5px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-color: rgba(255, 255, 255, 0.25);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-decoration: none;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.12s ease, color 0.12s ease;
 }
 
-.support__btn:active { opacity: 0.85; }
+.support__btn:hover,
+.support__btn:active {
+  opacity: 1;
+  color: #8e8e93;
+}
 
-/* Сообщение: всплывает снизу, закрывается крестиком */
+/* Сообщение техподдержки: парящая капсула Apple Floating Pill Toast */
 .support__toast {
   position: fixed;
   left: 50%;
@@ -1148,20 +1244,19 @@ body.has-netlify-badge .app {
   display: flex;
   align-items: center;
   gap: 10px;
-
-  /*
-    Ширину задаём явно. При одном только left: 50% браузер отводит
-    элементу место лишь до правого края, и сообщение сжималось вдвое —
-    текст переносился на две строки без нужды.
-  */
   width: calc(100% - 32px);
   max-width: 380px;
-  padding: 12px 10px 12px 16px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--card);
-  box-shadow: var(--shadow);
+  padding: 10px 10px 10px 18px;
+  border: 0.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  background: rgba(24, 28, 38, 0.88);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.42), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.25);
   font-size: 13.5px;
+  font-weight: 500;
+  color: #f5f5f7;
+  letter-spacing: -0.01em;
   transform: translateX(-50%);
 }
 
@@ -1173,17 +1268,21 @@ body.has-netlify-badge .app {
   place-items: center;
   width: 28px;
   height: 28px;
-  border: 0;
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
   border-radius: 50%;
-  background: var(--bg-soft);
-  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
   font: inherit;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1;
   cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.12s ease;
 }
 
-.support__close:active { background: var(--line); }
+.support__close:active {
+  transform: scale(0.92);
+  opacity: 0.8;
+}
 
 
 /* ---------- Раскрывающийся заголовок «Приколы» ---------- */
@@ -2505,8 +2604,8 @@ body.has-netlify-badge .app {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
 }
 
 .notemodal__card {
@@ -2514,15 +2613,17 @@ body.has-netlify-badge .app {
   width: 100%;
   max-width: 480px;
   max-height: 88vh;
-  background: var(--bg-surface);
-  border-radius: 20px 20px 0 0;
-  border: 1px solid var(--line);
+  background: rgba(18, 22, 30, 0.92);
+  backdrop-filter: blur(36px) saturate(200%);
+  -webkit-backdrop-filter: blur(36px) saturate(200%);
+  border-radius: 28px 28px 0 0;
+  border: 0.5px solid rgba(255, 255, 255, 0.14);
   border-bottom: 0;
-  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.22);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: notemodalSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: notemodalSlideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes notemodalSlideUp {
@@ -2532,8 +2633,8 @@ body.has-netlify-badge .app {
 
 .notemodal__head {
   padding: 16px 18px 12px;
-  border-bottom: 1px solid var(--line);
-  background: var(--bg-surface);
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
 }
 
 .notemodal__title-row {
@@ -2545,9 +2646,10 @@ body.has-netlify-badge .app {
 
 .notemodal__title {
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
-  color: var(--text);
+  letter-spacing: -0.022em;
+  color: #ffffff;
 }
 
 .notemodal__close {
@@ -2555,50 +2657,57 @@ body.has-netlify-badge .app {
   height: 32px;
   display: grid;
   place-items: center;
-  border: 0;
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
   border-radius: 50%;
-  background: var(--bg-soft);
-  color: var(--hint);
-  font-size: 15px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 13px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.12s ease, opacity 0.12s ease;
 }
 
 .notemodal__close:active {
-  transform: scale(0.9);
+  transform: scale(0.92);
+  opacity: 0.8;
 }
 
 .notemodal__nav {
   display: flex;
-  gap: 8px;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 3px;
+  border-radius: 12px;
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
 }
 
 .notemodal__tab {
   flex: 1;
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--bg-soft);
-  color: var(--hint);
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #8e8e93;
   font: inherit;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background 0.12s ease, color 0.12s ease;
 }
 
 .notemodal__tab.is-active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.2);
 }
 
 .notemodal__count {
   display: inline-block;
   margin-left: 4px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.2);
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
   font-size: 11px;
 }
 
@@ -4515,14 +4624,16 @@ body.is-page-hidden * {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
-  margin: 10px 0 24px;
+  margin: 6px 16px 20px;
 }
 
 .game-card {
   aspect-ratio: 1 / 1;
-  background: var(--bg-surface, rgba(255, 255, 255, 0.05));
-  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
-  border-radius: 20px;
+  background: rgba(26, 31, 42, 0.65);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 0.5px solid rgba(255, 255, 255, 0.11);
+  border-radius: 22px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -4532,26 +4643,23 @@ body.is-page-hidden * {
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
-              background 0.18s ease,
-              border-color 0.18s ease,
-              box-shadow 0.18s ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.2);
+  transition: transform 0.12s ease, opacity 0.12s ease, background 0.12s ease, border-color 0.12s ease;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   -webkit-user-select: none;
 }
 
 .game-card:hover {
-  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
-  border-color: rgba(255, 255, 255, 0.16);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  background: rgba(32, 38, 52, 0.75);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.25);
 }
 
 .game-card:active {
-  transform: scale(0.94);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: scale(0.96);
+  opacity: 0.9;
+  background: rgba(22, 26, 36, 0.8);
 }
 
 .game-card__icon-wrap {
@@ -4561,12 +4669,12 @@ body.is-page-hidden * {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 4px 14px rgba(0, 0, 0, 0.2);
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 6px 18px rgba(0, 0, 0, 0.28);
+  transition: transform 0.12s ease;
 }
 
 .game-card:hover .game-card__icon-wrap {
-  transform: scale(1.08);
+  transform: scale(1.04);
 }
 
 .game-card__icon {
@@ -4574,20 +4682,20 @@ body.is-page-hidden * {
   line-height: 1;
 }
 
-/* Индивидуальные градиентные подложки для каждой игры в Apple-стиле */
+/* Индивидуальные микро-градиенты для каждой игры в стиле App Store */
 .game-card--bb .game-card__icon-wrap {
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.35), rgba(59, 130, 246, 0.45));
-  border: 1px solid rgba(6, 182, 212, 0.4);
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.4), rgba(59, 130, 246, 0.5));
+  border: 0.5px solid rgba(6, 182, 212, 0.45);
 }
 
 .game-card--chess .game-card__icon-wrap {
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.35), rgba(99, 102, 241, 0.45));
-  border: 1px solid rgba(168, 85, 247, 0.4);
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(99, 102, 241, 0.5));
+  border: 0.5px solid rgba(168, 85, 247, 0.45);
 }
 
 .game-card--ttt .game-card__icon-wrap {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(249, 115, 22, 0.4));
-  border: 1px solid rgba(249, 115, 22, 0.4);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.35), rgba(249, 115, 22, 0.45));
+  border: 0.5px solid rgba(249, 115, 22, 0.45);
 }
 
 .game-card--ttt .game-card__icon {
@@ -4599,29 +4707,29 @@ body.is-page-hidden * {
 }
 
 .game-card--casino .game-card__icon-wrap {
-  background: linear-gradient(135deg, rgba(234, 179, 8, 0.35), rgba(245, 158, 11, 0.45));
-  border: 1px solid rgba(234, 179, 8, 0.4);
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.4), rgba(245, 158, 11, 0.5));
+  border: 0.5px solid rgba(234, 179, 8, 0.45);
 }
 
 .game-card--wwdate .game-card__icon-wrap {
-  background: linear-gradient(135deg, rgba(255, 75, 114, 0.4), rgba(255, 120, 84, 0.5));
-  border: 1px solid rgba(255, 75, 114, 0.5);
-  box-shadow: 0 4px 14px rgba(255, 75, 114, 0.3);
+  background: linear-gradient(135deg, rgba(255, 75, 114, 0.45), rgba(255, 120, 84, 0.55));
+  border: 0.5px solid rgba(255, 75, 114, 0.5);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 6px 18px rgba(255, 75, 114, 0.3);
 }
 
 .game-card--flappy .game-card__icon-wrap {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.4), rgba(16, 185, 129, 0.5));
-  border: 1px solid rgba(34, 197, 94, 0.5);
-  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.3);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.45), rgba(16, 185, 129, 0.55));
+  border: 0.5px solid rgba(34, 197, 94, 0.5);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 6px 18px rgba(34, 197, 94, 0.3);
 }
 
 .game-card__title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
-  color: var(--text, #ffffff);
+  color: #f5f5f7;
   text-align: center;
-  letter-spacing: -0.2px;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", sans-serif;
+  letter-spacing: -0.015em;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
 }
 
 /* ==========================================================================

@@ -59,8 +59,11 @@
     try { tg.ready(); } catch (e) {}
     try { tg.expand(); } catch (e) {}
 
-    if (supports("setHeaderColor") && tg.backgroundColor) {
-      try { tg.setHeaderColor(tg.backgroundColor); } catch (e) {}
+    if (supports("setHeaderColor")) {
+      try { tg.setHeaderColor("#0d1015"); } catch (e) {}
+    }
+    if (supports("setBackgroundColor")) {
+      try { tg.setBackgroundColor("#0d1015"); } catch (e) {}
     }
     if (supports("disableVerticalSwipes")) {
       try { tg.disableVerticalSwipes(); } catch (e) {}
