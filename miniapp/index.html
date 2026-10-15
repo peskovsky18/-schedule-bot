@@ -13,7 +13,7 @@
     и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
     поднимайте номер: иначе Telegram покажет старую версию.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=55">
+  <link rel="stylesheet" href="assets/css/styles.css?v=56">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -177,6 +177,13 @@
             <span class="game-card__icon">🎰</span>
           </div>
           <span class="game-card__title">Казино</span>
+        </button>
+
+        <button class="game-card game-card--wwdate" id="gameCardWWDate" type="button" aria-label="Открыть WW Date">
+          <div class="game-card__icon-wrap">
+            <span class="game-card__icon">🔥</span>
+          </div>
+          <span class="game-card__title">WW Date</span>
         </button>
       </div>
 
@@ -721,6 +728,80 @@
     </div>
   </div>
 
+  <!-- Полноэкранная арена: WW Date (Тиндер) -->
+  <div class="game-modal" id="wwdateModal" hidden>
+    <div class="game-modal__backdrop" id="wwdateModalBackdrop"></div>
+    <div class="game-modal__card wwdate-modal__card" role="dialog" aria-modal="true" aria-label="WW Date">
+      <header class="game-modal__head">
+        <button class="game-modal__close" id="wwdateModalClose" type="button" aria-label="Закрыть">✕</button>
+        <h2 class="game-modal__title">🔥 WW Date</h2>
+        <div class="game-modal__head-spacer" aria-hidden="true"></div>
+      </header>
+      <div class="game-modal__body wwdate-modal__body">
+        <!-- Стек карточек Тиндера -->
+        <div class="wwdate-stack" id="wwdateCardStack"></div>
+
+        <!-- Нижняя панель действий -->
+        <div class="wwdate-controls">
+          <button class="wwdate-btn wwdate-btn--rewind" id="wwdateBtnRewind" type="button" aria-label="Перемотка назад" title="Вернуть назад">
+            <span>🔄</span>
+          </button>
+          <button class="wwdate-btn wwdate-btn--nope" id="wwdateBtnNope" type="button" aria-label="Дизлайк" title="Не моё">
+            <span>✕</span>
+          </button>
+          <button class="wwdate-btn wwdate-btn--super" id="wwdateBtnSuper" type="button" aria-label="Суперлайк" title="Суперлайк!">
+            <span>⭐</span>
+          </button>
+          <button class="wwdate-btn wwdate-btn--like" id="wwdateBtnLike" type="button" aria-label="Лайк" title="В самое сердце!">
+            <span>💚</span>
+          </button>
+        </div>
+
+        <!-- Оверлей "It's a Match!" -->
+        <div class="wwdate-match" id="wwdateMatchModal" hidden>
+          <div class="wwdate-match__confetti"></div>
+          <div class="wwdate-match__content">
+            <div class="wwdate-match__badge">🔥 LOVE MATCH</div>
+            <h2 class="wwdate-match__title">IT'S A MATCH!</h2>
+            <p class="wwdate-match__subtitle">Кажется, между вами пробежала искра...</p>
+            <div class="wwdate-match__avatars">
+              <div class="wwdate-match__avatar-box">
+                <div class="wwdate-match__avatar-user">😎</div>
+              </div>
+              <div class="wwdate-match__heart">❤️‍🔥</div>
+              <div class="wwdate-match__avatar-box">
+                <img class="wwdate-match__avatar-them" id="wwdateMatchThemPhoto" src="" alt="Match">
+              </div>
+            </div>
+            <div class="wwdate-match__quote" id="wwdateMatchQuote"></div>
+            <div class="wwdate-match__actions">
+              <button class="wwdate-match__btn wwdate-match__btn--chat" id="wwdateMatchChatBtn" type="button">Написать 💬</button>
+              <button class="wwdate-match__btn wwdate-match__btn--keep" id="wwdateMatchKeepBtn" type="button">Продолжить свайпать 🔄</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Окно шуточного мини-чата -->
+        <div class="wwdate-chat" id="wwdateChatModal" hidden>
+          <div class="wwdate-chat__card">
+            <header class="wwdate-chat__head">
+              <div class="wwdate-chat__user">
+                <img class="wwdate-chat__photo" id="wwdateChatPhoto" src="" alt="">
+                <div>
+                  <div class="wwdate-chat__name" id="wwdateChatName">Имя</div>
+                  <div class="wwdate-chat__status">в сети • отвечает моментально</div>
+                </div>
+              </div>
+              <button class="wwdate-chat__close" id="wwdateChatClose" type="button" aria-label="Закрыть чат">✕</button>
+            </header>
+            <div class="wwdate-chat__messages" id="wwdateChatMessages"></div>
+            <div class="wwdate-chat__replies" id="wwdateChatReplies"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Полноэкранная арена: Шахматы -->
   <div class="game-modal" id="chessModal" hidden>
     <div class="game-modal__backdrop" id="chessModalBackdrop"></div>
@@ -964,11 +1045,12 @@
     </div>
   </div>
 
-  <script src="assets/js/config.js?v=55"></script>
-  <script src="assets/js/core.js?v=55"></script>
-  <script src="assets/js/chess.js?v=55"></script>
-  <script src="assets/js/chessengine.js?v=55"></script>
-  <script src="assets/js/blockblast.js?v=55"></script>
-  <script src="assets/js/app.js?v=55"></script>
+  <script src="assets/js/config.js?v=56"></script>
+  <script src="assets/js/core.js?v=56"></script>
+  <script src="assets/js/chess.js?v=56"></script>
+  <script src="assets/js/chessengine.js?v=56"></script>
+  <script src="assets/js/blockblast.js?v=56"></script>
+  <script src="assets/js/wwdate.js?v=56"></script>
+  <script src="assets/js/app.js?v=56"></script>
 </body>
 </html>

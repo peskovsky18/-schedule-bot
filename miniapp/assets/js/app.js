@@ -4050,6 +4050,36 @@
     if (arenaBackdrop) arenaBackdrop.addEventListener("click", closeArena);
   }
 
+  /* ---------- WW Date (Шуточный Тиндер) ---------- */
+
+  function initWWDate() {
+    var cardBtn = document.getElementById("gameCardWWDate");
+    var modal = document.getElementById("wwdateModal");
+    var backdrop = document.getElementById("wwdateModalBackdrop");
+    var closeBtn = document.getElementById("wwdateModalClose");
+
+    if (!modal) return;
+
+    var wwInstance = null;
+
+    function openWWDate() {
+      modal.hidden = false;
+      haptic("medium");
+
+      if (!wwInstance && window.WWDate) {
+        wwInstance = window.WWDate.init(modal);
+      }
+    }
+
+    function closeWWDate() {
+      modal.hidden = true;
+    }
+
+    if (cardBtn) cardBtn.addEventListener("click", openWWDate);
+    if (closeBtn) closeBtn.addEventListener("click", closeWWDate);
+    if (backdrop) backdrop.addEventListener("click", closeWWDate);
+  }
+
   /* ---------- Заметки и задания к парам ---------- */
 
   function initNotes() {
@@ -5704,6 +5734,7 @@
     initNotes();
     initPet();
     initBlockBlast();
+    initWWDate();
     initWhatsNew();
 
     // Первичные запросы — только критичные для экрана расписания
