@@ -4099,6 +4099,16 @@
       modal.hidden = false;
       haptic("medium");
 
+      if (window.Telegram && window.Telegram.WebApp) {
+        var tg = window.Telegram.WebApp;
+        if (typeof tg.disableVerticalSwipes === "function") {
+          try { tg.disableVerticalSwipes(); } catch (e) {}
+        }
+        if (typeof tg.expand === "function") {
+          try { tg.expand(); } catch (e) {}
+        }
+      }
+
       if (!flappyInstance && window.FlappyGame) {
         var canvas = document.getElementById("flappyCanvas");
         flappyInstance = window.FlappyGame.init(canvas, {
@@ -4132,6 +4142,10 @@
     function closeFlappy() {
       modal.hidden = true;
     }
+
+    modal.addEventListener("touchmove", function (e) {
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
 
     if (cardBtn) cardBtn.addEventListener("click", openFlappy);
     if (closeBtn) closeBtn.addEventListener("click", closeFlappy);

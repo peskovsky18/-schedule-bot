@@ -5936,6 +5936,13 @@ body.is-page-hidden * {
    FLAPPY ЧЕЛИК
    ========================================================================== */
 
+#flappyModal {
+  touch-action: none !important;
+  overscroll-behavior: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
 .flappy-modal__card {
   max-width: 420px;
   height: 92vh;
@@ -5945,6 +5952,10 @@ body.is-page-hidden * {
   flex-direction: column;
   overflow: hidden;
   border-radius: 28px;
+  touch-action: none !important;
+  overscroll-behavior: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
 }
 
 .flappy-modal__body {
@@ -5955,6 +5966,10 @@ body.is-page-hidden * {
   position: relative;
   overflow: hidden;
   padding: 0;
+  touch-action: none !important;
+  overscroll-behavior: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
 }
 
 .flappy-hud {
@@ -5967,6 +5982,9 @@ body.is-page-hidden * {
   align-items: center;
   pointer-events: none;
   z-index: 10;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .flappy-hud__score {
@@ -5993,7 +6011,11 @@ body.is-page-hidden * {
   width: 100%;
   height: 100%;
   position: relative;
-  touch-action: none;
+  touch-action: none !important;
+  overscroll-behavior: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
 }
 
 #flappyCanvas {
@@ -6001,7 +6023,12 @@ body.is-page-hidden * {
   height: 100%;
   display: block;
   cursor: pointer;
-  touch-action: none;
+  touch-action: none !important;
+  overscroll-behavior: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-tap-highlight-color: transparent !important;
 }
 
 .flappy-hint {

@@ -541,23 +541,67 @@
     }
 
     // Слушатели управления
-    canvasEl.addEventListener("pointerdown", function (e) {
-      e.preventDefault();
-      flap();
-    });
+    var wrapEl = canvasEl.parentElement || canvasEl;
+    var lastTouchTime = 0;
 
-    window.addEventListener("keydown", function (e) {
+    function handleTouch(e) {
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+      e.stopPropagation();
+      lastTouchTime = Date.now();
+      flap();
+    }
+
+    function preventTouchDefault(e) {
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+      e.stopPropagation();
+    }
+
+    // Тач-события с passive: false и preventDefault блокируют pull-to-refresh и зум Safari/Telegram
+    canvasEl.addEventListener("touchstart", handleTouch, { passive: false });
+    canvasEl.addEventListener("touchmove", preventTouchDefault, { passive: false });
+    canvasEl.addEventListener("touchend", preventTouchDefault, { passive: false });
+    canvasEl.addEventListener("gesturestart", preventTouchDefault, { passive: false });
+
+    if (wrapEl !== canvasEl) {
+      wrapEl.addEventListener("touchstart", handleTouch, { passive: false });
+      wrapEl.addEventListener("touchmove", preventTouchDefault, { passive: false });
+      wrapEl.addEventListener("touchend", preventTouchDefault, { passive: false });
+      wrapEl.addEventListener("gesturestart", preventTouchDefault, { passive: false });
+    }
+
+    // Для мыши на ПК: игнорируем эмулированный mousedown после тача
+    function handleMouseDown(e) {
+      if (Date.now() - lastTouchTime < 500) {
+        e.preventDefault();
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      flap();
+    }
+    canvasEl.addEventListener("mousedown", handleMouseDown);
+
+    function handleKeyDown(e) {
       if (e.code === "Space" || e.code === "ArrowUp") {
         e.preventDefault();
         flap();
       }
-    });
+    }
+    window.addEventListener("keydown", handleKeyDown);
 
     if (domEls.restartBtn) {
-      domEls.restartBtn.addEventListener("click", function () {
+      domEls.restartBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
         haptic("medium");
         resetGame();
       });
+      domEls.restartBtn.addEventListener("touchstart", function (e) {
+        e.stopPropagation();
+      }, { passive: true });
     }
 
     // Запуск
@@ -570,6 +614,18 @@
       destroy: function () {
         if (reqId) cancelAnimationFrame(reqId);
         window.removeEventListener("resize", resize);
+        window.removeEventListener("keydown", handleKeyDown);
+        canvasEl.removeEventListener("touchstart", handleTouch);
+        canvasEl.removeEventListener("touchmove", preventTouchDefault);
+        canvasEl.removeEventListener("touchend", preventTouchDefault);
+        canvasEl.removeEventListener("gesturestart", preventTouchDefault);
+        canvasEl.removeEventListener("mousedown", handleMouseDown);
+        if (wrapEl !== canvasEl) {
+          wrapEl.removeEventListener("touchstart", handleTouch);
+          wrapEl.removeEventListener("touchmove", preventTouchDefault);
+          wrapEl.removeEventListener("touchend", preventTouchDefault);
+          wrapEl.removeEventListener("gesturestart", preventTouchDefault);
+        }
       }
     };
   }
