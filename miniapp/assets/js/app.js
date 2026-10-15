@@ -156,6 +156,10 @@
   }
 
   function writeCache(data) {
+    if (!data || !data.days || data.days.length === 0) {
+      // Никогда не затираем сохранённое расписание пустым ответом!
+      return;
+    }
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), data: data }));
     } catch (e) {}
@@ -189,17 +193,31 @@
         // человек увидит пустой экран и решит, что всё сломалось
         var empty = !data.days || data.days.length === 0;
 
-        if (empty && scheduleAttempts < 3) {
-          scheduleAttempts += 1;
-          setTimeout(fetchSchedule, 2500);
-          return;
+        if (empty) {
+          if (scheduleAttempts < 3) {
+            scheduleAttempts += 1;
+            setTimeout(fetchSchedule, 2000);
+            return;
+          }
+
+          // Если сервер упорно отдаёт пустоту, но у нас уже есть данные из кэша —
+          // ни в коем случае не стираем экран! Оставляем закэшированное расписание
+          if (state.data && state.data.days && state.data.days.length > 0) {
+            scheduleAttempts = 0;
+            state.cached = true;
+            state.loading = false;
+            render();
+            return;
+          }
         }
 
         scheduleAttempts = 0;
         state.data = data;
         state.cached = false;
         state.loading = false;
-        writeCache(data);
+        if (!empty) {
+          writeCache(data);
+        }
         render();
         populateSubjectDatalist();
       })

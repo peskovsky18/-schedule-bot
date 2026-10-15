@@ -56,7 +56,7 @@ GROUP_ID = os.getenv("GROUP_ID", "25111").strip()
 # по названию (например, "4об_ППРСД"). Спасает от смены ID каждое 1 сентября.
 GROUP_NAME = os.getenv("GROUP_NAME", "").strip()
 
-WEB_TIMEOUT = 20
+WEB_TIMEOUT = 10
 CACHE_TTL = 300
 
 WEEKDAYS = [
@@ -183,13 +183,13 @@ def find_group_id(name):
     return result
 
 
-def group_url():
+def group_url(force_lookup=False):
     """Актуальный адрес страницы «По датам» для нужной группы."""
     global _resolved_group_id
 
-    group_id = GROUP_ID
+    group_id = GROUP_ID or "25111"
 
-    if GROUP_NAME:
+    if (force_lookup or not GROUP_ID) and GROUP_NAME:
         found = find_group_id(GROUP_NAME)
         if found:
             group_id = found
@@ -453,21 +453,63 @@ def parse_from_html(page):
 # =========================
 # ОСНОВНАЯ ФУНКЦИЯ
 # =========================
+# ОСНОВНАЯ ФУНКЦИЯ
+# =========================
 # Тормоз для обновлений. Без него пустой кэш приводил к закачке
 # на каждый запрос: приложение шлёт их пачкой, и сайт вуза отвечал
 # блокировкой по IP. После этого кэш не наполнялся уже никогда.
 REFRESH_COOLDOWN = 60          # обычная пауза между попытками
-REFRESH_COOLDOWN_AFTER_FAIL = 300   # пауза после неудачи
+REFRESH_COOLDOWN_AFTER_FAIL = 180   # пауза после неудачи
 _refresh_last = 0.0
 _refresh_failed = False
 _last_error = None
+_refreshing = False
+_refresh_lock = threading.Lock()
 
-
-# Расписание лежит ещё и в общем хранилище. Процессов теперь два,
-# у каждого свой кэш в памяти: без общего хранилища один отдавал
-# расписание, а второй пустоту, и человек видел то одно, то другое.
-# Заодно снимок переживает перезапуск — не нужно ждать разбора.
+# Расписание лежит ещё и в общем хранилище и на диске.
 SCHEDULE_KEY = "schedule:snapshot"
+DISK_CACHE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schedule_cache.json")
+
+
+def _save_disk_cache(schedule):
+    """Сохраняет снимок расписания на диск для мгновенного старта и межпроцессного доступа."""
+    if not schedule:
+        return
+    try:
+        data = {
+            "time": time.time(),
+            "group_info": _cached_group_info,
+            "schedule": schedule,
+        }
+        with open(DISK_CACHE_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print("[PARSE] не удалось сохранить снимок на диск:", e)
+
+
+def _load_disk_cache():
+    """Загружает снимок расписания с диска. При успехе возвращает dict расписания."""
+    global _cached_time, _cached_group_info
+    try:
+        if not os.path.exists(DISK_CACHE_PATH):
+            return None
+        with open(DISK_CACHE_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            sched = data.get("schedule")
+            if isinstance(sched, dict) and sched:
+                info = data.get("group_info")
+                if isinstance(info, dict) and info:
+                    _cached_group_info.update(info)
+                ts = data.get("time")
+                if ts and not _cached_time:
+                    _cached_time = float(ts)
+                return sched
+            elif any(k.startswith("202") for k in data.keys()):
+                return data
+    except Exception as e:
+        print("[PARSE] не удалось прочитать снимок с диска:", e)
+    return None
 
 
 def _save_shared(schedule):
@@ -514,6 +556,11 @@ def refresh_in_background(force=False):
     now = time.time()
 
     with _refresh_lock:
+        # Защита от застрявшего флага при форке Gunicorn или зависании потока
+        if _refreshing and (now - _refresh_last > 45):
+            print(f"[PARSE] сброс застрявшего флага _refreshing (висел {int(now - _refresh_last)} с)")
+            _refreshing = False
+
         if _refreshing:
             return
 
@@ -528,7 +575,7 @@ def refresh_in_background(force=False):
         global _refreshing, _refresh_failed, _last_error
 
         try:
-            parse_schedule(force=True)
+            parse_schedule(force=True, wait=True)
 
             if _cached_schedule:
                 _refresh_failed = False
@@ -542,7 +589,8 @@ def refresh_in_background(force=False):
             _last_error = f"{type(e).__name__}: {e}"
             print("[PARSE] фоновое обновление не удалось:", _last_error)
         finally:
-            _refreshing = False
+            with _refresh_lock:
+                _refreshing = False
 
     threading.Thread(target=work, daemon=True, name="schedule-refresh").start()
 
@@ -571,22 +619,47 @@ def parse_schedule(force=False, wait=True):
     if not force and _cached_schedule and (time.time() - _cached_time < CACHE_TTL):
         return _cached_schedule
 
-    if not wait:
-        # Своего кэша нет — возможно, его наполнил другой процесс.
-        # Лишний поход в хранилище бывает только в этом случае:
-        # когда кэш есть, мы сюда не доходим
+    # 1. Проверяем общее хранилище (Redis/Memory)
+    if not _cached_schedule:
         shared = _load_shared()
         if shared:
             _cached_schedule = shared
             _cached_time = time.time()
             return shared
 
-        refresh_in_background()
-        return _cached_schedule or {}
+    # 2. Проверяем снимок на диске (сохраняется между запусками и процессами)
+    if not _cached_schedule:
+        disk_sched = _load_disk_cache()
+        if disk_sched:
+            _cached_schedule = disk_sched
+            if not _cached_time:
+                _cached_time = time.time()
+            refresh_in_background()
+            return disk_sched
 
+    # 3. Если запрошен быстрый ответ (wait=False):
+    if not wait:
+        if _cached_schedule:
+            refresh_in_background()
+            return _cached_schedule
+
+        # Если кэша нет совсем — читаем диск или делаем быстрый синхронный запрос,
+        # но ни при каких обстоятельствах не отдаём пустой словарь {}!
+        disk_sched = _load_disk_cache()
+        if disk_sched:
+            _cached_schedule = disk_sched
+            refresh_in_background()
+            return disk_sched
+
+        print("[PARSE] кэш полностью пуст при wait=False — запускаем быстрый синхронный запрос")
+
+    # 4. Синхронный поход на сайт
     page = fetch_html(group_url())
+    if not page and GROUP_NAME:
+        page = fetch_html(group_url(force_lookup=True))
+
     if not page:
-        return _cached_schedule or {}
+        return _cached_schedule or _load_disk_cache() or {}
 
     schedule = parse_from_snapshot(page)
 
@@ -595,12 +668,13 @@ def parse_schedule(force=False, wait=True):
         schedule = parse_from_html(page)
 
     if not schedule:
-        return _cached_schedule or {}
+        return _cached_schedule or _load_disk_cache() or {}
 
     _cached_schedule = schedule
     _cached_time = time.time()
 
     _save_shared(schedule)
+    _save_disk_cache(schedule)
 
     return schedule
 
@@ -720,11 +794,6 @@ def get_upcoming():
 # =========================
 # СОСТОЯНИЕ КЭША
 # =========================
-# Фоновое обновление: один поток на всех, повторные запуски не нужны
-_refreshing = False
-_refresh_lock = threading.Lock()
-
-
 def cached_schedule():
     """
     Возвращает расписание из кэша, НЕ обращаясь к сайту.
@@ -733,11 +802,16 @@ def cached_schedule():
     на сайт учебного заведения, то при недоступности сайта Render сочтёт
     сервис сломанным и начнёт его перезапускать.
     """
-    return _cached_schedule or {}
+    return _cached_schedule or _load_disk_cache() or {}
 
 
 def cache_age():
     """Сколько секунд назад расписание обновлялось. None — кэша ещё нет."""
-    if not _cached_time:
-        return None
-    return int(time.time() - _cached_time)
+    if _cached_time:
+        return int(time.time() - _cached_time)
+    if os.path.exists(DISK_CACHE_PATH):
+        try:
+            return int(time.time() - os.path.getmtime(DISK_CACHE_PATH))
+        except Exception:
+            pass
+    return None

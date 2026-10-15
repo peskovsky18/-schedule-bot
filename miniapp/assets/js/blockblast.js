@@ -235,7 +235,9 @@
     },
 
     canPlace: function (grid, matrix, targetR, targetC) {
+      if (!grid || !matrix) return false;
       var rows = matrix.length;
+      if (rows === 0) return false;
       var cols = matrix[0].length;
 
       if (targetR < 0 || targetC < 0 || targetR + rows > GRID_SIZE || targetC + cols > GRID_SIZE) {
@@ -255,8 +257,14 @@
     },
 
     canPlacePieceAnywhere: function (grid, matrix) {
-      for (var r = 0; r < GRID_SIZE; r++) {
-        for (var c = 0; c < GRID_SIZE; c++) {
+      if (!grid || !matrix) return false;
+      var rows = matrix.length;
+      if (rows === 0) return false;
+      var cols = matrix[0].length;
+      var maxR = GRID_SIZE - rows;
+      var maxC = GRID_SIZE - cols;
+      for (var r = 0; r <= maxR; r++) {
+        for (var c = 0; c <= maxC; c++) {
           if (this.canPlace(grid, matrix, r, c)) {
             return true;
           }
@@ -266,14 +274,19 @@
     },
 
     checkGameOver: function (grid, rack) {
+      if (!grid || !rack || rack.length === 0) return false;
+      var hasUnused = false;
       for (var i = 0; i < rack.length; i++) {
         var p = rack[i];
         if (p && !p.used) {
+          hasUnused = true;
           if (this.canPlacePieceAnywhere(grid, p.matrix)) {
             return false;
           }
         }
       }
+      // Если все фигуры на стойке уже использованы — это не проигрыш (будет выдан новый набор)
+      if (!hasUnused) return false;
       return true;
     },
 
@@ -548,6 +561,30 @@
         }, 900);
       }
 
+      var gameOverTimer = null;
+
+      function scheduleGameOverCheck() {
+        if (gameOverTimer) {
+          clearTimeout(gameOverTimer);
+          gameOverTimer = null;
+        }
+
+        // Если хотя бы одна фигура может быть установлена — игра не закончена
+        if (!self.checkGameOver(state.grid, state.rack)) {
+          return;
+        }
+
+        // Если ходов предварительно нет — даём 350мс (анимация взрыва 220мс)
+        // и перед показом окна Game Over ещё раз строго перепроверяем поле
+        gameOverTimer = setTimeout(function () {
+          gameOverTimer = null;
+          if (state.gameOver) return;
+          if (self.checkGameOver(state.grid, state.rack)) {
+            handleGameOver();
+          }
+        }, 350);
+      }
+
       function triggerBlastEffects(cleared) {
         var affectedCells = {};
         cleared.rows.forEach(function (r) {
@@ -561,7 +598,20 @@
           }
         });
 
-        // Запуск анимации взрыва на клетках
+        // 1. Немедленно освобождаем клетки в логической сетке state.grid,
+        // чтобы последующая генерация фигур и проверка Game Over видели свободное место!
+        cleared.rows.forEach(function (r) {
+          for (var c = 0; c < GRID_SIZE; c++) {
+            state.grid[r][c] = null;
+          }
+        });
+        cleared.cols.forEach(function (c) {
+          for (var r = 0; r < GRID_SIZE; r++) {
+            state.grid[r][c] = null;
+          }
+        });
+
+        // 2. Запуск анимации взрыва на клетках
         Object.keys(affectedCells).forEach(function (k) {
           var pt = affectedCells[k];
           var node = cellNodes[pt.r][pt.c];
@@ -570,19 +620,22 @@
           }
         });
 
-        // Удаление блоков из сетки
+        // 3. Через 220мс (после завершения анимации) удаляем класс и обновляем DOM
         setTimeout(function () {
-          cleared.rows.forEach(function (r) {
-            for (var c = 0; c < GRID_SIZE; c++) {
-              state.grid[r][c] = null;
-            }
-          });
-          cleared.cols.forEach(function (c) {
-            for (var r = 0; r < GRID_SIZE; r++) {
-              state.grid[r][c] = null;
+          Object.keys(affectedCells).forEach(function (k) {
+            var pt = affectedCells[k];
+            var node = cellNodes[pt.r][pt.c];
+            if (node) {
+              node.classList.remove("is-blasting");
             }
           });
           updateBoardDOM();
+
+          // Перепроверяем таймер Game Over после завершения анимации
+          if (gameOverTimer && !self.checkGameOver(state.grid, state.rack)) {
+            clearTimeout(gameOverTimer);
+            gameOverTimer = null;
+          }
         }, 220);
       }
 
@@ -641,7 +694,7 @@
         }
         updateScoreDOM();
 
-        // Если все 3 фигуры использованы — генерируем новые
+        // Если все 3 фигуры использованы — генерируем новые (на очищенной сетке)
         var allUsed = state.rack.every(function (p) { return !p || p.used; });
         if (allUsed) {
           state.rack = self.generateRackPieces(state.grid);
@@ -651,14 +704,17 @@
         }
 
         // Проверка Game Over
-        if (self.checkGameOver(state.grid, state.rack)) {
-          setTimeout(handleGameOver, 400);
-        }
+        scheduleGameOverCheck();
 
         return true;
       }
 
       function handleGameOver() {
+        if (state.gameOver) return;
+        // Защитная проверка: если фигура всё-таки может встать, отменяем Game Over
+        if (!self.checkGameOver(state.grid, state.rack)) {
+          return;
+        }
         state.gameOver = true;
         self.playSound("gameover");
         self.haptic("error");
@@ -901,6 +957,10 @@
       }
 
       function startNewGame() {
+        if (gameOverTimer) {
+          clearTimeout(gameOverTimer);
+          gameOverTimer = null;
+        }
         state = self.createState();
         maxComboThisGame = 0;
         selectedPieceIdx = null;

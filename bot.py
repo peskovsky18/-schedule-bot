@@ -254,6 +254,17 @@ def api_schedule():
             "lessons": schedule[iso],
         })
 
+    # Если все расписанные дни оказались позади (например, в конце недели/модуля),
+    # отдаём последние доступные дни из расписания, чтобы приложение не показывало пустой экран
+    if not days and schedule:
+        for iso in sorted(schedule)[-7:]:
+            days.append({
+                "date": iso,
+                "weekday": parser.WEEKDAYS[date.fromisoformat(iso).weekday()],
+                "human": parser.human_date(iso),
+                "lessons": schedule[iso],
+            })
+
     return jsonify({
         "ok": True,
         "group": parser.group_info(),
