@@ -1448,7 +1448,7 @@
             tttFetch("/solo_reward", { method: "POST" })
               .then(function (data) {
                 if (data && typeof data.balance === "number") {
-                  syncCasinoBalance(data.balance);
+                  syncCasinoBalance(data.balance, false, "Победа над ботом в шахматах 🏆", "♟️", "chess");
                 }
               })
               .catch(function () {});
@@ -2410,7 +2410,106 @@
     return 0;
   }
 
-  function syncCasinoBalance(newBal, allowDecrease) {
+  /* --- История зачислений и списаний тугриков --- */
+  var TUGRIKS_HISTORY_KEY = "schedule_tugriks_history_v1";
+  var historySubscribers = [];
+
+  function onHistoryUpdate(cb) {
+    if (typeof cb === "function") {
+      historySubscribers.push(cb);
+    }
+  }
+
+  function getTugrikHistory() {
+    try {
+      var raw = localStorage.getItem(TUGRIKS_HISTORY_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveTugrikHistory(history) {
+    try {
+      if (Array.isArray(history)) {
+        if (history.length > 80) history = history.slice(0, 80);
+        localStorage.setItem(TUGRIKS_HISTORY_KEY, JSON.stringify(history));
+      }
+    } catch (e) {}
+    for (var i = 0; i < historySubscribers.length; i++) {
+      try { historySubscribers[i](history); } catch (err) {}
+    }
+  }
+
+  function recordTugrikTransaction(opts) {
+    if (!opts) return;
+    var amount = typeof opts.amount === "number" ? Math.floor(opts.amount) : 0;
+    if (amount <= 0 || isNaN(amount)) return;
+
+    var type = opts.type === "debit" ? "debit" : "credit";
+    var tx = {
+      id: "tx_" + Date.now() + "_" + Math.floor(Math.random() * 100000),
+      type: type,
+      amount: amount,
+      reason: opts.reason || (type === "credit" ? "Зачисление тугриков" : "Списание тугриков"),
+      icon: opts.icon || (type === "credit" ? "💰" : "💸"),
+      category: opts.category || "general",
+      timestamp: Date.now()
+    };
+
+    var history = getTugrikHistory();
+    history.unshift(tx);
+    saveTugrikHistory(history);
+  }
+
+  function ensureInitialHistory(curBalance) {
+    var history = getTugrikHistory();
+    if (history.length === 0 && typeof curBalance === "number" && curBalance > 0) {
+      history.push({
+        id: "tx_init",
+        type: "credit",
+        amount: Math.floor(curBalance),
+        reason: "Текущий баланс",
+        icon: "💰",
+        category: "initial",
+        timestamp: Date.now()
+      });
+      saveTugrikHistory(history);
+    }
+  }
+
+  function escapeTxText(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function formatTxDate(timestamp) {
+    if (!timestamp) return "";
+    var d = new Date(timestamp);
+    var now = new Date();
+    var isToday = d.toDateString() === now.toDateString();
+    var yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    var isYesterday = d.toDateString() === yesterday.toDateString();
+
+    var hours = ("0" + d.getHours()).slice(-2);
+    var mins = ("0" + d.getMinutes()).slice(-2);
+    var timeStr = hours + ":" + mins;
+
+    if (isToday) return "Сегодня, " + timeStr;
+    if (isYesterday) return "Вчера, " + timeStr;
+
+    var months = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+    return d.getDate() + " " + months[d.getMonth()] + ", " + timeStr;
+  }
+
+  function syncCasinoBalance(newBal, allowDecrease, reason, icon, category, isInitial) {
     if (typeof newBal !== "number" || isNaN(newBal)) return;
     newBal = Math.floor(newBal);
     var cur = getEffectiveBalance();
@@ -2418,6 +2517,10 @@
       newBal = cur;
     }
     newBal = Math.max(0, newBal);
+
+    var diff = newBal - cur;
+    var hadPriorBalance = (globalUserBalance !== null);
+
     globalUserBalance = newBal;
     if (!casinoPlayer) {
       casinoPlayer = { balance: newBal };
@@ -2441,6 +2544,189 @@
         console.warn("[balance listener error]", err);
       }
     }
+
+    if (!isInitial && diff !== 0 && (hadPriorBalance || reason)) {
+      recordTugrikTransaction({
+        type: diff > 0 ? "credit" : "debit",
+        amount: Math.abs(diff),
+        reason: reason || (diff > 0 ? "Зачисление тугриков" : "Списание тугриков"),
+        icon: icon || (diff > 0 ? "💰" : "💸"),
+        category: category || "general"
+      });
+    } else if (!hadPriorBalance && newBal > 0) {
+      ensureInitialHistory(newBal);
+    }
+  }
+
+  /* ---------- Модуль интерфейса истории операций ---------- */
+  function initWalletHistory() {
+    var modal = document.getElementById("walletHistoryModal");
+    var backdrop = document.getElementById("walletHistoryBackdrop");
+    var closeBtn = document.getElementById("walletHistoryClose");
+    var listEl = document.getElementById("walletHistoryModalList");
+    var emptyEl = document.getElementById("walletHistoryModalEmpty");
+    var emptyTitleEl = document.getElementById("walletHistoryEmptyTitle");
+    var emptyTextEl = document.getElementById("walletHistoryEmptyText");
+    var statCreditsEl = document.getElementById("walletStatCredits");
+    var statDebitsEl = document.getElementById("walletStatDebits");
+    var tabs = document.querySelectorAll(".wallet-history-tab");
+
+    // Элементы в меню и казино
+    var previewItems = document.getElementById("menuWalletHistoryItems");
+    var historyCount = document.getElementById("menuWalletHistoryCount");
+    var historyOpenBtn = document.getElementById("menuWalletHistoryOpenBtn");
+    var historyBtn = document.getElementById("menuWalletHistoryBtn");
+    var casinoMoneyBtn = document.getElementById("casinoMoneyBtn");
+
+    var currentFilter = "all";
+
+    function renderPreview() {
+      if (!previewItems) return;
+      var history = getTugrikHistory();
+      if (historyCount) {
+        if (history.length > 0) {
+          historyCount.textContent = history.length;
+          historyCount.hidden = false;
+        } else {
+          historyCount.hidden = true;
+        }
+      }
+
+      if (history.length === 0) {
+        previewItems.innerHTML = '<div class="menu__wallet-empty-preview">Пока нет операций</div>';
+        return;
+      }
+
+      var slice = history.slice(0, 3);
+      var html = "";
+      for (var i = 0; i < slice.length; i++) {
+        var tx = slice[i];
+        var isCredit = tx.type === "credit";
+        var sign = isCredit ? "+" : "-";
+        var cls = isCredit ? "is-credit" : "is-debit";
+        html += '<div class="menu__wallet-tx-mini ' + cls + '" data-id="' + tx.id + '">' +
+          '<span class="menu__wallet-tx-mini-icon">' + (tx.icon || (isCredit ? "💰" : "💸")) + '</span>' +
+          '<div class="menu__wallet-tx-mini-details">' +
+            '<span class="menu__wallet-tx-mini-title">' + escapeTxText(tx.reason || (isCredit ? "Зачисление" : "Списание")) + '</span>' +
+            '<span class="menu__wallet-tx-mini-time">' + formatTxDate(tx.timestamp) + '</span>' +
+          '</div>' +
+          '<span class="menu__wallet-tx-mini-amount ' + cls + '">' + sign + tx.amount.toLocaleString() + ' 💰</span>' +
+        '</div>';
+      }
+      previewItems.innerHTML = html;
+
+      var miniEls = previewItems.querySelectorAll(".menu__wallet-tx-mini");
+      for (var j = 0; j < miniEls.length; j++) {
+        miniEls[j].addEventListener("click", openModal);
+      }
+    }
+
+    function renderModal() {
+      if (!modal || modal.hidden) return;
+      var history = getTugrikHistory();
+
+      var totalCredits = 0;
+      var totalDebits = 0;
+      for (var k = 0; k < history.length; k++) {
+        if (history[k].type === "credit") {
+          totalCredits += (history[k].amount || 0);
+        } else {
+          totalDebits += (history[k].amount || 0);
+        }
+      }
+      if (statCreditsEl) statCreditsEl.textContent = "+" + totalCredits.toLocaleString() + " 💰";
+      if (statDebitsEl) statDebitsEl.textContent = "-" + totalDebits.toLocaleString() + " 💰";
+
+      var filtered = history.filter(function (tx) {
+        if (currentFilter === "credit") return tx.type === "credit";
+        if (currentFilter === "debit") return tx.type === "debit";
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        if (listEl) listEl.innerHTML = "";
+        if (emptyEl) {
+          emptyEl.hidden = false;
+          if (emptyTitleEl && emptyTextEl) {
+            if (currentFilter === "credit") {
+              emptyTitleEl.textContent = "Зачислений пока нет";
+              emptyTextEl.textContent = "Получайте тугрики за победы в играх, рекорды и ежедневные подарки.";
+            } else if (currentFilter === "debit") {
+              emptyTitleEl.textContent = "Списаний пока нет";
+              emptyTextEl.textContent = "Вы ещё не тратили тугрики в казино, магазине и на питомца.";
+            } else {
+              emptyTitleEl.textContent = "История операций пока пуста";
+              emptyTextEl.textContent = "Играйте в игры, открывайте подарки и крутите слоты — все начисления и списания появятся здесь.";
+            }
+          }
+        }
+        return;
+      }
+
+      if (emptyEl) emptyEl.hidden = true;
+      if (!listEl) return;
+
+      var html = "";
+      for (var i = 0; i < filtered.length; i++) {
+        var tx = filtered[i];
+        var isCredit = tx.type === "credit";
+        var sign = isCredit ? "+" : "-";
+        var cls = isCredit ? "is-credit" : "is-debit";
+        html += '<div class="wallet-history-tx ' + cls + '">' +
+          '<div class="wallet-history-tx__icon-wrap">' +
+            '<span class="wallet-history-tx__icon">' + (tx.icon || (isCredit ? "💰" : "💸")) + '</span>' +
+          '</div>' +
+          '<div class="wallet-history-tx__info">' +
+            '<span class="wallet-history-tx__title">' + escapeTxText(tx.reason || (isCredit ? "Зачисление" : "Списание")) + '</span>' +
+            '<span class="wallet-history-tx__time">' + formatTxDate(tx.timestamp) + '</span>' +
+          '</div>' +
+          '<span class="wallet-history-tx__amount ' + cls + '">' + sign + tx.amount.toLocaleString() + ' 💰</span>' +
+        '</div>';
+      }
+      listEl.innerHTML = html;
+    }
+
+    function openModal() {
+      if (!modal) return;
+      modal.hidden = false;
+      haptic("light");
+      renderModal();
+    }
+
+    function closeModal() {
+      if (!modal) return;
+      modal.hidden = true;
+    }
+
+    if (historyOpenBtn) historyOpenBtn.addEventListener("click", openModal);
+    if (historyBtn) historyBtn.addEventListener("click", openModal);
+    if (casinoMoneyBtn) casinoMoneyBtn.addEventListener("click", openModal);
+    if (closeBtn) closeBtn.addEventListener("click", closeModal);
+    if (backdrop) backdrop.addEventListener("click", closeModal);
+
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].addEventListener("click", function () {
+        var filter = this.dataset.filter || "all";
+        currentFilter = filter;
+        for (var j = 0; j < tabs.length; j++) {
+          tabs[j].classList.toggle("is-active", tabs[j] === this);
+        }
+        haptic("selection");
+        renderModal();
+      });
+    }
+
+    onHistoryUpdate(function () {
+      renderPreview();
+      renderModal();
+    });
+
+    onBalanceUpdate(function (bal) {
+      renderPreview();
+      if (!modal.hidden) renderModal();
+    });
+
+    renderPreview();
   }
 
   // Перерисовку ставит initCasino: тугрики за вход могут прийти как
@@ -2514,7 +2800,7 @@
         });
         // Сразу локально пополняем баланс тугриков
         var cur = getEffectiveBalance();
-        syncCasinoBalance(cur + 500);
+        syncCasinoBalance(cur + 500, false, "Компенсация от сервиса 🎁", "🎁", "bonus");
         localStorage.setItem(SERVICE_RESTORED_NOTICE_KEY, "true");
       }
     } catch (e) {
@@ -2533,9 +2819,11 @@
 
         if (data.player && typeof data.player.balance === "number") {
           var targetBal = Math.max(getEffectiveBalance(), data.player.balance);
+          var dailyGained = data.gained || 0;
           data.player.balance = targetBal;
           casinoPlayer = data.player;
-          syncCasinoBalance(targetBal);
+          var dailyReason = dailyGained > 0 ? "Ежедневный вход 📅 (+" + dailyGained + ")" : "Ежедневная награда 🎁";
+          syncCasinoBalance(targetBal, false, dailyReason, "🎁", "daily");
         }
 
         // Сервер сам решает, положен ли подарок: приходит только
@@ -2798,10 +3086,19 @@
           }
 
           casinoPlayer = data.player;
-          if (data.player && typeof data.player.balance === "number") {
-            syncCasinoBalance(data.player.balance, true);
-          }
           var result = data.result;
+          var spinReason = "Слоты в казино 🎰";
+          var spinIcon = "🎰";
+          if (result && typeof result.net === "number") {
+            if (result.net > 0) {
+              spinReason = "Выигрыш в слотах 🎰" + (result.multiplier ? " (x" + result.multiplier + ")" : "");
+            } else if (result.net < 0) {
+              spinReason = "Ставка в слотах 🎰";
+            }
+          }
+          if (data.player && typeof data.player.balance === "number") {
+            syncCasinoBalance(data.player.balance, true, spinReason, spinIcon, "casino");
+          }
 
           // Мгновенный результат выглядит как подделка, поэтому даём
           // барабанам покрутиться хотя бы полторы секунды
@@ -2857,7 +3154,7 @@
       if (cachedPlayer) {
         casinoPlayer = cachedPlayer;
         if (typeof casinoPlayer.balance === "number") {
-          syncCasinoBalance(casinoPlayer.balance);
+          syncCasinoBalance(casinoPlayer.balance, false, null, null, null, true);
         }
       }
     }
@@ -2874,7 +3171,7 @@
             var targetBal = Math.max(getEffectiveBalance(), data.player.balance);
             data.player.balance = targetBal;
             casinoPlayer = data.player;
-            syncCasinoBalance(targetBal);
+            syncCasinoBalance(targetBal, false, null, null, null, true);
           } else {
             casinoPlayer = data.player;
           }
@@ -2995,7 +3292,8 @@
           if (result.data.player) {
             casinoPlayer = result.data.player;
             if (typeof result.data.player.balance === "number") {
-              syncCasinoBalance(result.data.player.balance);
+              var promoLabel = (password ? password.trim().toUpperCase() : "Бонус");
+              syncCasinoBalance(result.data.player.balance, false, "Промокод: " + promoLabel + " 🏷️", "🏷️", "promo");
             } else if (typeof casinoRender === "function") {
               casinoRender();
             }
@@ -3176,7 +3474,7 @@
           products = data.products || [];
           balance = typeof data.balance === "number" ? data.balance : (balance || 0);
           if (typeof data.balance === "number") {
-            syncCasinoBalance(data.balance);
+            syncCasinoBalance(data.balance, false, null, null, null, true);
           }
           render();
         })
@@ -3228,12 +3526,13 @@
             return;
           }
 
+          var prodTitle = (chosen && (chosen.title || chosen.name)) || "Товар";
           if (data.player && typeof data.player.balance === "number") {
             balance = data.player.balance;
-            syncCasinoBalance(data.player.balance);
+            syncCasinoBalance(data.player.balance, true, "Покупка: " + prodTitle, "🛒", "shop");
           } else if (typeof data.balance === "number") {
             balance = data.balance;
-            syncCasinoBalance(data.balance);
+            syncCasinoBalance(data.balance, true, "Покупка: " + prodTitle, "🛒", "shop");
           } else {
             balance = data.player ? data.player.balance : balance;
           }
@@ -3645,7 +3944,7 @@
               if (data && data.player) {
                 casinoPlayer = data.player;
                 if (typeof data.player.balance === "number") {
-                  syncCasinoBalance(data.player.balance);
+                  syncCasinoBalance(data.player.balance, false, "Победа в крестиках-ноликах ❌⭕", "🎮", "ttt");
                 } else if (typeof casinoRender === "function") {
                   casinoRender();
                 }
@@ -4027,9 +4326,9 @@
           onReward: function (coins, newBalance) {
             var cur = getEffectiveBalance();
             if (typeof newBalance === "number") {
-              syncCasinoBalance(Math.max(cur, newBalance));
+              syncCasinoBalance(Math.max(cur, newBalance), false, "Рекорд в Block Blast 🧩", "🧩", "blockblast");
             } else if (typeof coins === "number" && coins > 0) {
-              syncCasinoBalance(cur + coins);
+              syncCasinoBalance(cur + coins, false, "Рекорд в Block Blast 🧩", "🧩", "blockblast");
             }
           }
         });
@@ -4142,9 +4441,9 @@
           onReward: function (coins, newBalance) {
             var cur = getEffectiveBalance();
             if (typeof newBalance === "number") {
-              syncCasinoBalance(Math.max(cur, newBalance));
+              syncCasinoBalance(Math.max(cur, newBalance), false, "Рекорд во Flappy Челик 🐥", "🐥", "flappy");
             } else if (typeof coins === "number" && coins > 0) {
-              syncCasinoBalance(cur + coins);
+              syncCasinoBalance(cur + coins, false, "Рекорд во Flappy Челик 🐥", "🐥", "flappy");
             }
           }
         });
@@ -5346,7 +5645,7 @@
         .then(function (res) {
           busy = false;
           if (res && typeof res.balance === "number") {
-            syncCasinoBalance(res.balance);
+            syncCasinoBalance(res.balance, false, "Зарплата питомца с работы ⛏️", "🐾", "pet");
           }
           if (!res || !res.ok) {
             showToast((res && res.error) || "Не удалось забрать награду", true);
@@ -5483,7 +5782,7 @@
         .then(function (res) {
           busy = false;
           if (res && typeof res.balance === "number") {
-            syncCasinoBalance(res.balance, true);
+            syncCasinoBalance(res.balance, true, "Магазин питомца: " + item.name, "🐾", "pet");
           }
           if (!res || !res.ok) {
             showToast((res && res.error) || "Не удалось купить", true);
@@ -5565,7 +5864,7 @@
         .then(function (res) {
           busy = false;
           if (res && typeof res.balance === "number") {
-            syncCasinoBalance(res.balance, true);
+            syncCasinoBalance(res.balance, true, "Создание питомца (" + cleanName + ")", "🐾", "pet");
           }
           if (!res || !res.ok) {
             var msg = (res && res.error) || "Не удалось завести питомца";
@@ -5619,7 +5918,7 @@
         .then(function (res) {
           busy = false;
           if (res && typeof res.balance === "number") {
-            syncCasinoBalance(res.balance, true);
+            syncCasinoBalance(res.balance, true, "Кормление питомца 🍏", "🍏", "pet");
           }
           if (!res || !res.ok) {
             showToast((res && res.error) || "Не удалось покормить", true);
@@ -5666,7 +5965,7 @@
         .then(function (res) {
           busy = false;
           if (res && typeof res.balance === "number") {
-            syncCasinoBalance(res.balance, true);
+            syncCasinoBalance(res.balance, true, "Эволюция питомца ⭐", "⚡", "pet");
           }
           if (!res || !res.ok) {
             showToast((res && res.error) || "Не удалось улучшить питомца", true);
@@ -5763,7 +6062,7 @@
             petLoaded = true;
             petData = data.pet || null;
             if (typeof data.balance === "number") {
-              syncCasinoBalance(data.balance);
+              syncCasinoBalance(data.balance, false, null, null, null, true);
             }
             petCatalog = Array.isArray(data.catalog) ? data.catalog : DEFAULT_CATALOG;
             writePetCache({ pet: petData, catalog: petCatalog });
@@ -5813,6 +6112,7 @@
 
     render();
     initMenu();
+    initWalletHistory();
     initFun();
     initSupport();
     initChess();
