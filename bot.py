@@ -161,6 +161,7 @@ def health():
     deep = request.args.get("deep") == "1"
 
     schedule = parse_schedule() if deep else parser.cached_schedule()
+    users_count = len(load_users()) if deep else None
 
     return jsonify({
         "status": "ok",
@@ -169,11 +170,8 @@ def health():
         "cache_age": parser.cache_age(),
         "dates": len(schedule),
         "lessons": sum(len(v) for v in schedule.values()),
-        "users": len(load_users()),
+        "users": users_count,
         "errors": len(ERROR_LOGS),
-        # Состояние обновления расписания: видно, идёт ли оно, не
-        # сорвалось ли и с какой ошибкой. Без этого сбой разбора
-        # выглядит просто как пустой список дней
         "refresh": parser.load_state(),
     })
 
@@ -360,6 +358,7 @@ def start_schedule_warmup():
     расписание: разбор теперь не ждёт сайт, а кэша ещё нет.
     """
     def work():
+        time.sleep(2.5)  # Даём серверу подняться и ответить на первый health check Render
         try:
             parser.parse_schedule(force=True)
             print(f"[PARSE] расписание прогрето, пар: "
