@@ -14,8 +14,6 @@ import store
 
 bp = Blueprint("blockblast", __name__, url_prefix="/api/blockblast")
 
-DAILY_COINS_LIMIT = 200
-MAX_COINS_PER_GAME = 60
 
 
 def _bb_key(user_id):
@@ -81,7 +79,6 @@ def get_stats():
         "games_played": data.get("games_played", 0),
         "total_lines": data.get("total_lines", 0),
         "daily_coins_earned": data.get("daily_coins_earned", 0),
-        "daily_limit": DAILY_COINS_LIMIT,
     })
 
 
@@ -108,8 +105,9 @@ def game_over():
     if is_record:
         data["best_score"] = score
 
-    # Очки в Block Blast приравнены к тугрикам: 1 очко = 1 тугрик
-    coins_to_award = score
+    # Тугрики за Block Blast начисляются ТОЛЬКО если побит рекорд!
+    # Зачисляется вся сумма нового рекорда целиком, а если рекорд не побит — 0.
+    coins_to_award = score if is_record else 0
 
     if coins_to_award > 0:
         data["daily_coins_earned"] = data.get("daily_coins_earned", 0) + coins_to_award
@@ -140,5 +138,4 @@ def game_over():
         "coins_awarded": coins_to_award,
         "balance": server_bal,
         "daily_coins_earned": data["daily_coins_earned"],
-        "daily_limit": DAILY_COINS_LIMIT,
     })

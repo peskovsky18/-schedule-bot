@@ -4006,6 +4006,7 @@
           comboText: document.getElementById("bbComboText"),
           particles: document.getElementById("bbParticles"),
           gameOverModal: document.getElementById("bbGameOverModal"),
+          overBadge: document.getElementById("bbOverBadge"),
           overScore: document.getElementById("bbOverScore"),
           overLines: document.getElementById("bbOverLines"),
           overMaxCombo: document.getElementById("bbOverMaxCombo"),

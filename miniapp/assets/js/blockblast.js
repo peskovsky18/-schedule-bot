@@ -208,6 +208,7 @@
         grid: grid,
         score: 0,
         bestScore: best,
+        initialBestScore: best,
         combo: 0,
         rack: [],
         linesClearedTotal: 0,
@@ -719,32 +720,43 @@
         self.playSound("gameover");
         self.haptic("error");
 
-        var isRecord = self.saveBestScore(state.score);
-        if (isRecord) state.bestScore = state.score;
+        var wasRecord = state.score > state.initialBestScore && state.score > 0;
+        if (state.score > state.bestScore) {
+          state.bestScore = state.score;
+          self.saveBestScore(state.score);
+        }
         updateScoreDOM();
 
-        var scoreCoins = Math.max(0, parseInt(state.score, 10) || 0);
+        var rewardCoins = wasRecord ? state.score : 0;
 
         if (els.overScore) els.overScore.textContent = state.score.toLocaleString();
         if (els.overLines) els.overLines.textContent = state.linesClearedTotal;
         if (els.overMaxCombo) els.overMaxCombo.textContent = "x" + maxComboThisGame;
 
-        // 1 очко = 1 тугрик — показываем сразу
-        if (scoreCoins > 0 && els.overReward) {
-          els.overReward.textContent = "+" + scoreCoins.toLocaleString() + " 💰";
-          if (els.overRewardRow) els.overRewardRow.hidden = false;
-        } else if (els.overRewardRow) {
-          els.overRewardRow.hidden = true;
+        var overBadge = els.overBadge || document.getElementById("bbOverBadge");
+        if (overBadge) {
+          overBadge.textContent = wasRecord ? "🏆 Новый рекорд!" : "🎮 Игра окончена!";
+        }
+
+        if (els.overReward) {
+          if (wasRecord) {
+            els.overReward.textContent = "+" + rewardCoins.toLocaleString() + " 💰 (новый рекорд!)";
+          } else {
+            els.overReward.textContent = "0 💰 (рекорд: " + (state.bestScore || state.initialBestScore).toLocaleString() + ")";
+          }
+        }
+        if (els.overRewardRow) {
+          els.overRewardRow.hidden = false;
         }
 
         if (els.gameOverModal) {
           els.gameOverModal.hidden = false;
         }
 
-        // МГНОВЕННО начисляем тугрики на счет игрока локально
-        if (scoreCoins > 0 && typeof opts.onReward === "function") {
+        // МГНОВЕННО начисляем тугрики на счет игрока локально ТОЛЬКО при новом рекорде
+        if (rewardCoins > 0 && typeof opts.onReward === "function") {
           try {
-            opts.onReward(scoreCoins);
+            opts.onReward(rewardCoins);
           } catch (e) {
             console.warn("[blockblast] onReward error:", e);
           }
@@ -761,7 +773,7 @@
           method: "POST",
           headers: headers,
           body: JSON.stringify({
-            score: scoreCoins,
+            score: state.score,
             lines: state.linesClearedTotal,
             max_combo: maxComboThisGame,
             client_balance: curBal
@@ -775,10 +787,15 @@
           })
           .then(function (data) {
             if (data && data.ok) {
-              var coins = typeof data.coins_awarded === "number" ? data.coins_awarded : scoreCoins;
-              if (coins > 0 && els.overReward) {
-                els.overReward.textContent = "+" + coins.toLocaleString() + " 💰";
-                if (els.overRewardRow) els.overRewardRow.hidden = false;
+              var coins = typeof data.coins_awarded === "number" ? data.coins_awarded : rewardCoins;
+              if (els.overReward) {
+                if (data.is_record || coins > 0) {
+                  els.overReward.textContent = "+" + coins.toLocaleString() + " 💰 (новый рекорд!)";
+                  if (overBadge) overBadge.textContent = "🏆 Новый рекорд!";
+                } else {
+                  var dispBest = (typeof data.best_score === "number" ? data.best_score : state.bestScore) || 0;
+                  els.overReward.textContent = "0 💰 (рекорд: " + dispBest.toLocaleString() + ")";
+                }
               }
               if (typeof data.balance === "number" && typeof opts.onReward === "function") {
                 // Сервер вернул подтвержденный баланс
@@ -792,7 +809,7 @@
             }
           })
           .catch(function (err) {
-            console.warn("[blockblast] game_over sync notice (coins already credited locally):", err && err.message);
+            console.warn("[blockblast] game_over sync notice:", err && err.message);
           });
       }
 
@@ -975,6 +992,35 @@
         state.rack = self.generateRackPieces(state.grid);
         renderRackDOM();
         updateScoreDOM();
+        syncServerStats();
+      }
+
+      function syncServerStats() {
+        var apiBase = opts.apiBase || "";
+        var authObj = typeof opts.authHeaders === "function" ? opts.authHeaders() : {};
+        if (!authObj || Object.keys(authObj).length === 0) return;
+        fetch((apiBase || "") + "/api/blockblast", {
+          method: "GET",
+          headers: authObj
+        })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (data) {
+            if (data && data.ok && typeof data.best_score === "number") {
+              var localBest = self.getBestScore();
+              var higher = Math.max(localBest, data.best_score);
+              if (higher > localBest) {
+                self.saveBestScore(higher);
+                if (state) {
+                  state.bestScore = higher;
+                  if (state.score === 0) {
+                    state.initialBestScore = higher;
+                  }
+                  updateScoreDOM();
+                }
+              }
+            }
+          })
+          .catch(function () {});
       }
 
       // Слушатели кнопок
@@ -994,6 +1040,7 @@
       // Первый запуск
       createBoardDOM();
       startNewGame();
+      syncServerStats();
 
       return {
         restart: startNewGame,
