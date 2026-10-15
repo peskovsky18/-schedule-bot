@@ -542,9 +542,16 @@
 
     // Слушатели управления
     var wrapEl = canvasEl.parentElement || canvasEl;
+    var cardEl = (typeof canvasEl.closest === "function") ? canvasEl.closest(".flappy-modal__card") : null;
+    if (!cardEl) cardEl = wrapEl;
     var lastTouchTime = 0;
+    var lastTapTime = 0;
 
     function handleTouch(e) {
+      // Игнорируем нажатия на кнопку закрытия и кнопку перезапуска
+      if (e.target && (e.target.closest("#flappyModalClose") || e.target.closest("#flappyRestartBtn"))) {
+        return;
+      }
       if (e.cancelable) {
         e.preventDefault();
       }
@@ -554,27 +561,47 @@
     }
 
     function preventTouchDefault(e) {
+      if (e.target && (e.target.closest("#flappyModalClose") || e.target.closest("#flappyRestartBtn"))) {
+        return;
+      }
       if (e.cancelable) {
         e.preventDefault();
       }
       e.stopPropagation();
     }
 
-    // Тач-события с passive: false и preventDefault блокируют pull-to-refresh и зум Safari/Telegram
-    canvasEl.addEventListener("touchstart", handleTouch, { passive: false });
-    canvasEl.addEventListener("touchmove", preventTouchDefault, { passive: false });
-    canvasEl.addEventListener("touchend", preventTouchDefault, { passive: false });
-    canvasEl.addEventListener("gesturestart", preventTouchDefault, { passive: false });
-
-    if (wrapEl !== canvasEl) {
-      wrapEl.addEventListener("touchstart", handleTouch, { passive: false });
-      wrapEl.addEventListener("touchmove", preventTouchDefault, { passive: false });
-      wrapEl.addEventListener("touchend", preventTouchDefault, { passive: false });
-      wrapEl.addEventListener("gesturestart", preventTouchDefault, { passive: false });
+    function handleDoubleTapPrevent(e) {
+      if (e.target && (e.target.closest("#flappyModalClose") || e.target.closest("#flappyRestartBtn"))) {
+        return;
+      }
+      var now = Date.now();
+      if (now - lastTapTime <= 350) {
+        if (e.cancelable) e.preventDefault();
+      }
+      lastTapTime = now;
+      if (e.cancelable) e.preventDefault();
+      e.stopPropagation();
     }
+
+    // Слушаем тачи на холсте, обёртке и всей карточке
+    var targetElements = [canvasEl, wrapEl, cardEl];
+    targetElements.forEach(function (el) {
+      if (!el) return;
+      el.addEventListener("touchstart", handleTouch, { passive: false });
+      el.addEventListener("touchmove", preventTouchDefault, { passive: false });
+      el.addEventListener("touchend", handleDoubleTapPrevent, { passive: false });
+      el.addEventListener("gesturestart", preventTouchDefault, { passive: false });
+      el.addEventListener("gesturechange", preventTouchDefault, { passive: false });
+      el.addEventListener("gestureend", preventTouchDefault, { passive: false });
+      el.addEventListener("dblclick", preventTouchDefault);
+      el.addEventListener("contextmenu", preventTouchDefault);
+    });
 
     // Для мыши на ПК: игнорируем эмулированный mousedown после тача
     function handleMouseDown(e) {
+      if (e.target && (e.target.closest("#flappyModalClose") || e.target.closest("#flappyRestartBtn"))) {
+        return;
+      }
       if (Date.now() - lastTouchTime < 500) {
         e.preventDefault();
         return;
@@ -583,7 +610,11 @@
       e.stopPropagation();
       flap();
     }
-    canvasEl.addEventListener("mousedown", handleMouseDown);
+    if (cardEl) {
+      cardEl.addEventListener("mousedown", handleMouseDown);
+    } else {
+      canvasEl.addEventListener("mousedown", handleMouseDown);
+    }
 
     function handleKeyDown(e) {
       if (e.code === "Space" || e.code === "ArrowUp") {
@@ -615,17 +646,19 @@
         if (reqId) cancelAnimationFrame(reqId);
         window.removeEventListener("resize", resize);
         window.removeEventListener("keydown", handleKeyDown);
-        canvasEl.removeEventListener("touchstart", handleTouch);
-        canvasEl.removeEventListener("touchmove", preventTouchDefault);
-        canvasEl.removeEventListener("touchend", preventTouchDefault);
-        canvasEl.removeEventListener("gesturestart", preventTouchDefault);
+        targetElements.forEach(function (el) {
+          if (!el) return;
+          el.removeEventListener("touchstart", handleTouch);
+          el.removeEventListener("touchmove", preventTouchDefault);
+          el.removeEventListener("touchend", handleDoubleTapPrevent);
+          el.removeEventListener("gesturestart", preventTouchDefault);
+          el.removeEventListener("gesturechange", preventTouchDefault);
+          el.removeEventListener("gestureend", preventTouchDefault);
+          el.removeEventListener("dblclick", preventTouchDefault);
+          el.removeEventListener("contextmenu", preventTouchDefault);
+        });
+        if (cardEl) cardEl.removeEventListener("mousedown", handleMouseDown);
         canvasEl.removeEventListener("mousedown", handleMouseDown);
-        if (wrapEl !== canvasEl) {
-          wrapEl.removeEventListener("touchstart", handleTouch);
-          wrapEl.removeEventListener("touchmove", preventTouchDefault);
-          wrapEl.removeEventListener("touchend", preventTouchDefault);
-          wrapEl.removeEventListener("gesturestart", preventTouchDefault);
-        }
       }
     };
   }

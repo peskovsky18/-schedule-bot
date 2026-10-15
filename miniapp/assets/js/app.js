@@ -4095,19 +4095,33 @@
 
     var flappyInstance = null;
 
+    function preventGlobalScroll(e) {
+      if (modal && !modal.hidden && e.cancelable) {
+        e.preventDefault();
+      }
+    }
+
     function openFlappy() {
       modal.hidden = false;
+      document.documentElement.classList.add("flappy-active");
+      document.body.classList.add("flappy-active");
       haptic("medium");
 
       if (window.Telegram && window.Telegram.WebApp) {
         var tg = window.Telegram.WebApp;
-        if (typeof tg.disableVerticalSwipes === "function") {
-          try { tg.disableVerticalSwipes(); } catch (e) {}
-        }
-        if (typeof tg.expand === "function") {
-          try { tg.expand(); } catch (e) {}
-        }
+        try {
+          if (typeof tg.disableVerticalSwipes === "function") {
+            tg.disableVerticalSwipes();
+          }
+          tg.isVerticalSwipesEnabled = false;
+          if (typeof tg.expand === "function") {
+            tg.expand();
+          }
+        } catch (e) {}
       }
+
+      window.addEventListener("touchmove", preventGlobalScroll, { passive: false });
+      window.addEventListener("gesturestart", preventGlobalScroll, { passive: false });
 
       if (!flappyInstance && window.FlappyGame) {
         var canvas = document.getElementById("flappyCanvas");
@@ -4141,6 +4155,10 @@
 
     function closeFlappy() {
       modal.hidden = true;
+      document.documentElement.classList.remove("flappy-active");
+      document.body.classList.remove("flappy-active");
+      window.removeEventListener("touchmove", preventGlobalScroll);
+      window.removeEventListener("gesturestart", preventGlobalScroll);
     }
 
     modal.addEventListener("touchmove", function (e) {
