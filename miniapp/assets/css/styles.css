@@ -1813,6 +1813,14 @@ body.has-netlify-badge .app {
   to { opacity: 1; transform: none; }
 }
 
+.gift__title {
+  margin: 0 0 10px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
 .gift__amount {
   margin-bottom: 12px;
   font-size: 34px;

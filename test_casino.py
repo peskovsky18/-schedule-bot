@@ -215,7 +215,7 @@ print("\n=== Разовый подарок ===")
 
 store.get_store().clear()
 
-check("размер подарка", casino.GIFT_COINS, 2009)
+check("размер подарка", casino.GIFT_COINS, 500)
 truthy("у подарка есть версия", bool(casino.GIFT_ID), casino.GIFT_ID)
 truthy("текст подарка задан", "тугрик" in casino.GIFT_TEXT, casino.GIFT_TEXT)
 

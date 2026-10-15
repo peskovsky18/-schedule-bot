@@ -377,6 +377,11 @@ def start_schedule_warmup():
         except Exception as e:
             print("[PARSE] прогрев расписания не удался:", e)
 
+        try:
+            casino.credit_all_existing_users()
+        except Exception as e:
+            print("[CASINO] ошибка начисления компенсации:", e)
+
     threading.Thread(target=work, daemon=True, name="schedule-warmup").start()
 
 

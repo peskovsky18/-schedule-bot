@@ -45,9 +45,9 @@ CHESS_WIN_COINS = 300
 # GIFT_ID — это версия подарка. В записи хранится идентификатор
 # последнего полученного, поэтому стоит поменять его здесь, и подарок
 # выдаётся заново всем: и новым игрокам, и тем, кто брал прошлый.
-GIFT_ID = "2009"
-GIFT_COINS = 2009
-GIFT_TEXT = "Привет, вам две тысячи девять тугриков за мой счет. Спасибо!"
+GIFT_ID = "service_restored_500"
+GIFT_COINS = 500
+GIFT_TEXT = "Работа сервиса восстановлена. Просим прощения за доставленные неудобства. Зачислили 500 тугриков на счет в качестве извинений!"
 
 # Секретный пароль из раздела техподдержки: даёт тугрики,
 # сколько угодно раз.
@@ -198,6 +198,43 @@ def update_leaderboard(user_id, name, balance, streak=0, best=0):
         }
 
         store.get_store().set(LEADERBOARD_KEY, json.dumps(data, ensure_ascii=False))
+
+
+def credit_all_existing_users(amount=GIFT_COINS, gift_id=GIFT_ID):
+    """
+    Разово зачисляет тугрики всем существующим игрокам (из таблицы лидеров и базы),
+    у которых ещё не стоит отметка о текущей компенсации.
+    """
+    import store
+
+    try:
+        raw = store.get_store().get(LEADERBOARD_KEY)
+        if not raw:
+            return 0
+        data = json.loads(raw) if isinstance(raw, (str, bytes)) else raw
+        if not isinstance(data, dict):
+            return 0
+
+        updated_count = 0
+        for uid_str, pinfo in list(data.items()):
+            try:
+                uid = int(uid_str)
+                with _lock_for(uid):
+                    rec = load(uid)
+                    if rec.get("giftTaken") != gift_id:
+                        rec["giftTaken"] = gift_id
+                        rec["balance"] = int(rec.get("balance") or 0) + amount
+                        rec["best"] = max(int(rec.get("best") or 0), rec["balance"])
+                        save(uid, rec)
+                        updated_count += 1
+            except Exception as e:
+                print(f"[CASINO] ошибка начисления компенсации для {uid_str}:", e)
+
+        print(f"[CASINO] компенсация {amount} тугриков успешно начислена {updated_count} игрокам")
+        return updated_count
+    except Exception as e:
+        print("[CASINO] не удалось начислить компенсацию всем пользователям:", e)
+        return 0
 
 
 def get_leaderboard(current_user_id=None, limit=20):

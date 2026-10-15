@@ -2457,22 +2457,38 @@
    * Текст приходит с сервера: он же решает, положен ли подарок.
    * Если сервер вернул null, сюда просто не заходят.
    */
+  var SERVICE_RESTORED_NOTICE_KEY = "service_restored_notice_500_seen_v1";
+
   function showGift(gift) {
     var box = document.getElementById("giftBox");
     var amount = document.getElementById("giftAmount");
     var text = document.getElementById("giftText");
+    var title = document.getElementById("giftTitle");
     var ok = document.getElementById("giftOk");
 
     if (!box || !amount || !text || !ok) return;
 
-    amount.textContent = "+" + tugriks(gift.amount);
-    text.textContent = gift.text || "";
+    if (title) {
+      title.textContent = gift.title || "🎉 Работа сервиса восстановлена";
+    }
+    amount.textContent = "+" + tugriks(gift.amount || 500);
+    text.innerHTML = gift.text || "";
+    if (gift.buttonText) {
+      ok.textContent = gift.buttonText;
+    }
     box.hidden = false;
+
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+      try { window.Telegram.WebApp.HapticFeedback.notificationOccurred("success"); } catch (e) {}
+    }
 
     function hide() {
       box.hidden = true;
       ok.removeEventListener("click", hide);
       box.removeEventListener("click", onBackdrop);
+      if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+        try { window.Telegram.WebApp.HapticFeedback.impactOccurred("medium"); } catch (e) {}
+      }
     }
 
     function onBackdrop(event) {
@@ -2481,6 +2497,26 @@
 
     ok.addEventListener("click", hide);
     box.addEventListener("click", onBackdrop);
+  }
+
+  function checkServiceRestoredAnnouncement() {
+    try {
+      if (!localStorage.getItem(SERVICE_RESTORED_NOTICE_KEY)) {
+        // Показываем сообщение о восстановлении сервиса и компенсации при входе в мини-апп
+        showGift({
+          title: "🎉 Работа сервиса восстановлена",
+          amount: 500,
+          text: "Просим прощения за доставленные неудобства.<br>Зачислили <b>500 тугриков</b> на счет в качестве извинений!",
+          buttonText: "Забрать 500 тугриков"
+        });
+        // Сразу локально пополняем баланс тугриков
+        var cur = getEffectiveBalance();
+        syncCasinoBalance(cur + 500);
+        localStorage.setItem(SERVICE_RESTORED_NOTICE_KEY, "true");
+      }
+    } catch (e) {
+      console.warn("[service restored announcement error]", e);
+    }
   }
 
   function casinoClaimDaily() {
@@ -2501,7 +2537,10 @@
 
         // Сервер сам решает, положен ли подарок: приходит только
         // при первом входе, дальше там null
-        if (data.gift) showGift(data.gift);
+        if (data.gift && !localStorage.getItem(SERVICE_RESTORED_NOTICE_KEY)) {
+          showGift(data.gift);
+          localStorage.setItem(SERVICE_RESTORED_NOTICE_KEY, "true");
+        }
 
         if (data.gained > 0) {
           casinoWelcome = { gained: data.gained, bonus: data.bonus || 0 };
@@ -5670,9 +5709,12 @@
     loadChannelHomework();
     fetchSchedule();
 
+    // Объявление о восстановлении сервиса и компенсации при входе
+    setTimeout(checkServiceRestoredAnnouncement, 400);
+
     // Монеты за вход начисляем с лёгкой задержкой, чтобы освободить
     // сетевой пул для первого рендера расписания
-    setTimeout(casinoClaimDaily, 2500);
+    setTimeout(casinoClaimDaily, 1800);
   }
 
   if (document.readyState === "loading") {
