@@ -8,15 +8,16 @@
 :root {
   --bg: #0d1015;
   --bg-soft: #141820;
-  --card: rgba(22, 27, 36, 0.7);
+  --card: rgba(22, 27, 36, 0.72);
   --card-solid: #171b24;
   --text: var(--tg-text, #f5f5f7);
+  --text-dim: #a1a1a6;
   --hint: var(--tg-hint, #8e8e93);
   --accent: #ffffff;
   --accent-text: #000000;
   --line: rgba(255, 255, 255, 0.08);
   --line-hairline: rgba(255, 255, 255, 0.06);
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.26), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.2);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.28), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.18);
 
   --radius: 22px;
   --radius-sm: 12px;
@@ -26,6 +27,65 @@
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --glass: saturate(190%) blur(28px);
 
+  /* Семантические переменные для шапки и контролов (Dark Titanium) */
+  --appbar-bg: rgba(20, 24, 32, 0.78);
+  --appbar-border: rgba(255, 255, 255, 0.14);
+  --appbar-group: #ffffff;
+  --appbar-shadow: 0 8px 32px rgba(0, 0, 0, 0.36), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.22);
+  --icon-btn-bg: rgba(255, 255, 255, 0.06);
+  --icon-btn-border: rgba(255, 255, 255, 0.12);
+  --icon-btn-color: #ffffff;
+  --icon-btn-active-bg: rgba(255, 255, 255, 0.14);
+
+  --segmented-bg: rgba(18, 22, 30, 0.65);
+  --segmented-border: rgba(255, 255, 255, 0.09);
+  --segmented-shadow: inset 0 0.5px 0.5px rgba(255, 255, 255, 0.12);
+  --segmented-btn-color: #8e8e93;
+  --segmented-btn-active-bg: rgba(255, 255, 255, 0.16);
+  --segmented-btn-active-color: #ffffff;
+  --segmented-btn-active-shadow: 0 2px 8px rgba(0, 0, 0, 0.28), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.25);
+
+  /* Семантические переменные для расписания (Dark) */
+  --day-card-bg: rgba(22, 27, 36, 0.72);
+  --day-card-border: rgba(255, 255, 255, 0.11);
+  --day-card-shadow: 0 10px 30px rgba(0, 0, 0, 0.28), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.18);
+  --day-today-border: rgba(255, 255, 255, 0.25);
+  --day-today-shadow: 0 12px 36px rgba(0, 0, 0, 0.35), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.35);
+  --day-head-border: rgba(255, 255, 255, 0.06);
+  --day-label: #ffffff;
+  --day-today-label: #ffffff;
+  --day-count-color: #c7c7cc;
+  --day-count-bg: rgba(255, 255, 255, 0.07);
+  --day-count-border: rgba(255, 255, 255, 0.08);
+
+  --lesson-divider: rgba(255, 255, 255, 0.06);
+  --lesson-time: #c7c7cc;
+  --lesson-subject: #ffffff;
+  --lesson-teacher: #8e8e93;
+  --lesson-note: #8e8e93;
+  --lesson-link: #ffffff;
+  --lesson-link-underline: rgba(255, 255, 255, 0.35);
+  --lesson-add-note-border: rgba(255, 255, 255, 0.15);
+  --lesson-add-note-color: #8e8e93;
+
+  --badge-lecture-bg: rgba(124, 108, 255, 0.16);
+  --badge-lecture-color: #9d91ff;
+  --badge-lecture-border: rgba(124, 108, 255, 0.28);
+  --badge-practice-bg: rgba(48, 209, 88, 0.16);
+  --badge-practice-color: #30d158;
+  --badge-practice-border: rgba(48, 209, 88, 0.28);
+  --badge-lab-bg: rgba(255, 159, 10, 0.16);
+  --badge-lab-color: #ff9f0a;
+  --badge-lab-border: rgba(255, 159, 10, 0.28);
+  --badge-other-bg: rgba(255, 255, 255, 0.07);
+  --badge-other-color: #c7c7cc;
+  --badge-other-border: rgba(255, 255, 255, 0.1);
+  --badge-room-bg: rgba(255, 255, 255, 0.06);
+  --badge-room-color: #a1a1a6;
+  --badge-room-border: rgba(255, 255, 255, 0.09);
+
+  --skeleton-pill-bg: rgba(255, 255, 255, 0.08);
+
   --lecture: #9d91ff;
   --practice: #30d158;
   --lab: #ff9f0a;
@@ -33,13 +93,159 @@
 }
 
 html[data-scheme="light"] {
-  --bg: var(--tg-bg, #f2f4f7);
-  --bg-soft: var(--tg-secondary-bg, #ffffff);
-  --card: var(--tg-section-bg, #ffffff);
-  --text: var(--tg-text, #131720);
-  --hint: var(--tg-hint, #6b7280);
-  --line: rgba(0, 0, 0, 0.08);
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 20px rgba(16, 24, 40, 0.08);
+  --bg: #f2f2f7;
+  --bg-soft: #e5e5ea;
+  --card: #ffffff;
+  --card-solid: #ffffff;
+  --text: #1c1c1e;
+  --text-dim: #3a3a3c;
+  --hint: #8e8e93;
+  --accent: #007aff;
+  --accent-text: #ffffff;
+  --line: rgba(60, 60, 67, 0.18);
+  --line-hairline: rgba(60, 60, 67, 0.12);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+
+  --appbar-bg: rgba(255, 255, 255, 0.85);
+  --appbar-border: rgba(60, 60, 67, 0.15);
+  --appbar-group: #1c1c1e;
+  --appbar-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.8);
+  --icon-btn-bg: rgba(118, 118, 128, 0.12);
+  --icon-btn-border: rgba(60, 60, 67, 0.14);
+  --icon-btn-color: #1c1c1e;
+  --icon-btn-active-bg: rgba(118, 118, 128, 0.22);
+
+  --segmented-bg: rgba(118, 118, 128, 0.14);
+  --segmented-border: rgba(60, 60, 67, 0.08);
+  --segmented-shadow: inset 0 0.5px 1px rgba(0, 0, 0, 0.04);
+  --segmented-btn-color: #48484a;
+  --segmented-btn-active-bg: #ffffff;
+  --segmented-btn-active-color: #000000;
+  --segmented-btn-active-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 0.5px 1.5px rgba(0, 0, 0, 0.08);
+
+  --day-card-bg: #ffffff;
+  --day-card-border: rgba(60, 60, 67, 0.12);
+  --day-card-shadow: 0 2px 10px rgba(0, 0, 0, 0.03), 0 8px 24px rgba(0, 0, 0, 0.05);
+  --day-today-border: rgba(0, 122, 255, 0.5);
+  --day-today-shadow: 0 4px 18px rgba(0, 122, 255, 0.15), 0 0 0 1px rgba(0, 122, 255, 0.3);
+  --day-head-border: rgba(60, 60, 67, 0.12);
+  --day-label: #1c1c1e;
+  --day-today-label: #007aff;
+  --day-count-color: #3a3a3c;
+  --day-count-bg: rgba(118, 118, 128, 0.12);
+  --day-count-border: rgba(60, 60, 67, 0.1);
+
+  --lesson-divider: rgba(60, 60, 67, 0.1);
+  --lesson-time: #3a3a3c;
+  --lesson-subject: #1c1c1e;
+  --lesson-teacher: #636366;
+  --lesson-note: #636366;
+  --lesson-link: #007aff;
+  --lesson-link-underline: rgba(0, 122, 255, 0.35);
+  --lesson-add-note-border: rgba(60, 60, 67, 0.2);
+  --lesson-add-note-color: #48484a;
+
+  --badge-lecture-bg: rgba(88, 86, 214, 0.12);
+  --badge-lecture-color: #5856d6;
+  --badge-lecture-border: rgba(88, 86, 214, 0.25);
+  --badge-practice-bg: rgba(52, 199, 89, 0.14);
+  --badge-practice-color: #1b7a37;
+  --badge-practice-border: rgba(52, 199, 89, 0.3);
+  --badge-lab-bg: rgba(255, 149, 0, 0.14);
+  --badge-lab-color: #c96500;
+  --badge-lab-border: rgba(255, 149, 0, 0.3);
+  --badge-other-bg: rgba(142, 142, 147, 0.14);
+  --badge-other-color: #3a3a3c;
+  --badge-other-border: rgba(142, 142, 147, 0.25);
+  --badge-room-bg: rgba(118, 118, 128, 0.1);
+  --badge-room-color: #3a3a3c;
+  --badge-room-border: rgba(60, 60, 67, 0.15);
+
+  --skeleton-pill-bg: rgba(0, 0, 0, 0.06);
+
+  --lecture: #5856d6;
+  --practice: #1b7a37;
+  --lab: #c96500;
+  --other: #636366;
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-scheme="dark"]) {
+    --bg: #f2f2f7;
+    --bg-soft: #e5e5ea;
+    --card: #ffffff;
+    --card-solid: #ffffff;
+    --text: #1c1c1e;
+    --text-dim: #3a3a3c;
+    --hint: #8e8e93;
+    --accent: #007aff;
+    --accent-text: #ffffff;
+    --line: rgba(60, 60, 67, 0.18);
+    --line-hairline: rgba(60, 60, 67, 0.12);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+
+    --appbar-bg: rgba(255, 255, 255, 0.85);
+    --appbar-border: rgba(60, 60, 67, 0.15);
+    --appbar-group: #1c1c1e;
+    --appbar-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.8);
+    --icon-btn-bg: rgba(118, 118, 128, 0.12);
+    --icon-btn-border: rgba(60, 60, 67, 0.14);
+    --icon-btn-color: #1c1c1e;
+    --icon-btn-active-bg: rgba(118, 118, 128, 0.22);
+
+    --segmented-bg: rgba(118, 118, 128, 0.14);
+    --segmented-border: rgba(60, 60, 67, 0.08);
+    --segmented-shadow: inset 0 0.5px 1px rgba(0, 0, 0, 0.04);
+    --segmented-btn-color: #48484a;
+    --segmented-btn-active-bg: #ffffff;
+    --segmented-btn-active-color: #000000;
+    --segmented-btn-active-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 0.5px 1.5px rgba(0, 0, 0, 0.08);
+
+    --day-card-bg: #ffffff;
+    --day-card-border: rgba(60, 60, 67, 0.12);
+    --day-card-shadow: 0 2px 10px rgba(0, 0, 0, 0.03), 0 8px 24px rgba(0, 0, 0, 0.05);
+    --day-today-border: rgba(0, 122, 255, 0.5);
+    --day-today-shadow: 0 4px 18px rgba(0, 122, 255, 0.15), 0 0 0 1px rgba(0, 122, 255, 0.3);
+    --day-head-border: rgba(60, 60, 67, 0.12);
+    --day-label: #1c1c1e;
+    --day-today-label: #007aff;
+    --day-count-color: #3a3a3c;
+    --day-count-bg: rgba(118, 118, 128, 0.12);
+    --day-count-border: rgba(60, 60, 67, 0.1);
+
+    --lesson-divider: rgba(60, 60, 67, 0.1);
+    --lesson-time: #3a3a3c;
+    --lesson-subject: #1c1c1e;
+    --lesson-teacher: #636366;
+    --lesson-note: #636366;
+    --lesson-link: #007aff;
+    --lesson-link-underline: rgba(0, 122, 255, 0.35);
+    --lesson-add-note-border: rgba(60, 60, 67, 0.2);
+    --lesson-add-note-color: #48484a;
+
+    --badge-lecture-bg: rgba(88, 86, 214, 0.12);
+    --badge-lecture-color: #5856d6;
+    --badge-lecture-border: rgba(88, 86, 214, 0.25);
+    --badge-practice-bg: rgba(52, 199, 89, 0.14);
+    --badge-practice-color: #1b7a37;
+    --badge-practice-border: rgba(52, 199, 89, 0.3);
+    --badge-lab-bg: rgba(255, 149, 0, 0.14);
+    --badge-lab-color: #c96500;
+    --badge-lab-border: rgba(255, 149, 0, 0.3);
+    --badge-other-bg: rgba(142, 142, 147, 0.14);
+    --badge-other-color: #3a3a3c;
+    --badge-other-border: rgba(142, 142, 147, 0.25);
+    --badge-room-bg: rgba(118, 118, 128, 0.1);
+    --badge-room-color: #3a3a3c;
+    --badge-room-border: rgba(60, 60, 67, 0.15);
+
+    --skeleton-pill-bg: rgba(0, 0, 0, 0.06);
+
+    --lecture: #5856d6;
+    --practice: #1b7a37;
+    --lab: #c96500;
+    --other: #636366;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -88,12 +294,12 @@ body {
   padding: 8px 14px;
   margin-top: calc(8px + env(safe-area-inset-top, 0px));
   margin-bottom: 12px;
-  background: rgba(20, 24, 32, 0.75);
+  background: var(--appbar-bg);
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border: 0.5px solid rgba(255, 255, 255, 0.14);
+  border: 0.5px solid var(--appbar-border);
   border-radius: 26px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.36), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.24);
+  box-shadow: var(--appbar-shadow);
 }
 
 .appbar__titles { flex: 1; min-width: 0; }
@@ -103,7 +309,7 @@ body {
   font-size: 16.5px;
   font-weight: 700;
   letter-spacing: -0.022em;
-  color: #ffffff;
+  color: var(--appbar-group);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -126,10 +332,10 @@ body {
   height: 36px;
   display: grid;
   place-items: center;
-  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  border: 0.5px solid var(--icon-btn-border);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  color: #ffffff;
+  background: var(--icon-btn-bg);
+  color: var(--icon-btn-color);
   cursor: pointer;
   transition: transform 0.12s ease, opacity 0.12s ease, background 0.12s ease;
 }
@@ -137,7 +343,7 @@ body {
 .icon-btn:active {
   transform: scale(0.92);
   opacity: 0.85;
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--icon-btn-active-bg);
 }
 
 .icon-btn svg { display: block; }
@@ -158,15 +364,15 @@ body {
   gap: 3px;
   padding: 3px;
   margin-bottom: 12px;
-  background: rgba(18, 22, 30, 0.65);
+  background: var(--segmented-bg);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 0.5px solid rgba(255, 255, 255, 0.09);
+  border: 0.5px solid var(--segmented-border);
   border-radius: 14px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  box-shadow: inset 0 0.5px 0.5px rgba(255, 255, 255, 0.12);
+  box-shadow: var(--segmented-shadow);
 }
 
 .segmented::-webkit-scrollbar { display: none; }
@@ -178,7 +384,7 @@ body {
   border: 0;
   border-radius: 11px;
   background: transparent;
-  color: var(--hint);
+  color: var(--segmented-btn-color);
   font: inherit;
   font-size: 13px;
   font-weight: 500;
@@ -192,10 +398,10 @@ body {
 }
 
 .segmented__btn.is-active {
-  background: rgba(255, 255, 255, 0.16);
-  color: #ffffff;
+  background: var(--segmented-btn-active-bg);
+  color: var(--segmented-btn-active-color);
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.25);
+  box-shadow: var(--segmented-btn-active-shadow);
 }
 
 /* ---------- Строка состояния ---------- */
@@ -225,21 +431,21 @@ body {
 .days { display: flex; flex-direction: column; gap: var(--gap); }
 
 .day {
-  background: var(--card);
+  background: var(--day-card-bg);
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border: 0.5px solid rgba(255, 255, 255, 0.11);
+  border: 0.5px solid var(--day-card-border);
   border-radius: var(--radius);
   padding: 16px 16px 8px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--day-card-shadow);
   content-visibility: auto;
   contain-intrinsic-size: 160px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .day--today {
-  border-color: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.35);
+  border-color: var(--day-today-border);
+  box-shadow: var(--day-today-shadow);
 }
 
 .day__head {
@@ -248,7 +454,7 @@ body {
   justify-content: space-between;
   gap: 10px;
   padding-bottom: 10px;
-  border-bottom: 0.5px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 0.5px solid var(--day-head-border);
   margin-bottom: 2px;
 }
 
@@ -257,10 +463,10 @@ body {
   font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.022em;
-  color: #ffffff;
+  color: var(--day-label);
 }
 
-.day--today .day__label { color: #ffffff; }
+.day--today .day__label { color: var(--day-today-label); }
 
 .day__date {
   margin-top: 2px;
@@ -276,11 +482,11 @@ body {
   font-size: 11.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: #c7c7cc;
-  background: rgba(255, 255, 255, 0.07);
+  color: var(--day-count-color);
+  background: var(--day-count-bg);
   padding: 2px 8px;
   border-radius: 999px;
-  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  border: 0.5px solid var(--day-count-border);
   white-space: nowrap;
 }
 
@@ -298,7 +504,7 @@ body {
   display: flex;
   gap: 12px;
   padding: 12px 0;
-  border-top: 0.5px solid rgba(255, 255, 255, 0.06);
+  border-top: 0.5px solid var(--lesson-divider);
 }
 
 .lesson:first-child { border-top: 0; }
@@ -309,7 +515,7 @@ body {
   font-size: 13px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #c7c7cc;
+  color: var(--lesson-time);
   letter-spacing: -0.01em;
   padding-top: 2px;
 }
@@ -322,7 +528,7 @@ body {
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: -0.015em;
-  color: #ffffff;
+  color: var(--lesson-subject);
 }
 
 .lesson__tags {
@@ -347,39 +553,39 @@ body {
 }
 
 .badge--lecture {
-  background: rgba(124, 108, 255, 0.15);
-  color: #9d91ff;
-  border-color: rgba(124, 108, 255, 0.28);
+  background: var(--badge-lecture-bg);
+  color: var(--badge-lecture-color);
+  border-color: var(--badge-lecture-border);
 }
 
 .badge--practice {
-  background: rgba(48, 209, 88, 0.15);
-  color: #30d158;
-  border-color: rgba(48, 209, 88, 0.28);
+  background: var(--badge-practice-bg);
+  color: var(--badge-practice-color);
+  border-color: var(--badge-practice-border);
 }
 
 .badge--lab {
-  background: rgba(255, 159, 10, 0.15);
-  color: #ff9f0a;
-  border-color: rgba(255, 159, 10, 0.28);
+  background: var(--badge-lab-bg);
+  color: var(--badge-lab-color);
+  border-color: var(--badge-lab-border);
 }
 
 .badge--other {
-  background: rgba(255, 255, 255, 0.07);
-  color: #c7c7cc;
-  border-color: rgba(255, 255, 255, 0.1);
+  background: var(--badge-other-bg);
+  color: var(--badge-other-color);
+  border-color: var(--badge-other-border);
 }
 
 .badge--room {
-  background: rgba(255, 255, 255, 0.06);
-  color: #a1a1a6;
-  border-color: rgba(255, 255, 255, 0.09);
+  background: var(--badge-room-bg);
+  color: var(--badge-room-color);
+  border-color: var(--badge-room-border);
   font-weight: 500;
 }
 
 .lesson__teacher {
   font-size: 13px;
-  color: var(--hint);
+  color: var(--lesson-teacher);
   font-weight: 400;
   letter-spacing: -0.01em;
 }
@@ -387,7 +593,7 @@ body {
 .lesson__note {
   margin-top: 4px;
   font-size: 12.5px;
-  color: var(--hint);
+  color: var(--lesson-note);
 }
 
 .lesson__link {
@@ -395,10 +601,10 @@ body {
   margin-top: 7px;
   font-size: 12.5px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--lesson-link);
   text-decoration: underline;
   text-underline-offset: 3px;
-  text-decoration-color: rgba(255, 255, 255, 0.3);
+  text-decoration-color: var(--lesson-link-underline);
 }
 
 .lesson__link:active { opacity: 0.7; }
@@ -495,7 +701,7 @@ html[data-scheme="light"] .skeleton__card::after {
 }
 
 .skeleton__pill {
-  background: var(--bg-soft);
+  background: var(--skeleton-pill-bg, var(--bg-soft));
   border-radius: 8px;
   position: relative;
 }
@@ -1884,76 +2090,6 @@ body.has-netlify-badge .app {
   letter-spacing: 0.06em;
 }
 
-/* --- Шапка: матовое стекло во всю ширину --- */
-
-.appbar {
-  margin: 0 -14px;
-  padding-left: 14px;
-  padding-right: 14px;
-  padding-top: calc(15px + env(safe-area-inset-top, 0px));
-  padding-bottom: 13px;
-  background: color-mix(in srgb, var(--bg) 68%, transparent);
-  -webkit-backdrop-filter: var(--glass);
-  backdrop-filter: var(--glass);
-  border-bottom: 1px solid var(--line);
-}
-
-.icon-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border-color: transparent;
-  background: var(--bg-soft);
-  transition: transform 0.22s var(--ease), background 0.22s ease;
-}
-
-.icon-btn:active {
-  transform: scale(0.9);
-  background: var(--line);
-}
-
-/* --- Переключатель вкладок --- */
-
-.segmented {
-  gap: 2px;
-  padding: 3px;
-  margin-bottom: 14px;
-  border: 0;
-  border-radius: 13px;
-  background: var(--bg-soft);
-}
-
-.segmented__btn {
-  border-radius: 10px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  transition: background 0.24s var(--ease), color 0.24s ease;
-}
-
-.segmented__btn.is-active {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.26), 0 4px 12px rgba(0, 0, 0, 0.14);
-}
-
-/* --- Карточки дней --- */
-
-.days { gap: 14px; }
-
-.day {
-  padding: 16px 16px 6px;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-}
-
-.day--today {
-  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent),
-              var(--shadow);
-}
-
-.lesson {
-  padding: 13px 0;
-  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
-}
 
 /* --- Кнопки: плотные, с мягким нажатием --- */
 
@@ -6703,11 +6839,229 @@ body.flappy-active {
   font-weight: 600;
   color: #ffd700;
   background: rgba(255, 215, 0, 0.14);
-  border: 0.5px solid rgba(255, 215, 0, 0.3);
+  border: 0.5px solid rgba(255, 255, 0, 0.3);
   padding: 2px 7px;
   border-radius: 999px;
   vertical-align: middle;
 }
+
+/* ==========================================================================
+   Apple iOS Light Mode Overrides for Drawer Menu, Notes & Wallet History
+   ========================================================================== */
+
+html[data-scheme="light"] .menu {
+  background: rgba(242, 242, 247, 0.94);
+  border-left: 0.5px solid rgba(60, 60, 67, 0.18);
+  box-shadow: -16px 0 40px rgba(0, 0, 0, 0.16);
+}
+
+html[data-scheme="light"] .menu__head {
+  border-bottom: 0.5px solid rgba(60, 60, 67, 0.12);
+}
+
+html[data-scheme="light"] .menu__caption {
+  color: #636366;
+}
+
+html[data-scheme="light"] .menu__close {
+  background: rgba(118, 118, 128, 0.12);
+  border: 0.5px solid rgba(60, 60, 67, 0.15);
+  color: #1c1c1e;
+}
+
+html[data-scheme="light"] .menu__head-balance {
+  background: rgba(118, 118, 128, 0.12);
+  border: 0.5px solid rgba(60, 60, 67, 0.15);
+  color: #1c1c1e;
+}
+
+html[data-scheme="light"] .menu__wallet-card {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 255, 255, 0.85) 100%), #ffffff;
+  border: 0.5px solid rgba(212, 175, 55, 0.45);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+}
+
+html[data-scheme="light"] .menu__wallet-num {
+  color: #1c1c1e;
+}
+
+html[data-scheme="light"] .menu__wallet-curr {
+  color: #636366;
+}
+
+html[data-scheme="light"] .menu__wallet-action {
+  background: rgba(118, 118, 128, 0.12);
+  border: 0.5px solid rgba(60, 60, 67, 0.15);
+  color: #1c1c1e;
+}
+
+html[data-scheme="light"] .menu__wallet-history-preview {
+  background: #ffffff;
+  border: 0.5px solid rgba(60, 60, 67, 0.12);
+}
+
+html[data-scheme="light"] .menu__wallet-history-title {
+  color: #1c1c1e;
+}
+
+html[data-scheme="light"] .menu__wallet-history-count {
+  background: rgba(118, 118, 128, 0.12);
+  color: #3a3a3c;
+}
+
+html[data-scheme="light"] .menu__wallet-tx-mini {
+  background: rgba(118, 118, 128, 0.06);
+  border: 0.5px solid rgba(60, 60, 67, 0.08);
+}
+
+html[data-scheme="light"] .menu__wallet-tx-mini-title {
+  color: #1c1c1e;
+}
+
+html[data-scheme="light"] .menu__wallet-tx-mini-time {
+  color: #8e8e93;
+}
+
+html[data-scheme="light"] .menu__nav {
+  background: #ffffff;
+  border: 0.5px solid rgba(60, 60, 67, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+html[data-scheme="light"] .menu__item {
+  color: #1c1c1e;
+  border-bottom: 0.5px solid rgba(60, 60, 67, 0.08);
+}
+
+html[data-scheme="light"] .menu__item:active {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+html[data-scheme="light"] .menu__group--toggle {
+  color: #1c1c1e;
+  border-top-color: rgba(60, 60, 67, 0.12);
+}
+
+html[data-scheme="light"] .menu__section {
+  color: #636366;
+}
+
+/* Modals in light mode */
+html[data-scheme="light"] .notemodal__card {
+  background: rgba(255, 255, 255, 0.94);
+  border: 0.5px solid rgba(60, 60, 67, 0.15);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.16);
+}
+
+html[data-scheme="light"] .notemodal__head {
+  border-bottom: 0.5px solid rgba(60, 60, 67, 0.12);
+}
+
+html[data-scheme="light"] .notemodal__title {
+  color: #1c1c1e;
+}
+
+html[data-scheme="light"] .notemodal__close {
+  background: rgba(118, 118, 128, 0.12);
+  border: 0.5px solid rgba(60, 60, 67, 0.15);
+  color: #1c1c1e;
+}
+
+html[data-scheme="light"] .notemodal__nav {
+  background: rgba(118, 118, 128, 0.12);
+  border: 0.5px solid rgba(60, 60, 67, 0.08);
+}
+
+html[data-scheme="light"] .notemodal__tab {
+  color: #636366;
+}
+
+html[data-scheme="light"] .notemodal__tab.is-active {
+  background: #ffffff;
+  color: #000000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+html[data-scheme="light"] .notemodal__count {
+  background: rgba(118, 118, 128, 0.18);
+  color: #1c1c1e;
+}
+
+html[data-scheme="light"] .wallet-history-modal__card {
+  background: rgba(255, 255, 255, 0.96);
+  border: 0.5px solid rgba(60, 60, 67, 0.15);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.16);
+}
+
+html[data-scheme="light"] .wallet-history-modal__indicator {
+  background: rgba(60, 60, 67, 0.3);
+}
+
+html[data-scheme="light"] .wallet-history-modal__title {
+  color: #1c1c1e;
+}
+
+html[data-scheme="light"] .wallet-history-modal__close {
+  background: rgba(118, 118, 128, 0.12);
+  border: 0.5px solid rgba(60, 60, 67, 0.15);
+  color: #1c1c1e;
+}
+
+html[data-scheme="light"] .wallet-history-stat {
+  background: rgba(118, 118, 128, 0.08);
+  border: 0.5px solid rgba(60, 60, 67, 0.1);
+}
+
+html[data-scheme="light"] .wallet-history-stat__label {
+  color: #636366;
+}
+
+html[data-scheme="light"] .wallet-history-modal__tabs {
+  background: rgba(118, 118, 128, 0.12);
+}
+
+html[data-scheme="light"] .wallet-history-modal__tab {
+  color: #636366;
+}
+
+html[data-scheme="light"] .wallet-history-modal__tab.is-active {
+  background: #ffffff;
+  color: #000000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+html[data-scheme="light"] .wallet-history-tx {
+  background: rgba(118, 118, 128, 0.06);
+  border: 0.5px solid rgba(60, 60, 67, 0.08);
+}
+
+html[data-scheme="light"] .wallet-history-tx__title {
+  color: #1c1c1e;
+}
+
+html[data-scheme="light"] .wallet-history-tx__time {
+  color: #8e8e93;
+}
+
+html[data-scheme="light"] .wallet-history-empty__title {
+  color: #1c1c1e;
+}
+
+html[data-scheme="light"] .wallet-history-empty__text {
+  color: #8e8e93;
+}
+
+html[data-scheme="light"] .promo__input {
+  background: rgba(118, 118, 128, 0.08);
+  border-color: rgba(60, 60, 67, 0.18);
+  color: #1c1c1e;
+}
+
+html[data-scheme="light"] .promo__submit {
+  background: #007aff;
+  color: #ffffff;
+}
+
 
 
 

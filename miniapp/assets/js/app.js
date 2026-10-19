@@ -54,17 +54,31 @@
   }
 
   function initTelegram() {
-    if (!inTelegram) return;
+    if (!inTelegram) {
+      if (window.matchMedia) {
+        var mq = window.matchMedia("(prefers-color-scheme: light)");
+        var syncScheme = function (e) {
+          document.documentElement.setAttribute("data-scheme", e.matches ? "light" : "dark");
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", e.matches ? "#f2f2f7" : "#0d1015");
+        };
+        if (mq.matches) {
+          document.documentElement.setAttribute("data-scheme", "light");
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", "#f2f2f7");
+        }
+        if (mq.addEventListener) {
+          mq.addEventListener("change", syncScheme);
+        } else if (mq.addListener) {
+          mq.addListener(syncScheme);
+        }
+      }
+      return;
+    }
 
     try { tg.ready(); } catch (e) {}
     try { tg.expand(); } catch (e) {}
 
-    if (supports("setHeaderColor")) {
-      try { tg.setHeaderColor("#0d1015"); } catch (e) {}
-    }
-    if (supports("setBackgroundColor")) {
-      try { tg.setBackgroundColor("#0d1015"); } catch (e) {}
-    }
     if (supports("disableVerticalSwipes")) {
       try { tg.disableVerticalSwipes(); } catch (e) {}
     }
@@ -84,8 +98,25 @@
 
     var p = tg.themeParams || {};
     var root = document.documentElement;
+    var isLight = tg.colorScheme === "light";
+
+    root.setAttribute("data-scheme", isLight ? "light" : "dark");
+
+    var themeBg = isLight ? "#f2f2f7" : "#0d1015";
+    if (supports("setHeaderColor")) {
+      try { tg.setHeaderColor(themeBg); } catch (e) {}
+    }
+    if (supports("setBackgroundColor")) {
+      try { tg.setBackgroundColor(themeBg); } catch (e) {}
+    }
+
+    var metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute("content", themeBg);
+    }
+
     var map = {
-      "--tg-bg": p.bg_color || tg.backgroundColor,
+      "--tg-bg": p.bg_color,
       "--tg-secondary-bg": p.secondary_bg_color,
       "--tg-text": p.text_color,
       "--tg-hint": p.hint_color,
@@ -102,10 +133,6 @@
     Object.keys(map).forEach(function (name) {
       if (map[name]) root.style.setProperty(name, map[name]);
     });
-
-    if (tg.colorScheme) {
-      root.setAttribute("data-scheme", tg.colorScheme === "light" ? "light" : "dark");
-    }
   }
 
   /* ---------- Состояние ---------- */

@@ -13,10 +13,27 @@
     и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
     поднимайте номер: иначе Telegram покажет старую версию.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=64">
+  <link rel="stylesheet" href="assets/css/styles.css?v=65">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    (function () {
+      try {
+        var isLight = false;
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.colorScheme) {
+          isLight = window.Telegram.WebApp.colorScheme === "light";
+        } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
+          isLight = true;
+        }
+        if (isLight) {
+          document.documentElement.setAttribute("data-scheme", "light");
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", "#f2f2f7");
+        }
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
 
@@ -1167,13 +1184,13 @@
     </div>
   </div>
 
-  <script src="assets/js/config.js?v=64"></script>
-  <script src="assets/js/core.js?v=64"></script>
-  <script src="assets/js/chess.js?v=64"></script>
-  <script src="assets/js/chessengine.js?v=64"></script>
-  <script src="assets/js/blockblast.js?v=64"></script>
-  <script src="assets/js/wwdate.js?v=64"></script>
-  <script src="assets/js/flappy.js?v=64"></script>
-  <script src="assets/js/app.js?v=64"></script>
+  <script src="assets/js/config.js?v=65"></script>
+  <script src="assets/js/core.js?v=65"></script>
+  <script src="assets/js/chess.js?v=65"></script>
+  <script src="assets/js/chessengine.js?v=65"></script>
+  <script src="assets/js/blockblast.js?v=65"></script>
+  <script src="assets/js/wwdate.js?v=65"></script>
+  <script src="assets/js/flappy.js?v=65"></script>
+  <script src="assets/js/app.js?v=65"></script>
 </body>
 </html>
