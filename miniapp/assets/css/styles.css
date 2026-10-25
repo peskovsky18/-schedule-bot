@@ -7694,7 +7694,7 @@ button:active,
 }
 
 /* ==========================================================================
-   Скрытие разделов по запросу (Челик, Золотое яблоко / ППРСД shop)
+   Скрытие разделов по запросу (Челик, Золотое яблоко / ППРСД shop, WW Date)
    ========================================================================== */
 #menuPetNavBtn,
 #petMenuGroup,
@@ -7704,7 +7704,9 @@ button:active,
 #whatsNewPetItem,
 #shopSectionHeader,
 #shop,
-#whatsNewShopItem {
+#whatsNewShopItem,
+#gameCardWWDate,
+#wwdateModal {
   display: none !important;
 }
 
