@@ -13,7 +13,7 @@
     и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
     поднимайте номер: иначе Telegram покажет старую версию.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=67">
+  <link rel="stylesheet" href="assets/css/styles.css?v=68">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -210,7 +210,7 @@
       <div class="menu__group"><span class="menu__group-label">Учёба</span></div>
       <div class="menu__nav">
         <button class="menu__item" id="menuNotesBtn" type="button"><svg class="apple-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> <span>Заметки и дедлайны</span></button>
-        <button class="menu__item" id="menuPetNavBtn" type="button"><svg class="apple-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"></circle><path d="M9 10h.01M15 10h.01M9.5 15a3.5 3.5 0 0 0 5 0"></path></svg> <span>ЧЕЛИК</span></button>
+        <button class="menu__item" id="menuPetNavBtn" type="button" hidden style="display: none !important;"><svg class="apple-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"></circle><path d="M9 10h.01M15 10h.01M9.5 15a3.5 3.5 0 0 0 5 0"></path></svg> <span>ЧЕЛИК</span></button>
       </div>
 
       <!-- Игры: сетка 2х2 с открытием каждой игры в отдельном окне -->
@@ -251,7 +251,7 @@
           <span class="game-card__title">WW Date</span>
         </button>
 
-        <button class="game-card game-card--flappy" id="gameCardFlappy" type="button" aria-label="Открыть Flappy Челик">
+        <button class="game-card game-card--flappy" id="gameCardFlappy" type="button" aria-label="Открыть Flappy Челик" hidden style="display: none !important;">
           <div class="game-card__icon-wrap">
             <svg class="game-card__svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"></path><path d="M22 2l-7 20-4-9-9-4 20-7z"></path></svg>
           </div>
@@ -260,8 +260,8 @@
       </div>
 
       <!-- Челик: питомец группы -->
-      <div class="menu__group"><span class="menu__group-label">ЧЕЛИК</span></div>
-      <div class="pet" id="petSection">
+      <div class="menu__group" id="petMenuGroup" hidden style="display: none !important;"><span class="menu__group-label">ЧЕЛИК</span></div>
+      <div class="pet" id="petSection" hidden style="display: none !important;">
 
         <!-- Загрузка -->
         <div class="pet__loading" id="petLoading">Загружаем питомца…</div>
@@ -607,7 +607,7 @@
              по ним с вами свяжутся.</p>
         </div>
 
-        <div class="whatsnew__item">
+        <div class="whatsnew__item" id="whatsNewPetItem" hidden style="display: none !important;">
           <div class="whatsnew__what">ЧЕЛИК</div>
           <p>Заведите своего персонажа-стрика за 1 000 тугриков. Кормите его яблоками за 100 тугриков, наряжайте в стильные аксессуары и не забывайте заходить: без еды питомец проживёт ровно 5 дней!</p>
         </div>
@@ -835,7 +835,7 @@
   </div>
 
   <!-- Полноэкранная арена: Flappy Челик -->
-  <div class="game-modal" id="flappyModal" hidden>
+  <div class="game-modal" id="flappyModal" hidden style="display: none !important;">
     <div class="game-modal__backdrop" id="flappyModalBackdrop"></div>
     <div class="game-modal__card flappy-modal__card" role="dialog" aria-modal="true" aria-label="Flappy Челик">
       <header class="game-modal__head">
@@ -1193,13 +1193,13 @@
     </div>
   </div>
 
-  <script src="assets/js/config.js?v=67"></script>
-  <script src="assets/js/core.js?v=67"></script>
-  <script src="assets/js/chess.js?v=67"></script>
-  <script src="assets/js/chessengine.js?v=67"></script>
-  <script src="assets/js/blockblast.js?v=67"></script>
-  <script src="assets/js/wwdate.js?v=67"></script>
-  <script src="assets/js/flappy.js?v=67"></script>
-  <script src="assets/js/app.js?v=67"></script>
+  <script src="assets/js/config.js?v=68"></script>
+  <script src="assets/js/core.js?v=68"></script>
+  <script src="assets/js/chess.js?v=68"></script>
+  <script src="assets/js/chessengine.js?v=68"></script>
+  <script src="assets/js/blockblast.js?v=68"></script>
+  <script src="assets/js/wwdate.js?v=68"></script>
+  <script src="assets/js/flappy.js?v=68"></script>
+  <script src="assets/js/app.js?v=68"></script>
 </body>
 </html>

@@ -7638,3 +7638,19 @@ button:active,
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ==========================================================================
+   Скрытие раздела с Челиком и всех связанных элементов (по запросу)
+   ========================================================================== */
+#menuPetNavBtn,
+#petMenuGroup,
+#petSection,
+#gameCardFlappy,
+#flappyModal,
+#whatsNewPetItem {
+  display: none !important;
+}
+
+#menuNotesBtn {
+  border-bottom: 0 !important;
+}
