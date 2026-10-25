@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#0d1015">
+  <title>ППРСД super app</title>
+  <meta name="description" content="Расписание занятий группы — Telegram Mini App">
+
+  <!--
+    ?v=N — обход кэша. GitHub Pages своих заголовков кэша не поддерживает
+    и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
+    поднимайте номер: иначе Telegram покажет старую версию.
+  -->
+  <link rel="stylesheet" href="assets/css/styles.css?v=71">
+
+  <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    (function () {
+      try {
+        function isLightColor(c) {
+          if (!c || typeof c !== "string") return false;
+          var hex = c.replace(/[\s#]/g, "");
+          if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+          if (hex.length !== 6) return false;
+          var r = parseInt(hex.substr(0, 2), 16);
+          var g = parseInt(hex.substr(2, 2), 16);
+          var b = parseInt(hex.substr(4, 2), 16);
+          return (r * 299 + g * 587 + b * 114) / 1000 > 135;
+        }
+
+        var isLight = false;
+        var tg = window.Telegram && window.Telegram.WebApp;
+        var params = (tg && tg.themeParams) || {};
+
+        if (tg && tg.colorScheme) {
+          isLight = tg.colorScheme === "light";
+        } else if (params.bg_color) {
+          isLight = isLightColor(params.bg_color);
+        } else if (params.text_color) {
+          isLight = !isLightColor(params.text_color);
+        } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
+          isLight = true;
+        }
+
+        if (!isLight && window.location && window.location.hash) {
+          try {
+            var match = /tgWebAppThemeParams=([^&]+)/.exec(window.location.hash);
+            if (match && match[1]) {
+              var tp = JSON.parse(decodeURIComponent(match[1]));
+              if (tp.bg_color) isLight = isLightColor(tp.bg_color);
+              else if (tp.text_color) isLight = !isLightColor(tp.text_color);
+            }
+          } catch (e) {}
+        }
+
+        document.documentElement.setAttribute("data-scheme", isLight ? "light" : "dark");
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", isLight ? "#f2f2f7" : "#0d1015");
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+
+  <div class="app">
+
+    <header class="appbar">
+      <div class="appbar__titles">
+        <h1 class="appbar__group" id="group">ППРСД super app</h1>
+      </div>
+
+      <button class="icon-btn icon-btn--add" id="addNoteBtn" type="button" title="Добавить заметку" aria-label="Создать заметку">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+        </svg>
+        <span class="note-badge" id="noteBadge" hidden></span>
+      </button>
+
+      <button class="icon-btn" id="refresh" type="button" title="Обновить" aria-label="Обновить расписание">
+        <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true">
+          <path fill="currentColor" d="M12 5V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/>
+        </svg>
+      </button>
+
+      <button
+        class="icon-btn"
+        id="menuBtn"
+        type="button"
+        title="Меню"
+        aria-label="Меню"
+        aria-expanded="false"
+        aria-controls="menu"
+      >
+        <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true">
+          <path fill="currentColor" d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z"/>
+        </svg>
+      </button>
+    </header>
+
+    <nav class="segmented" id="segments" aria-label="Период"></nav>
+
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+
+    <main class="days" id="days"></main>
+
+    <!--
+      Кнопка техподдержки. Намеренно тихая: текст меньшей прозрачности,
+      чтобы не отвлекать от расписания.
+    -->
+    <footer class="support">
+      <button class="support__btn" id="supportBtn" type="button">Техподдержка</button>
+
+      <!--
+        Секрет: кто знает пароль, получает тугрики в казино. Кнопка
+        нарочно неприметная — маленькая точка под текстом.
+      -->
+      <button class="support__secret" id="promoBtn" type="button"
+              aria-label="Секретный пароль"></button>
+
+      <form class="promo" id="promoForm" hidden>
+        <!--
+          type="text", а не "password", намеренно. macOS при фокусе на
+          поле пароля принудительно переключает раскладку на латиницу,
+          а пароль русский — вводить его становится невозможно.
+          Остальные запреты нужны, чтобы телефон не поправил слово:
+          автозаглавные буквы и автозамена сломали бы пароль.
+        -->
+        <input class="promo__input" id="promoInput" type="text"
+               placeholder="Секретный пароль" autocomplete="off"
+               autocapitalize="none" autocorrect="off" spellcheck="false"
+               maxlength="60">
+        <button class="promo__submit" id="promoSubmit" type="submit">Получить</button>
+        <div class="promo__note" id="promoNote" role="status" aria-live="polite"></div>
+      </form>
+    </footer>
+
+  </div>
+
+  <!-- Сообщение техподдержки: появляется по кнопке внизу страницы -->
+  <div class="support__toast" id="supportToast" role="status" aria-live="polite" hidden>
+    <span class="support__text">Поддержки нет. Живите так.</span>
+    <button class="support__close" id="supportClose" type="button" aria-label="Закрыть сообщение">✕</button>
+  </div>
+
+  <!-- Затемнение под меню -->
+  <div class="menu-backdrop" id="menuBackdrop" hidden></div>
+
+  <!--
+    Меню открывается на весь экран: разделов стало много, и в узкой
+    колонке они не помещались. Разделы расписания переключают основную
+    вкладку, «Приколы» открываются отдельно.
+  -->
+  <aside class="menu" id="menu" hidden aria-label="Меню">
+    <div class="menu__head">
+      <span class="menu__caption">Меню</span>
+      <div class="menu__head-balance" id="menuHeadBalance" title="Баланс тугриков">
+        <span class="menu__head-balance-coin"><svg class="apple-icon apple-icon--coin" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v10M9 9h6"></path></svg></span>
+        <span class="menu__head-balance-val" id="menuHeadBalanceVal">0</span>
+      </div>
+      <button class="menu__close" id="menuClose" type="button" aria-label="Закрыть меню">✕</button>
+    </div>
+
+    <div class="menu__scroll">
+      <!-- Отдельная карточка баланса тугриков -->
+      <div class="menu__wallet-card" id="menuWalletCard">
+        <div class="menu__wallet-header">
+          <span class="menu__wallet-tag"><svg class="apple-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="3"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg> Баланс тугриков</span>
+          <span class="menu__wallet-status">Счёт активен</span>
+        </div>
+        <div class="menu__wallet-main">
+          <div class="menu__wallet-amount">
+            <span class="menu__wallet-num" id="menuWalletVal">0</span>
+            <span class="menu__wallet-curr">тугриков</span>
+          </div>
+          <div class="menu__wallet-actions">
+            <button class="menu__wallet-action is-casino" id="menuWalletBtn" type="button" aria-label="Открыть казино">
+              <svg class="apple-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"></rect><circle cx="8" cy="8" r="1.5" fill="currentColor"></circle><circle cx="16" cy="16" r="1.5" fill="currentColor"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor"></circle></svg> <span>Казино</span>
+            </button>
+            <button class="menu__wallet-action is-history" id="menuWalletHistoryBtn" type="button" aria-label="История операций">
+              <svg class="apple-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg> <span>История</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Превью недавних зачислений и списаний -->
+        <div class="menu__wallet-history-preview">
+          <div class="menu__wallet-history-header">
+            <span class="menu__wallet-history-title">История операций</span>
+            <button class="menu__wallet-history-open-btn" id="menuWalletHistoryOpenBtn" type="button" aria-label="Показать всю историю">
+              <span>Все</span>
+              <span class="menu__wallet-history-count" id="menuWalletHistoryCount"></span>
+              <svg class="menu__wallet-history-open-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+          <div class="menu__wallet-history-items" id="menuWalletHistoryItems">
+            <!-- Список недавних транзакций формируется динамически -->
+          </div>
+        </div>
+      </div>
+
+      <div class="menu__group"><span class="menu__group-label">Расписание</span></div>
+      <div class="menu__nav" id="menuNav">
+        <button class="menu__item" type="button" data-mode="week">Неделя</button>
+        <button class="menu__item" type="button" data-mode="all">Всё расписание</button>
+      </div>
+
+      <div class="menu__group"><span class="menu__group-label">Учёба</span></div>
+      <div class="menu__nav">
+        <button class="menu__item" id="menuNotesBtn" type="button"><svg class="apple-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> <span>Заметки и дедлайны</span></button>
+        <button class="menu__item" id="menuPetNavBtn" type="button" hidden style="display: none !important;"><svg class="apple-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"></circle><path d="M9 10h.01M15 10h.01M9.5 15a3.5 3.5 0 0 0 5 0"></path></svg> <span>ЧЕЛИК</span></button>
+      </div>
+
+      <!-- Игры: сетка 2х2 с открытием каждой игры в отдельном окне -->
+      <div class="menu__group"><span class="menu__group-label">Игры</span></div>
+      <div class="games-grid">
+        <button class="game-card game-card--bb" id="gameCardBB" type="button" aria-label="Открыть игру Block Blast">
+          <div class="game-card__icon-wrap">
+            <svg class="game-card__svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="2"></rect><rect x="14" y="3" width="7" height="7" rx="2"></rect><rect x="3" y="14" width="7" height="7" rx="2"></rect><rect x="14" y="14" width="7" height="7" rx="2"></rect></svg>
+          </div>
+          <span class="game-card__title">Block Blast</span>
+        </button>
+
+        <button class="game-card game-card--chess" id="gameCardChess" type="button" aria-label="Открыть Шахматы">
+          <div class="game-card__icon-wrap">
+            <svg class="game-card__svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 22H5v-2h14v2zM7 18c0-3 1.5-4 3.5-5.5-.5-1-.5-2.5 0-3.5C11.5 7.5 11 6 9.5 5 11 4.5 13 4 14.5 5c1 1 1 2.5.5 3.5 2 1 3 2.5 3 4.5 0 2.5-1.5 4-4 5H7z"/></svg>
+          </div>
+          <span class="game-card__title">Шахматы</span>
+        </button>
+
+        <button class="game-card game-card--ttt" id="gameCardTTT" type="button" aria-label="Открыть Крестики-нолики">
+          <div class="game-card__icon-wrap">
+            <svg class="game-card__svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="4" x2="10" y2="10"></line><line x1="10" y1="4" x2="4" y2="10"></line><circle cx="17" cy="17" r="4"></circle></svg>
+          </div>
+          <span class="game-card__title">Крестики 5×5</span>
+        </button>
+
+        <button class="game-card game-card--casino" id="gameCardCasino" type="button" aria-label="Открыть Казино">
+          <div class="game-card__icon-wrap">
+            <svg class="game-card__svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="4"></rect><line x1="8" y1="4" x2="8" y2="20"></line><line x1="16" y1="4" x2="16" y2="20"></line><circle cx="5" cy="12" r="1.5" fill="currentColor"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor"></circle><circle cx="19" cy="12" r="1.5" fill="currentColor"></circle></svg>
+          </div>
+          <span class="game-card__title">Казино</span>
+        </button>
+
+        <button class="game-card game-card--wwdate" id="gameCardWWDate" type="button" aria-label="Открыть WW Date" hidden style="display: none !important;">
+          <div class="game-card__icon-wrap">
+            <svg class="game-card__svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+          </div>
+          <span class="game-card__title">WW Date</span>
+        </button>
+
+        <button class="game-card game-card--flappy" id="gameCardFlappy" type="button" aria-label="Открыть Flappy Челик" hidden style="display: none !important;">
+          <div class="game-card__icon-wrap">
+            <svg class="game-card__svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"></path><path d="M22 2l-7 20-4-9-9-4 20-7z"></path></svg>
+          </div>
+          <span class="game-card__title">Flappy Челик</span>
+        </button>
+      </div>
+
+      <!-- Челик: питомец группы -->
+      <div class="menu__group" id="petMenuGroup" hidden style="display: none !important;"><span class="menu__group-label">ЧЕЛИК</span></div>
+      <div class="pet" id="petSection" hidden style="display: none !important;">
+
+        <!-- Загрузка -->
+        <div class="pet__loading" id="petLoading">Загружаем питомца…</div>
+
+        <!-- Питомца ещё нет -->
+        <div class="pet__adopt" id="petAdoptBox" hidden>
+          <div class="pet__preview-avatar" aria-hidden="true">
+            <div class="pet__ghost-blob"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"></circle><path d="M9 10h.01M15 10h.01M9.5 15a3.5 3.5 0 0 0 5 0"></path></svg></div>
+          </div>
+          <h3 class="pet__adopt-title">Заведите своего питомца</h3>
+          <p class="pet__adopt-text">
+            Милый персонаж-стрик. Кормите его яблоками за 100 тугриков и покупайте стильные аксессуары. Но будьте внимательны: если не заходить к нему 5 дней, он погибает!
+          </p>
+          <div class="pet__adopt-cost">
+            <span>Создание:</span>
+            <span class="pet__old-price">1 000</span>
+            <strong>10 тугриков</strong>
+            <span class="pet__badge-sale">Скидка 99%</span>
+          </div>
+          <div class="pet__adopt-row">
+            <input class="pet__input" id="petNameInput" type="text" maxlength="30"
+                   placeholder="Имя питомца (например: Стрики)" autocomplete="off">
+            <button class="pet__btn pet__btn--primary" id="petAdoptBtn" type="button">Завести</button>
+          </div>
+          <p class="pet__error" id="petAdoptError" hidden></p>
+        </div>
+
+        <!-- Питомец существует (жив или погиб) -->
+        <div class="pet__active" id="petActiveBox" hidden>
+          <div class="pet__showcase" id="petShowcase">
+            <div class="pet__header">
+              <div class="pet__info">
+                <div class="pet__name-row">
+                  <span class="pet__name" id="petName"></span>
+                  <span class="pet__level-badge" id="petLevelBadge">⭐ Ур. 1</span>
+                </div>
+                <span class="pet__age" id="petAge"></span>
+              </div>
+              <div class="pet__hearts-wrap">
+                <div class="pet__hearts" id="petHearts" aria-label="Здоровье питомца"></div>
+                <span class="pet__timer" id="petTimer"></span>
+              </div>
+            </div>
+
+            <div class="pet__stage" id="petStage">
+              <div class="pet__aura" id="petAura"></div>
+              <div class="pet__char" id="petChar" role="button" tabindex="0" title="Нажмите, чтобы погладить">
+                <svg class="pet__svg" id="petSvg" viewBox="0 0 160 160" width="160" height="160">
+                  <defs>
+                    <!-- Уровень 1: Благородный титан / коралл (Apple refined) -->
+                    <linearGradient id="petGradLvl1" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#ff7a59" />
+                      <stop offset="100%" stop-color="#eb4d4b" />
+                    </linearGradient>
+
+                    <!-- Уровень 2: Apple Indigo / Deep Slate -->
+                    <linearGradient id="petGradLvl2" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#6366f1" />
+                      <stop offset="100%" stop-color="#4338ca" />
+                    </linearGradient>
+                    <linearGradient id="petGradLvl2Tail" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#818cf8" />
+                      <stop offset="100%" stop-color="#4f46e5" />
+                    </linearGradient>
+                    <linearGradient id="petGradLvl2Ear" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#4f46e5" />
+                      <stop offset="100%" stop-color="#312e81" />
+                    </linearGradient>
+                    <radialGradient id="petGradEyeLvl2" cx="40%" cy="40%" r="60%">
+                      <stop offset="0%" stop-color="#818cf8" />
+                      <stop offset="100%" stop-color="#1e1b4b" />
+                    </radialGradient>
+
+                    <!-- Уровень 3: Apple Midnight Obsidian Titanium -->
+                    <linearGradient id="petGradLvl3" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#3a3a3c" />
+                      <stop offset="100%" stop-color="#1c1c1e" />
+                    </linearGradient>
+                    <linearGradient id="petGradWingLvl3" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#6366f1" stop-opacity="0.9" />
+                      <stop offset="100%" stop-color="#4338ca" stop-opacity="0.95" />
+                    </linearGradient>
+                    <linearGradient id="petGradTailLvl3A" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#4b5563" />
+                      <stop offset="100%" stop-color="#1f2937" />
+                    </linearGradient>
+                    <linearGradient id="petGradTailLvl3B" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#374151" />
+                      <stop offset="100%" stop-color="#111827" />
+                    </linearGradient>
+                    <linearGradient id="petGradHorn" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#d4af37" />
+                      <stop offset="100%" stop-color="#996515" />
+                    </linearGradient>
+                    <radialGradient id="petGradEyeLvl3" cx="40%" cy="40%" r="60%">
+                      <stop offset="0%" stop-color="#d4af37" />
+                      <stop offset="100%" stop-color="#1c1c1e" />
+                    </radialGradient>
+                    <linearGradient id="petGradAstralRing" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#9ca3af" />
+                      <stop offset="100%" stop-color="#4b5563" />
+                    </linearGradient>
+
+                    <!-- Призрак -->
+                    <linearGradient id="petGhostGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#9ca3af" />
+                      <stop offset="100%" stop-color="#6b7280" />
+                    </linearGradient>
+
+                    <!-- Шахтёрский фонарик -->
+                    <radialGradient id="minerLampGlow" cx="50%" cy="0%" r="90%">
+                      <stop offset="0%" stop-color="#e5e7eb" stop-opacity="0.7" />
+                      <stop offset="100%" stop-color="#9ca3af" stop-opacity="0" />
+                    </radialGradient>
+                  </defs>
+
+                  <ellipse class="pet__shadow" cx="80" cy="148" rx="42" ry="7" fill="rgba(0,0,0,0.25)" />
+
+                  <g class="pet__body-group" id="petBodyGroup">
+                    <!-- Задний план (хвост, крылья, ушки) -->
+                    <g class="pet__layer-back" id="petLayerBack"></g>
+
+                    <!-- Основное тело -->
+                    <g class="pet__layer-body" id="petLayerBody"></g>
+
+                    <!-- Лицо (глаза, рот, руны, блики, щечки) -->
+                    <g class="pet__layer-face" id="petLayerFace"></g>
+
+                    <!-- Слой нашейных аксессуаров -->
+                    <g class="pet__layer-neck" id="petLayerNeck"></g>
+
+                    <!-- Слой головных аксессуаров -->
+                    <g class="pet__layer-hat" id="petLayerHat"></g>
+
+                    <!-- Передний план (передние крылья, корона, рога, лапки) -->
+                    <g class="pet__layer-front" id="petLayerFront"></g>
+
+                    <!-- Слой шахтерского снаряжения (каска, фонарь) -->
+                    <g class="pet__layer-work" id="petLayerWork"></g>
+                  </g>
+
+                  <ellipse class="pet__halo" id="petHalo" cx="80" cy="18" rx="28" ry="6" fill="none" stroke="#ffd54f" stroke-width="3.5" opacity="0" />
+                </svg>
+              </div>
+
+              <div class="pet__reaction" id="petReaction" aria-hidden="true"></div>
+            </div>
+          </div>
+
+          <div class="pet__alive-box" id="petAliveBox">
+            <!-- Эволюция / Уровни питомца -->
+            <div class="pet__upgrade-card" id="petUpgradeCard">
+              <div class="pet__upgrade-header">
+                <div class="pet__upgrade-title-wrap">
+                  <span class="pet__upgrade-title">Эволюция питомца</span>
+                  <span class="pet__upgrade-step" id="petUpgradeStep">Уровень 1 из 3</span>
+                </div>
+                <div class="pet__level-pills" id="petLevelPills">
+                  <span class="pet__level-pill is-active" id="petLevelPill1" data-level="1">1</span>
+                  <span class="pet__level-pill" id="petLevelPill2" data-level="2">2</span>
+                  <span class="pet__level-pill" id="petLevelPill3" data-level="3">3</span>
+                </div>
+              </div>
+              <div class="pet__evolution-bar-wrap">
+                <div class="pet__evolution-bar-info">
+                  <span class="pet__evolution-bar-label">Прогресс тугриков:</span>
+                  <span class="pet__evolution-bar-val" id="petEvolutionVal">0 / 3 000</span>
+                </div>
+                <div class="pet__evolution-track">
+                  <div class="pet__evolution-fill" id="petEvolutionFill" style="width: 0%"></div>
+                </div>
+              </div>
+              <p class="pet__upgrade-text" id="petUpgradeText">
+                Откройте 2-й уровень: форма Магического Лиса-Хранителя с пушистым хвостом и светящимися рунами!
+              </p>
+              <button class="pet__upgrade-btn" id="petUpgradeBtn" type="button">
+                <span class="pet__upgrade-btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></span>
+                <span class="pet__upgrade-btn-text" id="petUpgradeBtnText">Улучшить до 2 уровня</span>
+                <span class="pet__upgrade-btn-price" id="petUpgradeBtnPrice">3 000 тугриков</span>
+              </button>
+            </div>
+
+            <!-- Шахта ЧЕЛИКА (добыча тугриков) -->
+            <div class="pet__mine-card" id="petMineCard">
+              <div class="pet__mine-header">
+                <div class="pet__mine-title-wrap">
+                  <span class="pet__mine-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4.5l5 5M18 8l-8.5 8.5a2.12 2.12 0 0 1-3 0 2.12 2.12 0 0 1 0-3L15 5M3 21l3-3"></path></svg></span>
+                  <div class="pet__mine-titles">
+                    <span class="pet__mine-title">Шахта ЧЕЛИКА</span>
+                    <span class="pet__mine-subtitle" id="petMineSubtitle">Добыча: 100 / час</span>
+                  </div>
+                </div>
+                <div class="pet__mine-shifts-wrap">
+                  <span class="pet__mine-shifts-label">Смены:</span>
+                  <div class="pet__mine-shifts" id="petMineShifts" title="Смены на сегодня (макс. 3 в сутки)">
+                    <span class="pet__mine-shift" id="petMineShift1" data-shift="1">1</span>
+                    <span class="pet__mine-shift" id="petMineShift2" data-shift="2">2</span>
+                    <span class="pet__mine-shift" id="petMineShift3" data-shift="3">3</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pet__mine-body">
+                <div class="pet__mine-info-row">
+                  <div class="pet__mine-status-badge is-idle" id="petMineStatusBadge">
+                    <span class="pet__mine-status-dot" id="petMineStatusDot"></span>
+                    <span id="petMineStatusText">Готов к работе</span>
+                  </div>
+                  <div class="pet__mine-heart-cost" id="petMineHeartCost">Расход: 1 здоровье в день</div>
+                </div>
+
+                <div class="pet__mine-progress-box" id="petMineProgressBox" hidden>
+                  <div class="pet__mine-progress-track">
+                    <div class="pet__mine-progress-fill" id="petMineProgressFill" style="width: 0%"></div>
+                  </div>
+                  <div class="pet__mine-progress-meta">
+                    <span class="pet__mine-timer-caption">В шахте (смена 1 ч):</span>
+                    <span class="pet__mine-timer" id="petMineTimer">60:00</span>
+                  </div>
+                </div>
+              </div>
+
+              <button class="pet__mine-btn" id="petMineBtn" type="button">
+                <span class="pet__mine-btn-icon" id="petMineBtnIcon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4.5l5 5M18 8l-8.5 8.5a2.12 2.12 0 0 1-3 0 2.12 2.12 0 0 1 0-3L15 5M3 21l3-3"></path></svg></span>
+                <span class="pet__mine-btn-text" id="petMineBtnText">Отправить в шахту (1 ч)</span>
+                <span class="pet__mine-btn-reward" id="petMineBtnReward">+100 тугриков</span>
+              </button>
+              <div class="pet__mine-limit-hint" id="petMineLimitHint" hidden>
+                Все 3 смены на сегодня завершены. Новые смены откроются завтра в 00:00 по МСК
+              </div>
+            </div>
+
+            <button class="pet__feed-btn" id="petFeedBtn" type="button">
+              <span class="pet__feed-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"></circle><path d="M12 5c0-2 1.5-3 3-3"></path></svg></span>
+              <span class="pet__feed-text">Покормить яблоком</span>
+              <span class="pet__feed-price">100 тугриков (+1 здоровье)</span>
+            </button>
+
+            <div class="pet__wardrobe-header">
+              <span class="pet__wardrobe-title">Гардероб и аксессуары</span>
+              <span class="pet__balance-pill" id="petBalancePill">Баланс: <span id="petBalanceVal">0</span> тугриков</span>
+            </div>
+            <div class="pet__wardrobe" id="petWardrobe">
+              <div class="pet__items-grid" id="petItemsGrid"></div>
+            </div>
+          </div>
+
+          <div class="pet__dead-box" id="petDeadBox" hidden>
+            <div class="pet__dead-icon"><svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8v12h16V10a8 8 0 0 0-8-8z"></path><line x1="12" y1="8" x2="12" y2="14"></line><line x1="9" y1="11" x2="15" y2="11"></line></svg></div>
+            <h4 class="pet__dead-title">Питомец ушёл на радугу…</h4>
+            <p class="pet__dead-text">Вы не заходили к нему 5 дней, и сердечки закончились. Но вы можете завести нового друга!</p>
+            <div class="pet__adopt-row">
+              <input class="pet__input" id="petReviveNameInput" type="text" maxlength="30"
+                     placeholder="Имя нового питомца" autocomplete="off">
+              <button class="pet__btn pet__btn--primary" id="petReviveBtn" type="button">Завести нового (10 тугриков)</button>
+            </div>
+            <p class="pet__error" id="petReviveError" hidden></p>
+          </div>
+
+          <p class="pet__note" id="petNote" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+
+      <!--
+        ППРСД shop: обмен тугриков на подарки. Товар один, и покупка
+        спрашивает имя с контактом — иначе заказ некому передать.
+      -->
+      <div class="menu__section" id="shopSectionHeader" hidden style="display: none !important;">ППРСД shop</div>
+      <div class="shop" id="shop" hidden style="display: none !important;">
+        <p class="shop__hint" id="shopHint">Обменивайте тугрики на подарки.</p>
+        <div class="shop__list" id="shopList"></div>
+
+        <form class="shop__form" id="shopForm" hidden>
+          <label class="shop__label" for="shopName">Ваше имя</label>
+          <input class="shop__input" id="shopName" type="text" maxlength="60"
+                 placeholder="Как к вам обращаться" autocomplete="off">
+
+          <label class="shop__label" for="shopContact">Ваш ID или ник в Telegram</label>
+          <input class="shop__input" id="shopContact" type="text" maxlength="60"
+                 placeholder="@ник или 123456789" autocomplete="off"
+                 autocapitalize="none" spellcheck="false">
+
+          <div class="shop__actions">
+            <button class="shop__submit" id="shopSubmit" type="submit">Купить</button>
+            <button class="shop__cancel" id="shopCancel" type="button">Отмена</button>
+          </div>
+        </form>
+
+        <div class="shop__note" id="shopNote" role="status" aria-live="polite"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!--
+    Окно «что нового». Показывается один раз: отметка в localStorage
+    под ключом с версией. Для следующего анонса достаточно поднять
+    номер в WHATS_NEW_KEY.
+  -->
+  <div class="whatsnew" id="whatsNew" hidden>
+    <div class="whatsnew__card" role="dialog" aria-modal="true"
+         aria-labelledby="whatsNewTitle">
+      <div class="whatsnew__head">
+        <h2 class="whatsnew__title" id="whatsNewTitle">Что нового</h2>
+        <button class="whatsnew__close" id="whatsNewClose" type="button"
+                aria-label="Закрыть">✕</button>
+      </div>
+
+      <div class="whatsnew__body">
+        <p class="whatsnew__lead">Приложение заметно выросло. Коротко о главном.</p>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">Расписание</div>
+          <p>Три вкладки сверху: «Сегодня», «Завтра» и «Следующая неделя».
+             Последняя теперь считается от понедельника — как настоящая
+             учебная неделя. Неделя целиком и всё расписание — в меню,
+             кнопка справа вверху.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">Игры</div>
+          <p>Все игры (Block Blast, Шахматы, Крестики-нолики и Казино) теперь собраны в удобную сетку 2х2. Каждая игра открывается в отдельной полноэкранной арене — максимум пространства и никакого шума в меню.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">Шахматы с одногруппником</div>
+          <p>Создаёте партию, нажимаете «Пригласить» и отправляете ссылку.
+             Соперник получает кнопку «Открыть доску». Ходы проверяет
+             сервер, так что схитрить не выйдет. Уйдёте из приложения —
+             бот напишет, когда ваш ход. За победу — 300 тугриков.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what"><svg class="apple-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"></rect><circle cx="8" cy="8" r="1.5" fill="currentColor"></circle><circle cx="16" cy="16" r="1.5" fill="currentColor"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor"></circle></svg> <span>Казино</span></div>
+          <p>Однорукий бандит на тугрики. Ставка 10, 25, 50 или 100.
+             500 тугриков за вход каждый день, плюс 3000 в воскресенье —
+             если заходили всю неделю без пропусков.</p>
+        </div>
+
+        <div class="whatsnew__item" id="whatsNewShopItem" hidden style="display: none !important;">
+          <div class="whatsnew__what">ППРСД shop</div>
+          <p>Тугрики можно потратить: подарочная карта в «Золотое Яблоко»
+             на 300 ₽ за 30 000 тугриков. Нужны имя и контакт в Telegram —
+             по ним с вами свяжутся.</p>
+        </div>
+
+        <div class="whatsnew__item" id="whatsNewPetItem" hidden style="display: none !important;">
+          <div class="whatsnew__what">ЧЕЛИК</div>
+          <p>Заведите своего персонажа-стрика за 1 000 тугриков. Кормите его яблоками за 100 тугриков, наряжайте в стильные аксессуары и не забывайте заходить: без еды питомец проживёт ровно 5 дней!</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">Заметки и дедлайны</div>
+          <p>Записывайте домашку и задания к парам. Нажмите на значок «+» вверху или в карточке пары, установите срок сдачи и отмечайте сделанное.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">Крестики-нолики 5х5</div>
+          <p>Быстрые партии: играйте против умного бота или приглашайте одногруппника по ссылке. За победу по сети — 100 тугриков.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">Таблица лидеров</div>
+          <p>Рейтинг богачей группы в казино: смотрите, кто накопил больше всех тугриков и держит самую длинную серию входов.</p>
+        </div>
+
+        <div class="whatsnew__item">
+          <div class="whatsnew__what">Техподдержка</div>
+          <p>Внизу главной страницы. Работает ровно так, как и ожидается.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Таблица лидеров -->
+  <div class="leaderboard" id="leaderboardModal" hidden>
+    <div class="leaderboard__backdrop" id="leaderboardBackdrop"></div>
+    <div class="leaderboard__card" role="dialog" aria-modal="true" aria-labelledby="leaderboardTitle">
+      <div class="leaderboard__head">
+        <h2 class="leaderboard__title" id="leaderboardTitle">Таблица лидеров</h2>
+        <button class="leaderboard__close" id="leaderboardClose" type="button" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="leaderboard__body">
+        <div class="leaderboard__list" id="leaderboardList"></div>
+      </div>
+      <div class="leaderboard__foot" id="leaderboardFoot"></div>
+    </div>
+  </div>
+
+  <!-- Модальное окно: История зачислений и списаний тугриков (Apple visionOS Luxury Sheet) -->
+  <div class="wallet-history-modal" id="walletHistoryModal" hidden>
+    <div class="wallet-history-modal__backdrop" id="walletHistoryBackdrop"></div>
+    <div class="wallet-history-modal__card" role="dialog" aria-modal="true" aria-labelledby="walletHistoryTitle">
+      <div class="wallet-history-modal__indicator" aria-hidden="true"></div>
+
+      <header class="wallet-history-modal__head">
+        <div class="wallet-history-modal__head-info">
+          <span class="wallet-history-modal__subtitle">Баланс тугриков</span>
+          <h2 class="wallet-history-modal__title" id="walletHistoryTitle">История операций</h2>
+        </div>
+        <button class="wallet-history-modal__close" id="walletHistoryClose" type="button" aria-label="Закрыть">✕</button>
+      </header>
+
+      <!-- Суммарная статистика зачислений и списаний -->
+      <div class="wallet-history-modal__stats">
+        <div class="wallet-history-stat is-credit">
+          <span class="wallet-history-stat__label">Зачислено</span>
+          <span class="wallet-history-stat__value" id="walletStatCredits">+0 тугриков</span>
+        </div>
+        <div class="wallet-history-stat is-debit">
+          <span class="wallet-history-stat__label">Списано</span>
+          <span class="wallet-history-stat__value" id="walletStatDebits">-0 тугриков</span>
+        </div>
+      </div>
+
+      <!-- Segmented Control фильтра -->
+      <div class="wallet-history-modal__tabs" role="tablist">
+        <button class="wallet-history-tab is-active" id="walletHistoryTabAll" type="button" data-filter="all">Все</button>
+        <button class="wallet-history-tab" id="walletHistoryTabCredits" type="button" data-filter="credit">Зачисления (+)</button>
+        <button class="wallet-history-tab" id="walletHistoryTabDebits" type="button" data-filter="debit">Списания (-)</button>
+      </div>
+
+      <div class="wallet-history-modal__body">
+        <div class="wallet-history-modal__list" id="walletHistoryModalList">
+          <!-- Список операций -->
+        </div>
+
+        <div class="wallet-history-modal__empty" id="walletHistoryModalEmpty" hidden>
+          <div class="wallet-history-empty__icon"><svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg></div>
+          <div class="wallet-history-empty__title" id="walletHistoryEmptyTitle">История операций пока пуста</div>
+          <p class="wallet-history-empty__text" id="walletHistoryEmptyText">Играйте в игры, открывайте подарки и крутите слоты — все начисления и списания появятся здесь.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно заметок и заданий с дедлайнами -->
+  <div class="notemodal" id="noteModal" hidden>
+    <div class="notemodal__backdrop" id="noteModalBackdrop"></div>
+    <div class="notemodal__card" role="dialog" aria-modal="true" aria-labelledby="noteModalTitle">
+      <div class="notemodal__head">
+        <div class="notemodal__title-row">
+          <h2 class="notemodal__title" id="noteModalTitle">Заметки к парам</h2>
+          <button class="notemodal__close" id="noteModalClose" type="button" aria-label="Закрыть">✕</button>
+        </div>
+        <div class="notemodal__nav">
+          <button class="notemodal__tab is-active" id="noteTabList" type="button">Мои задания <span class="notemodal__count" id="noteTabCount"></span></button>
+          <button class="notemodal__tab" id="noteTabForm" type="button">+ Новая заметка</button>
+        </div>
+      </div>
+
+      <div class="notemodal__body">
+        <!-- Форма создания / редактирования заметки -->
+        <form class="noteform" id="noteForm" hidden>
+          <div class="noteform__field">
+            <label class="noteform__label" for="noteSubjectInput">Предмет или пара</label>
+            <input class="noteform__input" id="noteSubjectInput" list="noteSubjectList"
+                   type="text" placeholder="Например: Физика или Общее" autocomplete="off" maxlength="80">
+            <datalist id="noteSubjectList"></datalist>
+          </div>
+
+          <div class="noteform__field">
+            <label class="noteform__label" for="noteTextInput">Задание / заметка *</label>
+            <textarea class="noteform__textarea" id="noteTextInput" rows="3"
+                      placeholder="Что нужно сделать, номера задач, тема доклада..." required maxlength="600"></textarea>
+          </div>
+
+          <div class="noteform__field">
+            <label class="noteform__label">Дедлайн (срок сдачи)</label>
+            <div class="noteform__row">
+              <input class="noteform__input noteform__input--date" id="noteDateInput" type="date">
+              <input class="noteform__input noteform__input--time" id="noteTimeInput" type="time" value="18:00">
+            </div>
+            <div class="noteform__chips">
+              <button class="noteform__chip" id="noteChipToday" type="button">Сегодня</button>
+              <button class="noteform__chip" id="noteChipTomorrow" type="button">Завтра</button>
+              <button class="noteform__chip" id="noteChipWeek" type="button">+ Неделя</button>
+              <button class="noteform__chip noteform__chip--clear" id="noteChipClear" type="button">Без дедлайна</button>
+            </div>
+          </div>
+
+          <div class="noteform__actions">
+            <button class="noteform__submit" id="noteSubmitBtn" type="submit">Сохранить</button>
+            <button class="noteform__cancel" id="noteCancelBtn" type="button">Отмена</button>
+          </div>
+        </form>
+
+        <!-- Список заданий -->
+        <div class="notelist" id="noteListWrap">
+          <div class="notelist__filters">
+            <button class="notelist__filter is-active" data-filter="active" type="button">Активные</button>
+            <button class="notelist__filter" data-filter="all" type="button">Все</button>
+            <button class="notelist__filter" data-filter="done" type="button">Выполненные</button>
+          </div>
+          <div class="notelist__items" id="noteList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!--
+    Подарок. Показывается один раз: сервер начисляет его при первом
+    входе и запоминает это, поэтому второй раз уведомление не придёт.
+  -->
+  <div class="gift" id="giftBox" hidden>
+    <div class="gift__card" role="dialog" aria-modal="true" aria-labelledby="giftTitle">
+      <h2 class="gift__title" id="giftTitle">Работа сервиса восстановлена</h2>
+      <div class="gift__amount" id="giftAmount">+500 тугриков</div>
+      <p class="gift__text" id="giftText">Просим прощения за доставленные неудобства.<br>Зачислили 500 тугриков на счет в качестве извинений!</p>
+      <button class="gift__ok" id="giftOk" type="button">Отлично, спасибо!</button>
+    </div>
+  </div>
+
+  <!-- Игровая арена Block Blast -->
+  <div class="bb-arena" id="bbArenaModal" hidden>
+    <div class="bb-arena__backdrop" id="bbArenaBackdrop"></div>
+    <div class="bb-arena__card" role="dialog" aria-modal="true" aria-label="Block Blast игра">
+      <!-- Шапка арены -->
+      <header class="bb-arena__head">
+        <button class="bb-arena__close" id="bbArenaClose" type="button" aria-label="Закрыть">✕</button>
+        <div class="bb-arena__scores">
+          <div class="bb-arena__score-box">
+            <span class="bb-arena__score-label">СЧЁТ</span>
+            <span class="bb-arena__score-val" id="bbScoreVal">0</span>
+          </div>
+          <div class="bb-arena__score-box bb-arena__score-box--best">
+            <span class="bb-arena__score-label">РЕКОРД</span>
+            <span class="bb-arena__score-val" id="bbBestVal">0</span>
+          </div>
+        </div>
+        <button class="bb-arena__reset" id="bbArenaReset" type="button" aria-label="Перезапуск" title="Новая игра"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg></button>
+      </header>
+
+      <!-- Плашка комбо -->
+      <div class="bb-combo-pill" id="bbComboPill" hidden>
+        
+        <span class="bb-combo-text" id="bbComboText">COMBO x2!</span>
+      </div>
+
+      <!-- Игровое поле 8x8 -->
+      <div class="bb-board-wrap">
+        <div class="bb-board" id="bbBoard" role="grid" aria-label="Игровое поле Block Blast"></div>
+        <div class="bb-particles" id="bbParticles" aria-hidden="true"></div>
+      </div>
+
+      <!-- Подставка с 3 фигурами -->
+      <div class="bb-rack" id="bbRack" aria-label="Доступные фигуры"></div>
+
+      <!-- Модалка Game Over -->
+      <div class="bb-over" id="bbGameOverModal" hidden>
+        <div class="bb-over__card">
+          <div class="bb-over__badge" id="bbOverBadge">Игра окончена</div>
+          <div class="bb-over__score" id="bbOverScore">0</div>
+          <div class="bb-over__stats">
+            <div class="bb-over__stat-row">
+              <span>Линий взорвано:</span>
+              <strong id="bbOverLines">0</strong>
+            </div>
+            <div class="bb-over__stat-row">
+              <span>Макс. комбо:</span>
+              <strong id="bbOverMaxCombo">x0</strong>
+            </div>
+            <div class="bb-over__stat-row bb-over__stat-row--reward" id="bbOverRewardRow" hidden>
+              <span>Награда:</span>
+              <strong id="bbOverReward">+0 тугриков</strong>
+            </div>
+          </div>
+          <button class="bb-over__btn" id="bbOverRestartBtn" type="button">Играть снова</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Полноэкранная арена: Flappy Челик -->
+  <div class="game-modal" id="flappyModal" hidden style="display: none !important;">
+    <div class="game-modal__backdrop" id="flappyModalBackdrop"></div>
+    <div class="game-modal__card flappy-modal__card" role="dialog" aria-modal="true" aria-label="Flappy Челик">
+      <header class="game-modal__head">
+        <button class="game-modal__close" id="flappyModalClose" type="button" aria-label="Закрыть">✕</button>
+        <h2 class="game-modal__title">Flappy Челик</h2>
+        <div class="game-modal__head-spacer" aria-hidden="true"></div>
+      </header>
+      <div class="game-modal__body flappy-modal__body">
+        <div class="flappy-hud">
+          <div class="flappy-hud__score" id="flappyScoreVal">0</div>
+          <div class="flappy-hud__best">Рекорд: <strong id="flappyBestVal">0</strong></div>
+        </div>
+        <div class="flappy-canvas-wrap">
+          <canvas id="flappyCanvas"></canvas>
+          <div class="flappy-hint" id="flappyStartHint">
+            <span class="flappy-hint__icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v10M12 2l-3 3M12 2l3 3"></path></svg></span>
+            <span class="flappy-hint__text">Нажми в любое место, чтобы взлететь!</span>
+          </div>
+        </div>
+
+        <!-- Модалка Game Over -->
+        <div class="flappy-over" id="flappyGameOverModal" hidden>
+          <div class="flappy-over__card">
+            <div class="flappy-over__badge" id="flappyOverBadge">Игра окончена</div>
+            <div class="flappy-over__score-box">
+              <span class="flappy-over__score-label">Счёт:</span>
+              <strong class="flappy-over__score" id="flappyOverScore">0</strong>
+            </div>
+            <div class="flappy-over__stats">
+              <div class="flappy-over__stat-row">
+                <span>Лучший результат:</span>
+                <strong id="flappyOverBest">0</strong>
+              </div>
+              <div class="flappy-over__stat-row flappy-over__stat-row--reward" id="flappyOverRewardRow">
+                <span>Награда:</span>
+                <strong id="flappyOverReward">+0 тугриков</strong>
+              </div>
+            </div>
+            <button class="flappy-over__btn" id="flappyRestartBtn" type="button">Играть снова</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Полноэкранная арена: WW Date (Тиндер) -->
+  <div class="game-modal" id="wwdateModal" hidden style="display: none !important;">
+    <div class="game-modal__backdrop" id="wwdateModalBackdrop"></div>
+    <div class="game-modal__card wwdate-modal__card" role="dialog" aria-modal="true" aria-label="WW Date">
+      <header class="game-modal__head">
+        <button class="game-modal__close" id="wwdateModalClose" type="button" aria-label="Закрыть">✕</button>
+        <h2 class="game-modal__title">WW Date</h2>
+        <div class="game-modal__head-spacer" aria-hidden="true"></div>
+      </header>
+      <div class="game-modal__body wwdate-modal__body">
+        <!-- Стек карточек Тиндера -->
+        <div class="wwdate-stack" id="wwdateCardStack"></div>
+
+        <!-- Нижняя панель действий -->
+        <div class="wwdate-controls">
+          <button class="wwdate-btn wwdate-btn--rewind" id="wwdateBtnRewind" type="button" aria-label="Перемотка назад" title="Вернуть назад"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg></button>
+          <button class="wwdate-btn wwdate-btn--nope" id="wwdateBtnNope" type="button" aria-label="Дизлайк" title="Не моё">
+            <span>✕</span>
+          </button>
+          <button class="wwdate-btn wwdate-btn--super" id="wwdateBtnSuper" type="button" aria-label="Суперлайк" title="Суперлайк!"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></button>
+          <button class="wwdate-btn wwdate-btn--like" id="wwdateBtnLike" type="button" aria-label="Лайк" title="В самое сердце!"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+        </div>
+
+        <!-- Оверлей "It's a Match!" -->
+        <div class="wwdate-match" id="wwdateMatchModal" hidden>
+          <div class="wwdate-match__confetti"></div>
+          <div class="wwdate-match__content">
+            <div class="wwdate-match__badge">ВЗАИМНЫЙ ЛАЙК</div>
+            <h2 class="wwdate-match__title">IT'S A MATCH!</h2>
+            <p class="wwdate-match__subtitle">Вы понравились друг другу</p>
+            <div class="wwdate-match__avatars">
+              <div class="wwdate-match__avatar-box">
+                <div class="wwdate-match__avatar-user"><svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
+              </div>
+              <div class="wwdate-match__heart"><svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></div>
+              <div class="wwdate-match__avatar-box">
+                <img class="wwdate-match__avatar-them" id="wwdateMatchThemPhoto" src="" alt="Match">
+              </div>
+            </div>
+            <div class="wwdate-match__quote" id="wwdateMatchQuote"></div>
+            <div class="wwdate-match__actions">
+              <button class="wwdate-match__btn wwdate-match__btn--chat" id="wwdateMatchChatBtn" type="button">Написать сообщение</button>
+              <button class="wwdate-match__btn wwdate-match__btn--keep" id="wwdateMatchKeepBtn" type="button">Продолжить</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Окно шуточного мини-чата -->
+        <div class="wwdate-chat" id="wwdateChatModal" hidden>
+          <div class="wwdate-chat__card">
+            <header class="wwdate-chat__head">
+              <div class="wwdate-chat__user">
+                <img class="wwdate-chat__photo" id="wwdateChatPhoto" src="" alt="">
+                <div>
+                  <div class="wwdate-chat__name" id="wwdateChatName">Имя</div>
+                  <div class="wwdate-chat__status">в сети • отвечает моментально</div>
+                </div>
+              </div>
+              <button class="wwdate-chat__close" id="wwdateChatClose" type="button" aria-label="Закрыть чат">✕</button>
+            </header>
+            <div class="wwdate-chat__messages" id="wwdateChatMessages"></div>
+            <div class="wwdate-chat__replies" id="wwdateChatReplies"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Полноэкранная арена: Шахматы -->
+  <div class="game-modal" id="chessModal" hidden>
+    <div class="game-modal__backdrop" id="chessModalBackdrop"></div>
+    <div class="game-modal__card" role="dialog" aria-modal="true" aria-label="Шахматы">
+      <header class="game-modal__head">
+        <button class="game-modal__close" id="chessModalClose" type="button" aria-label="Закрыть">✕</button>
+        <h2 class="game-modal__title">Шахматы</h2>
+        <div class="game-modal__head-spacer" aria-hidden="true"></div>
+      </header>
+      <div class="game-modal__body">
+        <div class="chess" id="chess">
+          <div class="chess__modes">
+            <button class="chess__mode is-active" id="chessModeBot" type="button">С ботом</button>
+            <button class="chess__mode" id="chessModeMulti" type="button">С одногруппником</button>
+          </div>
+
+          <!-- Режим с ботом -->
+          <div class="chess__box" id="chessBotBox">
+            <div class="chess__diffs">
+              <button class="chess__diff is-active" data-diff="easy" type="button">Новичок</button>
+              <button class="chess__diff" data-diff="medium" type="button">Любитель</button>
+              <button class="chess__diff" data-diff="hard" type="button">Мастер</button>
+            </div>
+
+            <div class="chess__players">
+              <span class="chess__player is-turn" id="chessBotWhite">Белые: Вы</span>
+              <span class="chess__player" id="chessBotBlack">Чёрные: Бот (Новичок)</span>
+            </div>
+
+            <div class="chess__board" id="chessBotBoard" role="grid" aria-label="Шахматная доска с ботом"></div>
+
+            <div class="chess__turn" id="chessBotTurn" role="status" aria-live="polite">Ваш ход (белые)</div>
+
+            <div class="chess__promo" id="chessBotPromo" hidden>
+              <div class="chess__promo-title">Во что превратить пешку?</div>
+              <div class="chess__promo-list" id="chessBotPromoList"></div>
+            </div>
+
+            <div class="chess__actions">
+              <button class="chess__btn chess__btn--ghost" id="chessBotReset" type="button">Новая партия</button>
+            </div>
+          </div>
+
+          <!-- Режим с одногруппником (сетевой) -->
+          <div class="chess__box" id="chessMultiBox" hidden>
+            <!-- Партии ещё нет -->
+            <div class="chess__intro" id="chessIntro" hidden>
+              <p class="chess__hint">
+                Сыграйте с одногруппником. Вы играете белыми и делаете первый ход.
+              </p>
+              <button class="chess__btn" id="chessNew" type="button">Создать партию</button>
+            </div>
+
+            <!-- Идёт партия -->
+            <div class="chess__game" id="chessGame" hidden>
+              <div class="chess__players">
+                <span class="chess__player" id="chessWhite"></span>
+                <span class="chess__player" id="chessBlack"></span>
+              </div>
+
+              <div class="chess__board" id="chessBoard" role="grid"
+                   aria-label="Шахматная доска"></div>
+
+              <div class="chess__turn" id="chessTurn" role="status" aria-live="polite"></div>
+
+              <div class="chess__actions">
+                <button class="chess__btn chess__btn--ghost" id="chessInvite" type="button" hidden>
+                  Пригласить
+                </button>
+                <button class="chess__btn chess__btn--ghost" id="chessCancel" type="button" hidden>
+                  Отменить партию
+                </button>
+                <button class="chess__btn chess__btn--ghost" id="chessResign" type="button" hidden>
+                  Сдаться
+                </button>
+                <button class="chess__btn chess__btn--ghost" id="chessAgain" type="button" hidden>
+                  Новая партия
+                </button>
+              </div>
+            </div>
+
+            <!-- Выбор фигуры при превращении пешки -->
+            <div class="chess__promo" id="chessPromo" hidden>
+              <div class="chess__promo-title">Во что превратить пешку?</div>
+              <div class="chess__promo-list" id="chessPromoList"></div>
+            </div>
+
+            <p class="chess__error" id="chessError" hidden></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Полноэкранная арена: Крестики-нолики -->
+  <div class="game-modal" id="tttModal" hidden>
+    <div class="game-modal__backdrop" id="tttModalBackdrop"></div>
+    <div class="game-modal__card" role="dialog" aria-modal="true" aria-label="Крестики-нолики">
+      <header class="game-modal__head">
+        <button class="game-modal__close" id="tttModalClose" type="button" aria-label="Закрыть">✕</button>
+        <h2 class="game-modal__title">Крестики-нолики 5×5</h2>
+        <div class="game-modal__head-spacer" aria-hidden="true"></div>
+      </header>
+      <div class="game-modal__body">
+        <div class="ttt" id="ttt">
+          <div class="ttt__modes">
+            <button class="ttt__mode is-active" id="tttModeSolo" type="button">С ботом</button>
+            <button class="ttt__mode" id="tttModeMulti" type="button">С одногруппником</button>
+          </div>
+
+          <!-- Одиночный режим с ботом -->
+          <div class="ttt__box" id="tttSoloBox">
+            <div class="ttt__status" id="tttSoloStatus" role="status" aria-live="polite">Ваш ход (X) · Соберите 4 в ряд</div>
+            <div class="ttt__board" id="tttSoloBoard" role="grid" aria-label="Поле крестиков-ноликов 5х5">
+              <button class="ttt__cell" data-idx="0" type="button" aria-label="Клетка 1"></button>
+              <button class="ttt__cell" data-idx="1" type="button" aria-label="Клетка 2"></button>
+              <button class="ttt__cell" data-idx="2" type="button" aria-label="Клетка 3"></button>
+              <button class="ttt__cell" data-idx="3" type="button" aria-label="Клетка 4"></button>
+              <button class="ttt__cell" data-idx="4" type="button" aria-label="Клетка 5"></button>
+              <button class="ttt__cell" data-idx="5" type="button" aria-label="Клетка 6"></button>
+              <button class="ttt__cell" data-idx="6" type="button" aria-label="Клетка 7"></button>
+              <button class="ttt__cell" data-idx="7" type="button" aria-label="Клетка 8"></button>
+              <button class="ttt__cell" data-idx="8" type="button" aria-label="Клетка 9"></button>
+              <button class="ttt__cell" data-idx="9" type="button" aria-label="Клетка 10"></button>
+              <button class="ttt__cell" data-idx="10" type="button" aria-label="Клетка 11"></button>
+              <button class="ttt__cell" data-idx="11" type="button" aria-label="Клетка 12"></button>
+              <button class="ttt__cell" data-idx="12" type="button" aria-label="Клетка 13"></button>
+              <button class="ttt__cell" data-idx="13" type="button" aria-label="Клетка 14"></button>
+              <button class="ttt__cell" data-idx="14" type="button" aria-label="Клетка 15"></button>
+              <button class="ttt__cell" data-idx="15" type="button" aria-label="Клетка 16"></button>
+              <button class="ttt__cell" data-idx="16" type="button" aria-label="Клетка 17"></button>
+              <button class="ttt__cell" data-idx="17" type="button" aria-label="Клетка 18"></button>
+              <button class="ttt__cell" data-idx="18" type="button" aria-label="Клетка 19"></button>
+              <button class="ttt__cell" data-idx="19" type="button" aria-label="Клетка 20"></button>
+              <button class="ttt__cell" data-idx="20" type="button" aria-label="Клетка 21"></button>
+              <button class="ttt__cell" data-idx="21" type="button" aria-label="Клетка 22"></button>
+              <button class="ttt__cell" data-idx="22" type="button" aria-label="Клетка 23"></button>
+              <button class="ttt__cell" data-idx="23" type="button" aria-label="Клетка 24"></button>
+              <button class="ttt__cell" data-idx="24" type="button" aria-label="Клетка 25"></button>
+            </div>
+            <div class="ttt__actions">
+              <button class="ttt__btn" id="tttSoloReset" type="button">Новая игра</button>
+            </div>
+          </div>
+
+          <!-- Мультиплеер с одногруппником -->
+          <div class="ttt__box" id="tttMultiBox" hidden>
+            <div class="ttt__intro" id="tttMultiIntro">
+              <p class="ttt__hint">Сыграйте по сети 5х5 (4 в ряд). Создайте партию и отправьте ссылку другу.</p>
+              <button class="ttt__btn" id="tttMultiNew" type="button">Создать партию</button>
+            </div>
+
+            <div class="ttt__game" id="tttMultiGame" hidden>
+              <div class="ttt__players">
+                <span class="ttt__player" id="tttPlayerX"></span>
+                <span class="ttt__player" id="tttPlayerO"></span>
+              </div>
+              <div class="ttt__status" id="tttMultiStatus" role="status" aria-live="polite"></div>
+              <div class="ttt__board" id="tttMultiBoard" role="grid" aria-label="Сетевое поле 5х5">
+                <button class="ttt__cell" data-idx="0" type="button" aria-label="Клетка 1"></button>
+                <button class="ttt__cell" data-idx="1" type="button" aria-label="Клетка 2"></button>
+                <button class="ttt__cell" data-idx="2" type="button" aria-label="Клетка 3"></button>
+                <button class="ttt__cell" data-idx="3" type="button" aria-label="Клетка 4"></button>
+                <button class="ttt__cell" data-idx="4" type="button" aria-label="Клетка 5"></button>
+                <button class="ttt__cell" data-idx="5" type="button" aria-label="Клетка 6"></button>
+                <button class="ttt__cell" data-idx="6" type="button" aria-label="Клетка 7"></button>
+                <button class="ttt__cell" data-idx="7" type="button" aria-label="Клетка 8"></button>
+                <button class="ttt__cell" data-idx="8" type="button" aria-label="Клетка 9"></button>
+                <button class="ttt__cell" data-idx="9" type="button" aria-label="Клетка 10"></button>
+                <button class="ttt__cell" data-idx="10" type="button" aria-label="Клетка 11"></button>
+                <button class="ttt__cell" data-idx="11" type="button" aria-label="Клетка 12"></button>
+                <button class="ttt__cell" data-idx="12" type="button" aria-label="Клетка 13"></button>
+                <button class="ttt__cell" data-idx="13" type="button" aria-label="Клетка 14"></button>
+                <button class="ttt__cell" data-idx="14" type="button" aria-label="Клетка 15"></button>
+                <button class="ttt__cell" data-idx="15" type="button" aria-label="Клетка 16"></button>
+                <button class="ttt__cell" data-idx="16" type="button" aria-label="Клетка 17"></button>
+                <button class="ttt__cell" data-idx="17" type="button" aria-label="Клетка 18"></button>
+                <button class="ttt__cell" data-idx="18" type="button" aria-label="Клетка 19"></button>
+                <button class="ttt__cell" data-idx="19" type="button" aria-label="Клетка 20"></button>
+                <button class="ttt__cell" data-idx="20" type="button" aria-label="Клетка 21"></button>
+                <button class="ttt__cell" data-idx="21" type="button" aria-label="Клетка 22"></button>
+                <button class="ttt__cell" data-idx="22" type="button" aria-label="Клетка 23"></button>
+                <button class="ttt__cell" data-idx="23" type="button" aria-label="Клетка 24"></button>
+                <button class="ttt__cell" data-idx="24" type="button" aria-label="Клетка 25"></button>
+              </div>
+              <div class="ttt__actions">
+                <button class="ttt__btn ttt__btn--ghost" id="tttMultiInvite" type="button" hidden>Пригласить</button>
+                <button class="ttt__btn ttt__btn--ghost" id="tttMultiResign" type="button" hidden>Сдаться</button>
+                <button class="ttt__btn ttt__btn--ghost" id="tttMultiAgain" type="button" hidden>Новая партия</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Полноэкранная арена: Казино -->
+  <div class="game-modal" id="casinoModal" hidden>
+    <div class="game-modal__backdrop" id="casinoModalBackdrop"></div>
+    <div class="game-modal__card" role="dialog" aria-modal="true" aria-label="Казино">
+      <header class="game-modal__head">
+        <button class="game-modal__close" id="casinoModalClose" type="button" aria-label="Закрыть">✕</button>
+        <h2 class="game-modal__title"><svg class="apple-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"></rect><circle cx="8" cy="8" r="1.5" fill="currentColor"></circle><circle cx="16" cy="16" r="1.5" fill="currentColor"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor"></circle></svg> <span>Казино</span></h2>
+        <div class="game-modal__head-spacer" aria-hidden="true"></div>
+      </header>
+      <div class="game-modal__body">
+        <div class="casino" id="casino">
+          <div class="casino__panel">
+            <div class="casino__money" id="casinoMoneyBtn" role="button" tabindex="0" title="История операций">
+              <span class="casino__coins" id="casinoBalance">0</span>
+              <span class="casino__coins-label" id="casinoUnit">тугриков</span>
+              <span class="casino__coins-history-tag">История ›</span>
+            </div>
+            <div class="casino__streak" id="casinoStreak"></div>
+          </div>
+
+          <!-- Однорукий бандит: три барабана и линия выплаты -->
+          <div class="machine" id="casinoMachine">
+            <div class="machine__reels" id="casinoReels" aria-label="Барабаны автомата">
+              <div class="reel"><span class="reel__symbol">7</span></div>
+              <div class="reel"><span class="reel__symbol">BAR</span></div>
+              <div class="reel"><span class="reel__symbol">★</span></div>
+            </div>
+            <div class="machine__payline" aria-hidden="true"></div>
+          </div>
+
+          <div class="casino__result" id="casinoResult" role="status" aria-live="polite"></div>
+
+          <div class="casino__bet-row">
+            <span class="casino__bet-label">Ставка</span>
+            <input class="casino__bet-input" id="casinoOwnBet" type="text"
+                   inputmode="numeric" maxlength="7" placeholder="10"
+                   autocomplete="off" aria-label="Сумма ставки">
+            <button class="casino__bet-ok" id="casinoOwnOk" type="button">ОК</button>
+          </div>
+
+          <button class="casino__spin" id="casinoSpin" type="button">Дэпнуть</button>
+          <button class="casino__leaderboard-btn" id="casinoLeaderboardBtn" type="button">Таблица лидеров</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/config.js?v=71"></script>
+  <script src="assets/js/core.js?v=71"></script>
+  <script src="assets/js/chess.js?v=71"></script>
+  <script src="assets/js/chessengine.js?v=71"></script>
+  <script src="assets/js/blockblast.js?v=71"></script>
+  <script src="assets/js/wwdate.js?v=71"></script>
+  <script src="assets/js/flappy.js?v=71"></script>
+  <script src="assets/js/app.js?v=71"></script>
+</body>
+</html>
