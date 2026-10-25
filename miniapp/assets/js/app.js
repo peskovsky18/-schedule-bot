@@ -2784,7 +2784,7 @@
    * Текст приходит с сервера: он же решает, положен ли подарок.
    * Если сервер вернул null, сюда просто не заходят.
    */
-  var SERVICE_RESTORED_NOTICE_KEY = "service_restored_notice_500_seen_v1";
+  var CASINO_BONUS_5000_KEY = "casino_bonus_5000_depni_v1";
 
   function showGift(gift) {
     var box = document.getElementById("giftBox");
@@ -2795,10 +2795,19 @@
 
     if (!box || !amount || !text || !ok) return;
 
-    if (title) {
-      title.textContent = gift.title || "Работа сервиса восстановлена";
+    var card = box.querySelector(".gift__card");
+    if (card) {
+      if (gift.isRed) {
+        card.classList.add("gift__card--red");
+      } else {
+        card.classList.remove("gift__card--red");
+      }
     }
-    amount.textContent = "+" + tugriks(gift.amount || 500);
+
+    if (title) {
+      title.textContent = gift.title || "Бонус на казик";
+    }
+    amount.textContent = "+" + tugriks(gift.amount || 5000);
     text.innerHTML = gift.text || "";
     if (gift.buttonText) {
       ok.textContent = gift.buttonText;
@@ -2816,6 +2825,9 @@
       if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
         try { window.Telegram.WebApp.HapticFeedback.impactOccurred("medium"); } catch (e) {}
       }
+      if (typeof gift.onOk === "function") {
+        try { gift.onOk(); } catch (e) {}
+      }
     }
 
     function onBackdrop(event) {
@@ -2826,23 +2838,30 @@
     box.addEventListener("click", onBackdrop);
   }
 
-  function checkServiceRestoredAnnouncement() {
+  function checkCasinoBonusAnnouncement() {
     try {
-      if (!localStorage.getItem(SERVICE_RESTORED_NOTICE_KEY)) {
-        // Показываем сообщение о восстановлении сервиса и компенсации при входе в мини-апп
-        showGift({
-          title: "Работа сервиса восстановлена",
-          amount: 500,
-          text: "Просим прощения за доставленные неудобства.<br>Зачислили <b>500 тугриков</b> на счет в качестве извинений!",
-          buttonText: "Забрать 500 тугриков"
-        });
-        // Сразу локально пополняем баланс тугриков
+      if (!localStorage.getItem(CASINO_BONUS_5000_KEY)) {
         var cur = getEffectiveBalance();
-        syncCasinoBalance(cur + 500, false, "Компенсация от сервиса", "bonus", "bonus");
-        localStorage.setItem(SERVICE_RESTORED_NOTICE_KEY, "true");
+        syncCasinoBalance(cur + 5000, false, "Бонус: ну депни пж пж", "casino", "bonus");
+        localStorage.setItem(CASINO_BONUS_5000_KEY, "true");
+
+        showGift({
+          title: "Бонус на казик",
+          amount: 5000,
+          text: "ну депни пж пж",
+          buttonText: "Дэпнуть!",
+          isRed: true,
+          onOk: function () {
+            var card = document.getElementById("gameCardCasino");
+            if (card) {
+              card.click();
+              haptic("light");
+            }
+          }
+        });
       }
     } catch (e) {
-      console.warn("[service restored announcement error]", e);
+      console.warn("[casino bonus announcement error]", e);
     }
   }
 
@@ -6170,8 +6189,8 @@
     loadChannelHomework();
     fetchSchedule();
 
-    // Объявление о восстановлении сервиса и компенсации при входе
-    setTimeout(checkServiceRestoredAnnouncement, 400);
+    // Бонус 5 000 тугриков на казик при входе
+    setTimeout(checkCasinoBonusAnnouncement, 400);
 
     // Монеты за вход начисляем с лёгкой задержкой, чтобы освободить
     // сетевой пул для первого рендера расписания

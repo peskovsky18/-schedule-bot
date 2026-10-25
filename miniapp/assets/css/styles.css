@@ -2264,6 +2264,42 @@ body.has-netlify-badge .app {
 
 .gift__ok:active { transform: scale(0.975); }
 
+/* Красная карточка бонуса на казик (Apple System Red) */
+.gift__card--red {
+  background: #ff3b30 !important;
+  border: 0.5px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 16px 48px rgba(255, 59, 48, 0.45), 0 4px 18px rgba(0, 0, 0, 0.3) !important;
+  color: #ffffff !important;
+}
+
+.gift__card--red .gift__title {
+  color: #ffffff !important;
+}
+
+.gift__card--red .gift__amount {
+  color: #ffffff !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.gift__card--red .gift__text {
+  color: #ffffff !important;
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.gift__card--red .gift__ok {
+  background: #ffffff !important;
+  color: #d70015 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+.gift__card--red .gift__ok:active {
+  transform: scale(0.97) !important;
+  opacity: 0.9 !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gift, .gift__card { animation: none; }
 }
@@ -7334,6 +7370,24 @@ html[data-scheme="light"] .whatsnew__what {
 
 html[data-scheme="light"] .leaderboard__coins {
   color: #c96500 !important;
+}
+
+html[data-scheme="light"] .gift__card--red {
+  background: #ff3b30 !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 16px 48px rgba(255, 59, 48, 0.45), 0 4px 18px rgba(0, 0, 0, 0.15) !important;
+  color: #ffffff !important;
+}
+
+html[data-scheme="light"] .gift__card--red .gift__title,
+html[data-scheme="light"] .gift__card--red .gift__amount,
+html[data-scheme="light"] .gift__card--red .gift__text {
+  color: #ffffff !important;
+}
+
+html[data-scheme="light"] .gift__card--red .gift__ok {
+  background: #ffffff !important;
+  color: #d70015 !important;
 }
 
 /* --- Питомец и Магазин (Light Mode) --- */
