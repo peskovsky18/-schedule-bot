@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru" data-scheme="dark">
+<html lang="ru">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-  <meta name="color-scheme" content="dark light">
+  <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#0d1015">
   <title>ППРСД super app</title>
   <meta name="description" content="Расписание занятий группы — Telegram Mini App">
@@ -13,24 +13,52 @@
     и отдаёт файлы с max-age=600, поэтому при изменениях в assets/
     поднимайте номер: иначе Telegram покажет старую версию.
   -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=66">
+  <link rel="stylesheet" href="assets/css/styles.css?v=67">
 
   <!-- Официальный SDK Telegram Mini Apps: даёт тему, размеры и openLink -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script>
     (function () {
       try {
+        function isLightColor(c) {
+          if (!c || typeof c !== "string") return false;
+          var hex = c.replace(/[\s#]/g, "");
+          if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+          if (hex.length !== 6) return false;
+          var r = parseInt(hex.substr(0, 2), 16);
+          var g = parseInt(hex.substr(2, 2), 16);
+          var b = parseInt(hex.substr(4, 2), 16);
+          return (r * 299 + g * 587 + b * 114) / 1000 > 135;
+        }
+
         var isLight = false;
-        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.colorScheme) {
-          isLight = window.Telegram.WebApp.colorScheme === "light";
+        var tg = window.Telegram && window.Telegram.WebApp;
+        var params = (tg && tg.themeParams) || {};
+
+        if (tg && tg.colorScheme) {
+          isLight = tg.colorScheme === "light";
+        } else if (params.bg_color) {
+          isLight = isLightColor(params.bg_color);
+        } else if (params.text_color) {
+          isLight = !isLightColor(params.text_color);
         } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
           isLight = true;
         }
-        if (isLight) {
-          document.documentElement.setAttribute("data-scheme", "light");
-          var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) meta.setAttribute("content", "#f2f2f7");
+
+        if (!isLight && window.location && window.location.hash) {
+          try {
+            var match = /tgWebAppThemeParams=([^&]+)/.exec(window.location.hash);
+            if (match && match[1]) {
+              var tp = JSON.parse(decodeURIComponent(match[1]));
+              if (tp.bg_color) isLight = isLightColor(tp.bg_color);
+              else if (tp.text_color) isLight = !isLightColor(tp.text_color);
+            }
+          } catch (e) {}
         }
+
+        document.documentElement.setAttribute("data-scheme", isLight ? "light" : "dark");
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", isLight ? "#f2f2f7" : "#0d1015");
       } catch (e) {}
     })();
   </script>
@@ -1165,13 +1193,13 @@
     </div>
   </div>
 
-  <script src="assets/js/config.js?v=66"></script>
-  <script src="assets/js/core.js?v=66"></script>
-  <script src="assets/js/chess.js?v=66"></script>
-  <script src="assets/js/chessengine.js?v=66"></script>
-  <script src="assets/js/blockblast.js?v=66"></script>
-  <script src="assets/js/wwdate.js?v=66"></script>
-  <script src="assets/js/flappy.js?v=66"></script>
-  <script src="assets/js/app.js?v=66"></script>
+  <script src="assets/js/config.js?v=67"></script>
+  <script src="assets/js/core.js?v=67"></script>
+  <script src="assets/js/chess.js?v=67"></script>
+  <script src="assets/js/chessengine.js?v=67"></script>
+  <script src="assets/js/blockblast.js?v=67"></script>
+  <script src="assets/js/wwdate.js?v=67"></script>
+  <script src="assets/js/flappy.js?v=67"></script>
+  <script src="assets/js/app.js?v=67"></script>
 </body>
 </html>

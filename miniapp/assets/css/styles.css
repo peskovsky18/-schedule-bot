@@ -8,10 +8,12 @@
 :root {
   --bg: #0d1015;
   --bg-soft: #141820;
+  --bg-surface: rgba(22, 27, 36, 0.72);
   --card: rgba(22, 27, 36, 0.72);
   --card-solid: #171b24;
   --text: var(--tg-text, #f5f5f7);
   --text-dim: #a1a1a6;
+  --text-muted: #8e8e93;
   --hint: var(--tg-hint, #8e8e93);
   --accent: #ffffff;
   --accent-text: #000000;
@@ -95,11 +97,13 @@
 html[data-scheme="light"] {
   --bg: #f2f2f7;
   --bg-soft: #e5e5ea;
+  --bg-surface: #ffffff;
   --card: #ffffff;
   --card-solid: #ffffff;
   --text: #1c1c1e;
   --text-dim: #3a3a3c;
-  --hint: #8e8e93;
+  --text-muted: #636366;
+  --hint: #636366;
   --accent: #007aff;
   --accent-text: #ffffff;
   --line: rgba(60, 60, 67, 0.18);
@@ -170,14 +174,17 @@ html[data-scheme="light"] {
 }
 
 @media (prefers-color-scheme: light) {
-  html:not([data-scheme="dark"]) {
+  html:not([data-scheme="dark"]),
+  :root:not([data-scheme="dark"]) {
     --bg: #f2f2f7;
     --bg-soft: #e5e5ea;
+    --bg-surface: #ffffff;
     --card: #ffffff;
     --card-solid: #ffffff;
     --text: #1c1c1e;
     --text-dim: #3a3a3c;
-    --hint: #8e8e93;
+    --text-muted: #636366;
+    --hint: #636366;
     --accent: #007aff;
     --accent-text: #ffffff;
     --line: rgba(60, 60, 67, 0.18);
@@ -5029,7 +5036,7 @@ body.is-page-hidden * {
 .game-card__title {
   font-size: 13.5px;
   font-weight: 600;
-  color: #f5f5f7;
+  color: var(--text, #f5f5f7);
   text-align: center;
   letter-spacing: -0.015em;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
@@ -7060,6 +7067,413 @@ html[data-scheme="light"] .promo__input {
 html[data-scheme="light"] .promo__submit {
   background: #007aff;
   color: #ffffff;
+}
+
+/* --- Меню и кошелёк (Light Mode Overrides) --- */
+html[data-scheme="light"] .menu__wallet-tag {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .menu__wallet-action.is-casino {
+  background: rgba(255, 149, 0, 0.12) !important;
+  color: #c96500 !important;
+  border: 0.5px solid rgba(255, 149, 0, 0.3) !important;
+}
+
+html[data-scheme="light"] .menu__wallet-action.is-history {
+  background: rgba(118, 118, 128, 0.12) !important;
+  color: #1c1c1e !important;
+  border: 0.5px solid rgba(60, 60, 67, 0.15) !important;
+}
+
+html[data-scheme="light"] .menu__wallet-history-open-btn {
+  color: #007aff !important;
+}
+
+html[data-scheme="light"] .menu__wallet-history-count {
+  background: rgba(0, 122, 255, 0.12) !important;
+  color: #007aff !important;
+}
+
+html[data-scheme="light"] .menu__item.is-active {
+  color: #007aff !important;
+  background: rgba(0, 122, 255, 0.08) !important;
+  font-weight: 600 !important;
+}
+
+/* --- Карточки игр 2х2 в меню (Light Mode) --- */
+html[data-scheme="light"] .game-card {
+  background: #ffffff !important;
+  border: 0.5px solid rgba(60, 60, 67, 0.12) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.06) !important;
+}
+
+html[data-scheme="light"] .game-card:hover {
+  background: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
+html[data-scheme="light"] .game-card:active {
+  background: #f2f2f7 !important;
+}
+
+html[data-scheme="light"] .game-card__title {
+  color: #1c1c1e !important;
+}
+
+/* --- Главный экран: расписание и шапка (Light Mode) --- */
+html[data-scheme="light"] .day {
+  background: #ffffff !important;
+  border-color: rgba(60, 60, 67, 0.12) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03), 0 8px 24px rgba(0, 0, 0, 0.05) !important;
+}
+
+html[data-scheme="light"] .day__label {
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .day--today .day__label {
+  color: #007aff !important;
+}
+
+html[data-scheme="light"] .day__date {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .day__count {
+  color: #3a3a3c !important;
+  background: rgba(118, 118, 128, 0.12) !important;
+  border-color: rgba(60, 60, 67, 0.1) !important;
+}
+
+html[data-scheme="light"] .day__empty {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .lesson__time {
+  color: #3a3a3c !important;
+}
+
+html[data-scheme="light"] .lesson__subject {
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .lesson__teacher {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .lesson__note {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .lesson__divider {
+  border-color: rgba(60, 60, 67, 0.1) !important;
+}
+
+html[data-scheme="light"] .lesson__link {
+  color: #007aff !important;
+}
+
+html[data-scheme="light"] .lesson__add-note {
+  color: #007aff !important;
+  border-color: rgba(0, 122, 255, 0.25) !important;
+}
+
+html[data-scheme="light"] .appbar__group {
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .appbar__sub {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .icon-btn {
+  color: #1c1c1e !important;
+  background: rgba(118, 118, 128, 0.12) !important;
+  border-color: rgba(60, 60, 67, 0.15) !important;
+}
+
+html[data-scheme="light"] .segmented {
+  background: rgba(118, 118, 128, 0.12) !important;
+  border-color: rgba(60, 60, 67, 0.08) !important;
+}
+
+html[data-scheme="light"] .segmented__btn {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .segmented__btn.is-active {
+  color: #000000 !important;
+  background: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
+}
+
+html[data-scheme="light"] .status {
+  color: #636366 !important;
+}
+
+/* --- Домашние задания (Light Mode) --- */
+html[data-scheme="light"] .lesson__hw {
+  background: rgba(118, 118, 128, 0.08) !important;
+}
+
+html[data-scheme="light"] .lesson__hw-text {
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .lesson__hw-preview {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .lesson__hw-check-label {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .lesson__hw-chevron {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .lesson__hw-post-link {
+  color: #007aff !important;
+}
+
+html[data-scheme="light"] .lesson__hw-attach-badge {
+  background: rgba(118, 118, 128, 0.12) !important;
+  color: #3a3a3c !important;
+}
+
+html[data-scheme="light"] .lesson__hw-link-btn {
+  background: #ffffff !important;
+  border-color: rgba(60, 60, 67, 0.15) !important;
+  color: #007aff !important;
+}
+
+/* --- Заметки (Light Mode) --- */
+html[data-scheme="light"] .noteform__input,
+html[data-scheme="light"] .noteform__textarea {
+  background: rgba(118, 118, 128, 0.08) !important;
+  border-color: rgba(60, 60, 67, 0.18) !important;
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .noteform__label {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .noteform__chip {
+  background: rgba(118, 118, 128, 0.08) !important;
+  border-color: rgba(60, 60, 67, 0.15) !important;
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .noteform__chip.is-active {
+  background: #007aff !important;
+  color: #ffffff !important;
+  border-color: #007aff !important;
+}
+
+html[data-scheme="light"] .note-item {
+  background: #ffffff !important;
+  border-color: rgba(60, 60, 67, 0.12) !important;
+}
+
+html[data-scheme="light"] .note-item__text {
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .note-item__deadline {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .notelist__empty {
+  color: #636366 !important;
+}
+
+/* --- Модальные окна: Лидерборд, Что нового, Подарки (Light Mode) --- */
+html[data-scheme="light"] .leaderboard__card,
+html[data-scheme="light"] .whatsnew__card,
+html[data-scheme="light"] .gift__card {
+  background: #ffffff !important;
+  border-color: rgba(60, 60, 67, 0.15) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.16) !important;
+}
+
+html[data-scheme="light"] .leaderboard__head,
+html[data-scheme="light"] .whatsnew__head {
+  border-bottom: 0.5px solid rgba(60, 60, 67, 0.12) !important;
+}
+
+html[data-scheme="light"] .leaderboard__title,
+html[data-scheme="light"] .whatsnew__title,
+html[data-scheme="light"] .gift__title {
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .leaderboard__close,
+html[data-scheme="light"] .whatsnew__close {
+  background: rgba(118, 118, 128, 0.12) !important;
+  border: 0.5px solid rgba(60, 60, 67, 0.15) !important;
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .leaderboard__name {
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .leaderboard__sub,
+html[data-scheme="light"] .leaderboard__foot,
+html[data-scheme="light"] .whatsnew__lead,
+html[data-scheme="light"] .whatsnew__item p,
+html[data-scheme="light"] .gift__text {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .whatsnew__what {
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .leaderboard__coins {
+  color: #c96500 !important;
+}
+
+/* --- Питомец и Магазин (Light Mode) --- */
+html[data-scheme="light"] .pet__adopt,
+html[data-scheme="light"] .pet__showcase,
+html[data-scheme="light"] .pet__mine-card,
+html[data-scheme="light"] .pet__actions-card {
+  background: #ffffff !important;
+  border: 0.5px solid rgba(60, 60, 67, 0.12) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04) !important;
+}
+
+html[data-scheme="light"] .pet__adopt-title,
+html[data-scheme="light"] .pet__name {
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .pet__adopt-text,
+html[data-scheme="light"] .pet__age,
+html[data-scheme="light"] .pet__stat-label {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .pet__adopt-cost {
+  background: rgba(118, 118, 128, 0.08) !important;
+  border-color: rgba(60, 60, 67, 0.12) !important;
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .pet__adopt-cost strong {
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .pet__preview-avatar {
+  background: rgba(118, 118, 128, 0.08) !important;
+  border-color: rgba(60, 60, 67, 0.12) !important;
+}
+
+html[data-scheme="light"] .pet__input {
+  background: rgba(118, 118, 128, 0.08) !important;
+  border-color: rgba(60, 60, 67, 0.18) !important;
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .shop__card,
+html[data-scheme="light"] .shop__form {
+  background: #ffffff !important;
+  border: 0.5px solid rgba(60, 60, 67, 0.12) !important;
+}
+
+html[data-scheme="light"] .shop__price {
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .shop__balance,
+html[data-scheme="light"] .shop__label {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .shop__input {
+  background: rgba(118, 118, 128, 0.08) !important;
+  border-color: rgba(60, 60, 67, 0.18) !important;
+  color: #1c1c1e !important;
+}
+
+/* --- Арены игр и мини-игры (Light Mode) --- */
+html[data-scheme="light"] .game-modal {
+  background: rgba(242, 242, 247, 0.98) !important;
+}
+
+html[data-scheme="light"] .game-modal__backdrop {
+  background: rgba(242, 242, 247, 0.94) !important;
+}
+
+html[data-scheme="light"] .game-modal__card {
+  background: transparent !important;
+}
+
+html[data-scheme="light"] .game-modal__title {
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .game-modal__close {
+  background: rgba(118, 118, 128, 0.12) !important;
+  border: 0.5px solid rgba(60, 60, 67, 0.15) !important;
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .bb-arena__score-box {
+  background: #ffffff !important;
+  border: 0.5px solid rgba(60, 60, 67, 0.12) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+html[data-scheme="light"] .bb-arena__score-label {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .bb-arena__score-val {
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .bb-arena__board-wrap {
+  background: #ffffff !important;
+  border: 0.5px solid rgba(60, 60, 67, 0.15) !important;
+}
+
+html[data-scheme="light"] .flappy-hud__score {
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .chess__mode,
+html[data-scheme="light"] .chess__diff,
+html[data-scheme="light"] .ttt__mode {
+  background: #ffffff !important;
+  border-color: rgba(60, 60, 67, 0.15) !important;
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .chess__status,
+html[data-scheme="light"] .ttt__status {
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .casino__card {
+  background: #ffffff !important;
+  border: 0.5px solid rgba(60, 60, 67, 0.12) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+}
+
+html[data-scheme="light"] .casino__balance-val {
+  color: #1c1c1e !important;
+}
+
+html[data-scheme="light"] .casino__balance-label {
+  color: #636366 !important;
+}
+
+html[data-scheme="light"] .roulette__result {
+  color: #1c1c1e !important;
 }
 
 

@@ -53,28 +53,33 @@
     }
   }
 
+  function isLightColorHex(c) {
+    if (!c || typeof c !== "string") return false;
+    var hex = c.replace(/[\s#]/g, "");
+    if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    if (hex.length !== 6) return false;
+    var r = parseInt(hex.substr(0, 2), 16);
+    var g = parseInt(hex.substr(2, 2), 16);
+    var b = parseInt(hex.substr(4, 2), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 > 135;
+  }
+
   function initTelegram() {
-    if (!inTelegram) {
-      if (window.matchMedia) {
-        var mq = window.matchMedia("(prefers-color-scheme: light)");
-        var syncScheme = function (e) {
-          document.documentElement.setAttribute("data-scheme", e.matches ? "light" : "dark");
-          var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) meta.setAttribute("content", e.matches ? "#f2f2f7" : "#0d1015");
-        };
-        if (mq.matches) {
-          document.documentElement.setAttribute("data-scheme", "light");
-          var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) meta.setAttribute("content", "#f2f2f7");
-        }
-        if (mq.addEventListener) {
-          mq.addEventListener("change", syncScheme);
-        } else if (mq.addListener) {
-          mq.addListener(syncScheme);
-        }
+    applyTelegramTheme();
+
+    if (window.matchMedia) {
+      var mq = window.matchMedia("(prefers-color-scheme: light)");
+      var syncScheme = function () {
+        applyTelegramTheme();
+      };
+      if (mq.addEventListener) {
+        mq.addEventListener("change", syncScheme);
+      } else if (mq.addListener) {
+        mq.addListener(syncScheme);
       }
-      return;
     }
+
+    if (!tg) return;
 
     try { tg.ready(); } catch (e) {}
     try { tg.expand(); } catch (e) {}
@@ -83,8 +88,6 @@
       try { tg.disableVerticalSwipes(); } catch (e) {}
     }
 
-    applyTelegramTheme();
-
     if (supports("onEvent")) {
       try {
         tg.onEvent("themeChanged", applyTelegramTheme);
@@ -92,13 +95,21 @@
     }
   }
 
-  /** Подставляет цвета темы Telegram в CSS-переменные. */
+  /** Подставляет цвета темы Telegram в CSS-переменные и синхронизирует тему оформления. */
   function applyTelegramTheme() {
-    if (!inTelegram) return;
-
-    var p = tg.themeParams || {};
+    var p = (tg && tg.themeParams) || {};
     var root = document.documentElement;
-    var isLight = tg.colorScheme === "light";
+    var isLight = false;
+
+    if (tg && tg.colorScheme) {
+      isLight = tg.colorScheme === "light";
+    } else if (p.bg_color) {
+      isLight = isLightColorHex(p.bg_color);
+    } else if (p.text_color) {
+      isLight = !isLightColorHex(p.text_color);
+    } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
+      isLight = true;
+    }
 
     root.setAttribute("data-scheme", isLight ? "light" : "dark");
 
