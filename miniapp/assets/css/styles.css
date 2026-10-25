@@ -879,7 +879,7 @@ html[data-scheme="light"] .skeleton__card::after {
   margin: 14px 16px 10px;
   padding: 16px 18px;
   border-radius: 20px;
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%), rgba(26, 31, 42, 0.65);
+  background: #1c1c1e; border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 0.5px solid rgba(255, 215, 0, 0.3);
@@ -980,7 +980,7 @@ html[data-scheme="light"] .skeleton__card::after {
 /* Разделитель и превью истории в карточке кошелька */
 .menu__wallet-divider {
   height: 0.5px;
-  background: linear-gradient(90deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%);
+  background: var(--line);
   margin: 14px -4px 10px;
 }
 
@@ -1748,7 +1748,7 @@ body.has-netlify-badge .app {
   padding: 14px 12px;
   border: 2px solid var(--line);
   border-radius: 16px;
-  background: linear-gradient(180deg, #232a35 0%, #171c24 100%);
+  background: #1c1c1e; border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06),
               0 6px 18px rgba(0, 0, 0, 0.32);
 }
@@ -1765,7 +1765,7 @@ body.has-netlify-badge .app {
   aspect-ratio: 1 / 1.15;
   border-radius: 10px;
   /* Светлее к середине: экран барабана подсвечен изнутри */
-  background: radial-gradient(circle at 50% 50%, #f3f6fb 0%, #d7dee8 100%);
+  background: #2c2c2e; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.25);
   overflow: hidden;
 }
@@ -1845,8 +1845,8 @@ body.has-netlify-badge .app {
   padding: 13px 14px;
   border: 0;
   border-radius: 12px;
-  background: linear-gradient(180deg, #ffd15c 0%, #f0a92b 100%);
-  color: #2a1c00;
+  background: var(--accent); color: #ffffff; box-shadow: 0 4px 14px rgba(0, 122, 255, 0.35);
+  color: #ffffff;
   font: inherit;
   font-size: 15px;
   font-weight: 700;
@@ -3681,19 +3681,19 @@ body.has-netlify-badge .app {
 }
 
 .pet__stage.is-lvl-1 .pet__aura {
-  background: radial-gradient(circle, rgba(251, 113, 133, 0.45) 0%, rgba(244, 63, 94, 0.15) 50%, transparent 75%);
+  display: none !important;
 }
 
 .pet__stage.is-lvl-2 .pet__aura {
-  background: radial-gradient(circle, rgba(56, 189, 248, 0.45) 0%, rgba(99, 102, 241, 0.2) 50%, transparent 75%);
+  display: none !important;
 }
 
 .pet__stage.is-lvl-3 .pet__aura {
-  background: radial-gradient(circle, rgba(245, 158, 11, 0.4) 0%, rgba(168, 85, 247, 0.2) 50%, transparent 75%);
+  display: none !important;
 }
 
 .pet__stage.is-dead .pet__aura {
-  background: radial-gradient(circle, rgba(148, 163, 184, 0.3) 0%, transparent 70%);
+  display: none !important;
 }
 
 .pet__char {
@@ -3941,7 +3941,7 @@ body.has-netlify-badge .app {
 }
 
 .pet__level-pill.is-active.is-max {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: #ff9f0a; color: #ffffff;
   color: #fff;
   border: 0;
 }
@@ -3989,22 +3989,22 @@ body.has-netlify-badge .app {
 }
 
 .pet__evolution-fill.is-lvl-1 {
-  background: linear-gradient(90deg, #38bdf8, #6366f1);
+  background: #0a84ff;
 }
 
 .pet__evolution-fill.is-lvl-2 {
-  background: linear-gradient(90deg, #818cf8, #a855f7);
+  background: #5e5ce6;
 }
 
 .pet__evolution-fill.is-max {
-  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  background: #30d158;
 }
 
 .pet__evolution-fill::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  display: none;
   animation: appleBarShimmer 2.4s ease-in-out infinite;
 }
 
@@ -4044,7 +4044,7 @@ body.has-netlify-badge .app {
 }
 
 .pet__upgrade-btn--gold {
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: var(--accent); color: #ffffff;
 }
 
 .pet__upgrade-btn.is-max {
@@ -4257,7 +4257,7 @@ body.has-netlify-badge .app {
 .pet__mine-progress-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  background: #30d158;
   transition: width 0.3s ease;
 }
 
@@ -4312,7 +4312,7 @@ body.has-netlify-badge .app {
 }
 
 .pet__mine-btn--claim {
-  background: linear-gradient(180deg, #f59e0b, #d97706);
+  background: #30d158; color: #ffffff;
   color: #fff;
   box-shadow: 0 4px 18px rgba(245, 158, 11, 0.4);
   animation: appleClaimGlow 2s ease-in-out infinite;
@@ -4987,17 +4987,17 @@ body.is-page-hidden * {
 
 /* Индивидуальные микро-градиенты для каждой игры в стиле App Store */
 .game-card--bb .game-card__icon-wrap {
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.4), rgba(59, 130, 246, 0.5));
+  background: rgba(10, 132, 255, 0.12); color: #0a84ff;
   border: 0.5px solid rgba(6, 182, 212, 0.45);
 }
 
 .game-card--chess .game-card__icon-wrap {
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(99, 102, 241, 0.5));
+  background: rgba(94, 92, 230, 0.12); color: #5e5ce6;
   border: 0.5px solid rgba(168, 85, 247, 0.45);
 }
 
 .game-card--ttt .game-card__icon-wrap {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.35), rgba(249, 115, 22, 0.45));
+  background: rgba(255, 69, 58, 0.12); color: #ff453a;
   border: 0.5px solid rgba(249, 115, 22, 0.45);
 }
 
@@ -5010,18 +5010,18 @@ body.is-page-hidden * {
 }
 
 .game-card--casino .game-card__icon-wrap {
-  background: linear-gradient(135deg, rgba(234, 179, 8, 0.4), rgba(245, 158, 11, 0.5));
+  background: rgba(255, 159, 10, 0.12); color: #ff9f0a;
   border: 0.5px solid rgba(234, 179, 8, 0.45);
 }
 
 .game-card--wwdate .game-card__icon-wrap {
-  background: linear-gradient(135deg, rgba(255, 75, 114, 0.45), rgba(255, 120, 84, 0.55));
+  background: rgba(255, 55, 95, 0.12); color: #ff375f;
   border: 0.5px solid rgba(255, 75, 114, 0.5);
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 6px 18px rgba(255, 75, 114, 0.3);
 }
 
 .game-card--flappy .game-card__icon-wrap {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.45), rgba(16, 185, 129, 0.55));
+  background: rgba(48, 209, 88, 0.12); color: #30d158;
   border: 0.5px solid rgba(34, 197, 94, 0.5);
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 6px 18px rgba(34, 197, 94, 0.3);
 }
@@ -5165,7 +5165,7 @@ body.is-page-hidden * {
   width: 44px;
   height: 44px;
   border-radius: 13px;
-  background: linear-gradient(135deg, #06b6d4, #4f46e5);
+  background: rgba(10, 132, 255, 0.15); color: #0a84ff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5216,7 +5216,7 @@ body.is-page-hidden * {
 }
 
 .bb-card__btn {
-  background: linear-gradient(135deg, #06b6d4, #3b82f6);
+  background: var(--accent); color: #ffffff;
   color: #ffffff;
   border: none;
   border-radius: 12px;
@@ -5349,7 +5349,7 @@ body.is-page-hidden * {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(135deg, #f97316, #ef4444);
+  background: rgba(255, 159, 10, 0.15); color: #ff9f0a; border: 1px solid rgba(255, 159, 10, 0.3);
   color: #ffffff;
   padding: 6px 18px;
   border-radius: 20px;
@@ -5564,7 +5564,7 @@ body.is-page-hidden * {
   color: #ffffff;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Display", sans-serif;
   margin: 6px 0 16px;
-  background: linear-gradient(135deg, #ffffff, #93c5fd);
+  background: none; color: var(--text);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -5601,7 +5601,7 @@ body.is-page-hidden * {
   width: 100%;
   padding: 14px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #06b6d4, #3b82f6);
+  background: var(--accent); color: #ffffff;
   color: #ffffff;
   border: none;
   font-size: 16px;
@@ -5912,7 +5912,7 @@ body.is-page-hidden * {
   align-items: center;
   padding: 4px 12px;
   border-radius: 20px;
-  background: linear-gradient(135deg, rgba(255, 75, 114, 0.3), rgba(255, 120, 84, 0.3));
+  background: rgba(255, 55, 95, 0.15); color: #ff375f; border: 1px solid rgba(255, 55, 95, 0.3);
   border: 1px solid rgba(255, 75, 114, 0.5);
   color: #ff6b8b;
   font-size: 11.5px;
@@ -5926,7 +5926,7 @@ body.is-page-hidden * {
   font-size: 30px;
   font-weight: 900;
   letter-spacing: -0.5px;
-  background: linear-gradient(135deg, #ff4b72, #ff8c68, #ffd700);
+  background: none; color: var(--text);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -5951,7 +5951,7 @@ body.is-page-hidden * {
   height: 90px;
   border-radius: 50%;
   padding: 3px;
-  background: linear-gradient(135deg, #ff4b72, #ff7854);
+  background: #ff375f; color: #ffffff;
   box-shadow: 0 6px 20px rgba(255, 75, 114, 0.4);
 }
 
@@ -6019,7 +6019,7 @@ body.is-page-hidden * {
 }
 
 .wwdate-match__btn--chat {
-  background: linear-gradient(135deg, #ff4b72, #ff7854);
+  background: #ff375f; color: #ffffff;
   color: #ffffff;
   box-shadow: 0 6px 22px rgba(255, 75, 114, 0.45);
 }
@@ -6154,7 +6154,7 @@ body.is-page-hidden * {
 
 .wwdate-chat__bubble--me {
   align-self: flex-end;
-  background: linear-gradient(135deg, #ff4b72, #ff7854);
+  background: #ff375f; color: #ffffff;
   color: #ffffff;
   border-bottom-right-radius: 4px;
 }
@@ -6201,7 +6201,7 @@ body.is-page-hidden * {
   width: 100%;
   padding: 14px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #ff4b72, #ff7854);
+  background: #ff375f; color: #ffffff;
   color: #ffffff;
   font-size: 15px;
   font-weight: 700;
@@ -6507,7 +6507,7 @@ body.flappy-active {
   width: 100%;
   padding: 14px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #22c55e, #16a34a);
+  background: var(--accent); color: #ffffff;
   color: #ffffff;
   border: none;
   font-size: 16px;
@@ -6876,9 +6876,9 @@ html[data-scheme="light"] .menu__head-balance {
 }
 
 html[data-scheme="light"] .menu__wallet-card {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 255, 255, 0.85) 100%), #ffffff;
-  border: 0.5px solid rgba(212, 175, 55, 0.45);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+  background: #ffffff;
+  border: 1px solid rgba(60, 60, 67, 0.12);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06), inset 0 1px 0 #ffffff;
 }
 
 html[data-scheme="light"] .menu__wallet-num {
@@ -7066,3 +7066,161 @@ html[data-scheme="light"] .promo__submit {
 
 
 
+
+
+/* ==========================================================================
+   Apple Design System Refinements (WWDC Fluid Interfaces & HIG Standards)
+   ========================================================================== */
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, .appbar__group, .game-modal__title, .menu__caption, .leaderboard__title, .notemodal__title {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+.apple-icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.apple-icon--coin {
+  color: #ffd60a;
+}
+
+.game-card__svg {
+  display: block;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pet__heart-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin: 0 3px;
+  vertical-align: middle;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.pet__heart-dot.is-filled {
+  background: #ff375f;
+  box-shadow: 0 0 6px rgba(255, 55, 95, 0.45);
+}
+
+.pet__heart-dot.is-empty {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+html[data-scheme="light"] .pet__heart-dot.is-empty {
+  background: rgba(60, 60, 67, 0.2);
+}
+
+.leaderboard__rank-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--hint);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.leaderboard__rank-pill.rank-1 {
+  background: #ffd60a;
+  color: #000000;
+}
+
+.leaderboard__rank-pill.rank-2 {
+  background: #e5e5ea;
+  color: #000000;
+}
+
+.leaderboard__rank-pill.rank-3 {
+  background: #d88b48;
+  color: #ffffff;
+}
+
+/* Apple Fluid Sheet Drag Handle */
+.menu::before,
+.game-modal__card::before,
+.notemodal__card::before,
+.wallet-history-modal__card::before,
+.leaderboard__card::before,
+.whatsnew__card::before {
+  content: "";
+  display: block;
+  width: 36px;
+  height: 5px;
+  border-radius: 2.5px;
+  background: rgba(255, 255, 255, 0.24);
+  margin: 8px auto 10px;
+  flex-shrink: 0;
+}
+
+html[data-scheme="light"] .menu::before,
+html[data-scheme="light"] .game-modal__card::before,
+html[data-scheme="light"] .notemodal__card::before,
+html[data-scheme="light"] .wallet-history-modal__card::before,
+html[data-scheme="light"] .leaderboard__card::before,
+html[data-scheme="light"] .whatsnew__card::before {
+  background: rgba(60, 60, 67, 0.24);
+}
+
+/* Touch feedback: instant response on touch down (apple-design rule 1) */
+button,
+.icon-btn,
+.menu__item,
+.game-card,
+.segmented__btn,
+.chess__diff,
+.chess__mode,
+.notemodal__tab,
+.notelist__filter,
+.noteform__chip,
+.casino__spin,
+.pet__upgrade-btn,
+.pet__mine-btn,
+.pet__feed-btn,
+.wwdate-btn {
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 100ms cubic-bezier(0.2, 0, 0, 1), opacity 100ms ease;
+}
+
+button:active,
+.icon-btn:active,
+.menu__item:active,
+.game-card:active,
+.segmented__btn:active,
+.chess__diff:active,
+.chess__mode:active,
+.notemodal__tab:active,
+.notelist__filter:active,
+.noteform__chip:active,
+.casino__spin:active,
+.pet__upgrade-btn:active,
+.pet__mine-btn:active,
+.pet__feed-btn:active,
+.wwdate-btn:active {
+  transform: scale(0.97) !important;
+  opacity: 0.88;
+}
+
+/* Reduced Motion (apple-design rule 14) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

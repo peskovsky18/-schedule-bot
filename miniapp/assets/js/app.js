@@ -568,13 +568,13 @@
 
       var text = "";
       if (isOverdue) {
-        text = "⚠️ До " + day + " " + month + ", " + timeStr;
+        text = "До " + day + " " + month + ", " + timeStr;
       } else if (isToday) {
-        text = "⚡ Сегодня в " + timeStr;
+        text = "Сегодня в " + timeStr;
       } else if (isTomorrow) {
         text = "⏳ Завтра в " + timeStr;
       } else {
-        text = "📅 " + day + " " + month + ", " + timeStr;
+        text = day + " " + month + ", " + timeStr;
       }
 
       return {
@@ -652,7 +652,7 @@
 
   function emptyState(text) {
     var wrap = el("div", "empty");
-    wrap.appendChild(el("div", "empty__icon", "🎉"));
+    wrap.appendChild(el("div", "empty__icon", ""));
     wrap.appendChild(el("div", "empty__text", text));
     return wrap;
   }
@@ -735,7 +735,7 @@
     }
 
     if (lesson.note) {
-      body.appendChild(el("div", "lesson__note", "🗓 " + lesson.note));
+      body.appendChild(el("div", "lesson__note", lesson.note));
     }
 
     var moodle = core.moodleLink(lesson);
@@ -816,23 +816,23 @@
           hwHead.setAttribute("aria-expanded", isExpanded ? "true" : "false");
 
           var hwTitleWrap = el("div", "lesson__hw-title-wrap");
-          var hwBadge = el("span", "lesson__hw-badge", "📌 Задание");
+          var hwBadge = el("span", "lesson__hw-badge", "Задание");
           hwTitleWrap.appendChild(hwBadge);
 
           if (hw.deadline_str) {
-            var dlBadge = el("span", "lesson__hw-deadline", "❗️Дедлайн: " + hw.deadline_str);
+            var dlBadge = el("span", "lesson__hw-deadline", "Срок: " + hw.deadline_str);
             hwTitleWrap.appendChild(dlBadge);
           }
 
           var linksCount = (Array.isArray(hw.links) && hw.links.length) || 0;
           var photosCount = (Array.isArray(hw.photos) && hw.photos.length) || 0;
           if (linksCount > 0) {
-            var linkBadge = el("span", "lesson__hw-attach-badge", "📎 " + linksCount);
+            var linkBadge = el("span", "lesson__hw-attach-badge", "Файлы: " + linksCount);
             linkBadge.title = linksCount + " вложений-ссылок";
             hwTitleWrap.appendChild(linkBadge);
           }
           if (photosCount > 0) {
-            var photoBadge = el("span", "lesson__hw-attach-badge", "🖼 " + photosCount);
+            var photoBadge = el("span", "lesson__hw-attach-badge", "Фото: " + photosCount);
             photoBadge.title = photosCount + " прикрепленных фото";
             hwTitleWrap.appendChild(photoBadge);
           }
@@ -893,7 +893,7 @@
               a.rel = "noopener noreferrer";
               a.title = linkItem.title || linkItem.url;
 
-              var iconSpan = el("span", "lesson__hw-link-icon", linkItem.icon || "🔗");
+              var iconSpan = el("span", "lesson__hw-link-icon", linkItem.icon || "");
               var titleSpan = el("span", "lesson__hw-link-title", linkItem.title || linkItem.url);
               a.appendChild(iconSpan);
               a.appendChild(titleSpan);
@@ -933,7 +933,7 @@
 
           // Ссылка на оригинальный пост в канале
           if (hw.post_url) {
-            var postLink = el("a", "lesson__hw-post-link", "📢 Открыть в канале");
+            var postLink = el("a", "lesson__hw-post-link", "Открыть в канале ›");
             postLink.href = hw.post_url;
             postLink.target = "_blank";
             postLink.rel = "noopener noreferrer";
@@ -1343,9 +1343,9 @@
        ======================================================== */
     var botDifficulty = "easy";
     var botDifficultyLabels = {
-      easy: "🟢 Новичок",
-      medium: "🟡 Любитель",
-      hard: "🔴 Мастер"
+      easy: "Новичок",
+      medium: "Любитель",
+      hard: "Мастер"
     };
     var botGameState = null;
     var botSelected = null;
@@ -1468,27 +1468,27 @@
           if (botGameState.turn === "b") {
             var rewardTugriks = botDifficulty === "hard" ? 100 : (botDifficulty === "medium" ? 50 : 25);
             if (botTurnEl) {
-              botTurnEl.textContent = "Мат! Победа над ботом! 🏆 +" + rewardTugriks + " тугриков";
+              botTurnEl.textContent = "Мат! Победа над ботом! +" + rewardTugriks + " тугриков";
               botTurnEl.className = "chess__turn is-over";
             }
             haptic("success");
             tttFetch("/solo_reward", { method: "POST" })
               .then(function (data) {
                 if (data && typeof data.balance === "number") {
-                  syncCasinoBalance(data.balance, false, "Победа над ботом в шахматах 🏆", "♟️", "chess");
+                  syncCasinoBalance(data.balance, false, "Победа над ботом в шахматах", "chess", "chess");
                 }
               })
               .catch(function () {});
           } else {
             if (botTurnEl) {
-              botTurnEl.textContent = "Мат! Бот победил 🤖";
+              botTurnEl.textContent = "Мат! Бот победил";
               botTurnEl.className = "chess__turn is-over";
             }
             haptic("warning");
           }
         } else {
           if (botTurnEl) {
-            botTurnEl.textContent = "Пат! Ничья 🤝";
+            botTurnEl.textContent = "Пат! Ничья";
             botTurnEl.className = "chess__turn is-over";
           }
           haptic("light");
@@ -1500,7 +1500,7 @@
       if (botGameState.halfMoves >= 100) {
         botGameOver = true;
         if (botTurnEl) {
-          botTurnEl.textContent = "Ничья (правило 50 ходов) 🤝";
+          botTurnEl.textContent = "Ничья (правило 50 ходов)";
           botTurnEl.className = "chess__turn is-over";
         }
         haptic("light");
@@ -2480,7 +2480,7 @@
       type: type,
       amount: amount,
       reason: opts.reason || (type === "credit" ? "Зачисление тугриков" : "Списание тугриков"),
-      icon: opts.icon || (type === "credit" ? "💰" : "💸"),
+      icon: opts.icon || (type === "credit" ? "+" : "-"),
       category: opts.category || "general",
       timestamp: Date.now()
     };
@@ -2498,7 +2498,7 @@
         type: "credit",
         amount: Math.floor(curBalance),
         reason: "Текущий баланс",
-        icon: "💰",
+        icon: "+",
         category: "initial",
         timestamp: Date.now()
       });
@@ -2577,7 +2577,7 @@
         type: diff > 0 ? "credit" : "debit",
         amount: Math.abs(diff),
         reason: reason || (diff > 0 ? "Зачисление тугриков" : "Списание тугриков"),
-        icon: icon || (diff > 0 ? "💰" : "💸"),
+        icon: icon || (diff > 0 ? "+" : "-"),
         category: category || "general"
       });
     } else if (!hadPriorBalance && newBal > 0) {
@@ -2632,12 +2632,12 @@
         var sign = isCredit ? "+" : "-";
         var cls = isCredit ? "is-credit" : "is-debit";
         html += '<div class="menu__wallet-tx-mini ' + cls + '" data-id="' + tx.id + '">' +
-          '<span class="menu__wallet-tx-mini-icon">' + (tx.icon || (isCredit ? "💰" : "💸")) + '</span>' +
+          '<span class="menu__wallet-tx-mini-icon">' + (isCredit ? "+" : "-") + '</span>' +
           '<div class="menu__wallet-tx-mini-details">' +
             '<span class="menu__wallet-tx-mini-title">' + escapeTxText(tx.reason || (isCredit ? "Зачисление" : "Списание")) + '</span>' +
             '<span class="menu__wallet-tx-mini-time">' + formatTxDate(tx.timestamp) + '</span>' +
           '</div>' +
-          '<span class="menu__wallet-tx-mini-amount ' + cls + '">' + sign + tx.amount.toLocaleString() + ' 💰</span>' +
+          '<span class="menu__wallet-tx-mini-amount ' + cls + '">' + sign + tx.amount.toLocaleString() + ' тугриков</span>' +
         '</div>';
       }
       previewItems.innerHTML = html;
@@ -2661,8 +2661,8 @@
           totalDebits += (history[k].amount || 0);
         }
       }
-      if (statCreditsEl) statCreditsEl.textContent = "+" + totalCredits.toLocaleString() + " 💰";
-      if (statDebitsEl) statDebitsEl.textContent = "-" + totalDebits.toLocaleString() + " 💰";
+      if (statCreditsEl) statCreditsEl.textContent = "+" + totalCredits.toLocaleString() + " тугриков";
+      if (statDebitsEl) statDebitsEl.textContent = "-" + totalDebits.toLocaleString() + " тугриков";
 
       var filtered = history.filter(function (tx) {
         if (currentFilter === "credit") return tx.type === "credit";
@@ -2701,13 +2701,13 @@
         var cls = isCredit ? "is-credit" : "is-debit";
         html += '<div class="wallet-history-tx ' + cls + '">' +
           '<div class="wallet-history-tx__icon-wrap">' +
-            '<span class="wallet-history-tx__icon">' + (tx.icon || (isCredit ? "💰" : "💸")) + '</span>' +
+            '<span class="wallet-history-tx__icon">' + (isCredit ? "+" : "-") + '</span>' +
           '</div>' +
           '<div class="wallet-history-tx__info">' +
             '<span class="wallet-history-tx__title">' + escapeTxText(tx.reason || (isCredit ? "Зачисление" : "Списание")) + '</span>' +
             '<span class="wallet-history-tx__time">' + formatTxDate(tx.timestamp) + '</span>' +
           '</div>' +
-          '<span class="wallet-history-tx__amount ' + cls + '">' + sign + tx.amount.toLocaleString() + ' 💰</span>' +
+          '<span class="wallet-history-tx__amount ' + cls + '">' + sign + tx.amount.toLocaleString() + ' тугриков</span>' +
         '</div>';
       }
       listEl.innerHTML = html;
@@ -2785,7 +2785,7 @@
     if (!box || !amount || !text || !ok) return;
 
     if (title) {
-      title.textContent = gift.title || "🎉 Работа сервиса восстановлена";
+      title.textContent = gift.title || "Работа сервиса восстановлена";
     }
     amount.textContent = "+" + tugriks(gift.amount || 500);
     text.innerHTML = gift.text || "";
@@ -2820,14 +2820,14 @@
       if (!localStorage.getItem(SERVICE_RESTORED_NOTICE_KEY)) {
         // Показываем сообщение о восстановлении сервиса и компенсации при входе в мини-апп
         showGift({
-          title: "🎉 Работа сервиса восстановлена",
+          title: "Работа сервиса восстановлена",
           amount: 500,
           text: "Просим прощения за доставленные неудобства.<br>Зачислили <b>500 тугриков</b> на счет в качестве извинений!",
           buttonText: "Забрать 500 тугриков"
         });
         // Сразу локально пополняем баланс тугриков
         var cur = getEffectiveBalance();
-        syncCasinoBalance(cur + 500, false, "Компенсация от сервиса 🎁", "🎁", "bonus");
+        syncCasinoBalance(cur + 500, false, "Компенсация от сервиса", "bonus", "bonus");
         localStorage.setItem(SERVICE_RESTORED_NOTICE_KEY, "true");
       }
     } catch (e) {
@@ -2849,8 +2849,8 @@
           var dailyGained = data.gained || 0;
           data.player.balance = targetBal;
           casinoPlayer = data.player;
-          var dailyReason = dailyGained > 0 ? "Ежедневный вход 📅 (+" + dailyGained + ")" : "Ежедневная награда 🎁";
-          syncCasinoBalance(targetBal, false, dailyReason, "🎁", "daily");
+          var dailyReason = dailyGained > 0 ? "Ежедневный вход (+" + dailyGained + ")" : "Ежедневная награда";
+          syncCasinoBalance(targetBal, false, dailyReason, "daily", "daily");
         }
 
         // Сервер сам решает, положен ли подарок: приходит только
@@ -2899,13 +2899,13 @@
     } catch (e) {}
 
     function glyph(key) {
-      return glyphs[key] || "❔";
+      return glyphs[key] || "-";
     }
 
     /** Случайный символ для мелькания. Результат определяет сервер. */
     function flickerGlyph() {
       var keys = Object.keys(glyphs);
-      if (!keys.length) return "❔";
+      if (!keys.length) return "-";
       return glyphs[keys[Math.floor(Math.random() * keys.length)]];
     }
 
@@ -3114,13 +3114,13 @@
 
           casinoPlayer = data.player;
           var result = data.result;
-          var spinReason = "Слоты в казино 🎰";
-          var spinIcon = "🎰";
+          var spinReason = "Слоты в казино";
+          var spinIcon = "casino";
           if (result && typeof result.net === "number") {
             if (result.net > 0) {
-              spinReason = "Выигрыш в слотах 🎰" + (result.multiplier ? " (x" + result.multiplier + ")" : "");
+              spinReason = "Выигрыш в слотах" + (result.multiplier ? " (x" + result.multiplier + ")" : "");
             } else if (result.net < 0) {
-              spinReason = "Ставка в слотах 🎰";
+              spinReason = "Ставка в слотах";
             }
           }
           if (data.player && typeof data.player.balance === "number") {
@@ -3320,7 +3320,7 @@
             casinoPlayer = result.data.player;
             if (typeof result.data.player.balance === "number") {
               var promoLabel = (password ? password.trim().toUpperCase() : "Бонус");
-              syncCasinoBalance(result.data.player.balance, false, "Промокод: " + promoLabel + " 🏷️", "🏷️", "promo");
+              syncCasinoBalance(result.data.player.balance, false, "Промокод: " + promoLabel, "promo", "promo");
             } else if (typeof casinoRender === "function") {
               casinoRender();
             }
@@ -3556,10 +3556,10 @@
           var prodTitle = (chosen && (chosen.title || chosen.name)) || "Товар";
           if (data.player && typeof data.player.balance === "number") {
             balance = data.player.balance;
-            syncCasinoBalance(data.player.balance, true, "Покупка: " + prodTitle, "🛒", "shop");
+            syncCasinoBalance(data.player.balance, true, "Покупка: " + prodTitle, "shop", "shop");
           } else if (typeof data.balance === "number") {
             balance = data.balance;
-            syncCasinoBalance(data.balance, true, "Покупка: " + prodTitle, "🛒", "shop");
+            syncCasinoBalance(data.balance, true, "Покупка: " + prodTitle, "shop", "shop");
           } else {
             balance = data.player ? data.player.balance : balance;
           }
@@ -3638,9 +3638,9 @@
             }
 
             var rankBadge = "#" + (idx + 1);
-            if (idx === 0) rankBadge = "🥇";
-            else if (idx === 1) rankBadge = "🥈";
-            else if (idx === 2) rankBadge = "🥉";
+            if (idx === 0) rankBadge = "1";
+            else if (idx === 1) rankBadge = "2";
+            else if (idx === 2) rankBadge = "3";
 
             var rankEl = document.createElement("span");
             rankEl.className = "leaderboard__rank";
@@ -3659,7 +3659,7 @@
             var extraEl = document.createElement("div");
             extraEl.className = "leaderboard__extra";
             if (item.streak > 0) {
-              extraEl.textContent = "🔥 Серия: " + item.streak + " " + core.plural(item.streak, "день", "дня", "дней");
+              extraEl.textContent = "Серия: " + item.streak + " " + core.plural(item.streak, "день", "дня", "дней");
             }
 
             infoEl.appendChild(nameEl);
@@ -3918,7 +3918,7 @@
           soloOver = true;
           if (res.winner === "O") {
             if (soloStatus) {
-              soloStatus.textContent = "Бот победил! 🤖";
+              soloStatus.textContent = "Бот победил";
               soloStatus.className = "ttt__status is-over";
             }
             if (res.line) {
@@ -3929,7 +3929,7 @@
             haptic("warning");
           } else if (res.draw) {
             if (soloStatus) {
-              soloStatus.textContent = "Ничья! 🤝";
+              soloStatus.textContent = "Ничья";
               soloStatus.className = "ttt__status is-over";
             }
             haptic("light");
@@ -3956,7 +3956,7 @@
         soloOver = true;
         if (res.winner === "X") {
           if (soloStatus) {
-            soloStatus.textContent = "Победа! 🎉 +25 тугриков";
+            soloStatus.textContent = "Победа (+25 тугриков)";
             soloStatus.className = "ttt__status is-over";
           }
           if (res.line) {
@@ -3971,7 +3971,7 @@
               if (data && data.player) {
                 casinoPlayer = data.player;
                 if (typeof data.player.balance === "number") {
-                  syncCasinoBalance(data.player.balance, false, "Победа в крестиках-ноликах ❌⭕", "🎮", "ttt");
+                  syncCasinoBalance(data.player.balance, false, "Победа в крестиках-ноликах", "ttt", "ttt");
                 } else if (typeof casinoRender === "function") {
                   casinoRender();
                 }
@@ -3980,7 +3980,7 @@
             .catch(function () {});
         } else if (res.draw) {
           if (soloStatus) {
-            soloStatus.textContent = "Ничья! 🤝";
+            soloStatus.textContent = "Ничья";
             soloStatus.className = "ttt__status is-over";
           }
           haptic("light");
@@ -4039,7 +4039,7 @@
       var you = g.you;
 
       if (multiPlayerX) {
-        multiPlayerX.textContent = "❌ " + (g.player_x ? g.player_x.name : "Ожидание…");
+        multiPlayerX.textContent = "X " + (g.player_x ? g.player_x.name : "Ожидание…");
         multiPlayerX.classList.toggle("is-turn", g.turn === "X" && g.status === "active");
       }
       if (multiPlayerO) {
@@ -4078,9 +4078,9 @@
         } else if (g.status === "finished") {
           if (multiAgainBtn) multiAgainBtn.hidden = false;
           if (g.winner === "draw") {
-            multiStatus.textContent = "Ничья! 🤝";
+            multiStatus.textContent = "Ничья";
           } else if (g.winner === you) {
-            multiStatus.textContent = "Вы победили! 🏆 +100 тугриков";
+            multiStatus.textContent = "Вы победили (+100 тугриков)";
           } else if (you) {
             multiStatus.textContent = "Победил соперник (" + g.winner + ")";
           } else {
@@ -4353,9 +4353,9 @@
           onReward: function (coins, newBalance) {
             var cur = getEffectiveBalance();
             if (typeof newBalance === "number") {
-              syncCasinoBalance(Math.max(cur, newBalance), false, "Рекорд в Block Blast 🧩", "🧩", "blockblast");
+              syncCasinoBalance(Math.max(cur, newBalance), false, "Рекорд в Block Blast", "blockblast", "blockblast");
             } else if (typeof coins === "number" && coins > 0) {
-              syncCasinoBalance(cur + coins, false, "Рекорд в Block Blast 🧩", "🧩", "blockblast");
+              syncCasinoBalance(cur + coins, false, "Рекорд в Block Blast", "blockblast", "blockblast");
             }
           }
         });
@@ -4468,9 +4468,9 @@
           onReward: function (coins, newBalance) {
             var cur = getEffectiveBalance();
             if (typeof newBalance === "number") {
-              syncCasinoBalance(Math.max(cur, newBalance), false, "Рекорд во Flappy Челик 🐥", "🐥", "flappy");
+              syncCasinoBalance(Math.max(cur, newBalance), false, "Рекорд во Flappy Челик", "flappy", "flappy");
             } else if (typeof coins === "number" && coins > 0) {
-              syncCasinoBalance(cur + coins, false, "Рекорд во Flappy Челик 🐥", "🐥", "flappy");
+              syncCasinoBalance(cur + coins, false, "Рекорд во Flappy Челик", "flappy", "flappy");
             }
           }
         });
@@ -4611,9 +4611,9 @@
 
       if (filtered.length === 0) {
         var msg = noteFilter === "done" ? "Выполненных заданий пока нет." :
-                  noteFilter === "active" ? "Все задания выполнены! Отличная работа 🎉" :
+                  noteFilter === "active" ? "Все задания выполнены" :
                   "Заметок пока нет. Нажмите «+ Новая заметка», чтобы записать задание к паре.";
-        listEl.innerHTML = '<div class="notelist__empty"><div class="notelist__empty-icon">📝</div>' + msg + '</div>';
+        listEl.innerHTML = '<div class="notelist__empty"><div class="notelist__empty-icon"><svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg></div>' + msg + '</div>';
         return;
       }
 
@@ -4682,7 +4682,7 @@
         var clearBtn = document.createElement("button");
         clearBtn.type = "button";
         clearBtn.className = "notelist__clear-done";
-        clearBtn.textContent = "🗑 Очистить выполненные задания";
+        clearBtn.textContent = "Очистить выполненные задания";
         clearBtn.addEventListener("click", function () {
           var toRemove = notesList.filter(function (n) { return n.done; });
           notesList = notesList.filter(function (n) { return !n.done; });
@@ -4950,14 +4950,14 @@
     var navBtn = document.getElementById("menuPetNavBtn");
 
     var DEFAULT_CATALOG = [
-      { id: "cap", name: "Кепка", emoji: "🧢", type: "hat", price: 300, description: "Стильная бейсболка на бок" },
-      { id: "shades", name: "Крутые очки", emoji: "🕶", type: "hat", price: 400, description: "Тёмные очки для важных переговоров" },
-      { id: "grad", name: "Шапка выпускника", emoji: "🎓", type: "hat", price: 500, description: "Конфедератка отличника" },
-      { id: "crown", name: "Золотая корона", emoji: "👑", type: "hat", price: 1500, description: "Настоящее королевское величие" },
-      { id: "headphones", name: "Наушники", emoji: "🎧", type: "hat", price: 600, description: "Геймерские неоновые наушники" },
-      { id: "bow", name: "Бантик", emoji: "🎀", type: "neck", price: 200, description: "Милый розовый бантик" },
-      { id: "tie", name: "Галстук", emoji: "👔", type: "neck", price: 450, description: "Деловой красный галстук" },
-      { id: "scarf", name: "Тёплый шарф", emoji: "🧣", type: "neck", price: 350, description: "Согревает на зимней сессии" }
+      { id: "cap", name: "Кепка", emoji: "", type: "hat", price: 300, description: "Стильная бейсболка на бок" },
+      { id: "shades", name: "Крутые очки", emoji: "", type: "hat", price: 400, description: "Тёмные очки для важных переговоров" },
+      { id: "grad", name: "Шапка выпускника", emoji: "", type: "hat", price: 500, description: "Конфедератка отличника" },
+      { id: "crown", name: "Золотая корона", emoji: "", type: "hat", price: 1500, description: "Настоящее королевское величие" },
+      { id: "headphones", name: "Наушники", emoji: "", type: "hat", price: 600, description: "Геймерские неоновые наушники" },
+      { id: "bow", name: "Бантик", emoji: "", type: "neck", price: 200, description: "Милый розовый бантик" },
+      { id: "tie", name: "Галстук", emoji: "", type: "neck", price: 450, description: "Деловой красный галстук" },
+      { id: "scarf", name: "Тёплый шарф", emoji: "", type: "neck", price: 350, description: "Согревает на зимней сессии" }
     ];
 
     var petData = null;
@@ -5060,7 +5060,7 @@
       if (!reactionBox) return;
       var el = document.createElement("span");
       el.className = "pet__reaction-heart";
-      el.textContent = emoji || "❤️";
+      el.textContent = "";
       var offset = 30 + Math.random() * 100;
       el.style.left = offset + "px";
       reactionBox.appendChild(el);
@@ -5294,23 +5294,23 @@
           var filled = i < h;
           sp.className = "pet__heart " + (filled ? "is-filled" : "is-lost");
           sp.style.animationDelay = (i * 0.18) + "s";
-          sp.textContent = filled ? "❤️" : "🤍";
+          sp.className = "pet__heart-dot " + (filled ? "is-filled" : "is-empty");
           heartsEl.appendChild(sp);
         }
       }
 
       if (timerEl) {
         if (isDead) {
-          timerEl.textContent = "Погиб 🪦";
+          timerEl.textContent = "Питомец уснул";
         } else if (petData.health >= 5) {
-          timerEl.textContent = "Сыт и счастлив ✨";
+          timerEl.textContent = "Сыт и здоров";
         } else {
           var nowSec = Math.floor(Date.now() / 1000);
           var elapsed = Math.max(0, nowSec - (petData.last_fed_at || nowSec));
           var leftSec = Math.max(0, 86400 - (elapsed % 86400));
           var hrs = Math.floor(leftSec / 3600);
           var mins = Math.floor((leftSec % 3600) / 60);
-          timerEl.textContent = "До потери ❤️: " + hrs + "ч " + mins + "м";
+          timerEl.textContent = "До потери здоровья: " + hrs + "ч " + mins + "м";
         }
       }
 
@@ -5349,7 +5349,7 @@
           if (upgradeBtnPrice) upgradeBtnPrice.textContent = "3 000 тугриков";
 
           var pct1 = Math.min(100, Math.max(0, Math.floor((curBal / 3000) * 100)));
-          if (evoVal) evoVal.textContent = curBal.toLocaleString("ru-RU") + " / 3 000 💰 (" + pct1 + "%)";
+          if (evoVal) evoVal.textContent = curBal.toLocaleString("ru-RU") + " / 3 000 (" + pct1 + "%)";
           if (evoFill) {
             evoFill.style.width = pct1 + "%";
             evoFill.className = "pet__evolution-fill is-lvl-1";
@@ -5365,7 +5365,7 @@
           if (upgradeBtnPrice) upgradeBtnPrice.textContent = "6 000 тугриков";
 
           var pct2 = Math.min(100, Math.max(0, Math.floor((curBal / 6000) * 100)));
-          if (evoVal) evoVal.textContent = curBal.toLocaleString("ru-RU") + " / 6 000 💰 (" + pct2 + "%)";
+          if (evoVal) evoVal.textContent = curBal.toLocaleString("ru-RU") + " / 6 000 (" + pct2 + "%)";
           if (evoFill) {
             evoFill.style.width = pct2 + "%";
             evoFill.className = "pet__evolution-fill is-lvl-2";
@@ -5465,7 +5465,7 @@
       var shiftSec = work.shift_seconds || 3600;
 
       if (mineSubtitle) {
-        mineSubtitle.textContent = "Добыча: " + reward + " 💰 / час (Ур. " + (petData.level || 1) + ")";
+        mineSubtitle.textContent = "Добыча: " + reward + " / час (Ур. " + (petData.level || 1) + ")";
       }
 
       // Обновляем индикаторы смен
@@ -5479,10 +5479,10 @@
           el.textContent = shiftNum + " ✓";
         } else if (shiftNum === shiftsToday + 1 && status === "working") {
           el.className = "pet__mine-shift is-in-progress";
-          el.textContent = shiftNum + " ⛏️";
+          el.textContent = shiftNum + " ";
         } else if (shiftNum === shiftsToday + 1 && status === "ready") {
           el.className = "pet__mine-shift is-in-progress";
-          el.textContent = shiftNum + " 🎁";
+          el.textContent = shiftNum + " ";
         } else {
           el.className = "pet__mine-shift";
           el.textContent = shiftNum + " ч";
@@ -5492,9 +5492,9 @@
       // Информация о сердечках
       if (mineHeartCost) {
         if (heartLostToday) {
-          mineHeartCost.textContent = "❤️ за сегодня уже списано (смена бесплатна)";
+          mineHeartCost.textContent = "Здоровье за сегодня уже списано";
         } else {
-          mineHeartCost.textContent = "Расход: 1 ❤️ за первую смену дня";
+          mineHeartCost.textContent = "Расход: 1 здоровье за первую смену дня";
         }
       }
 
@@ -5531,9 +5531,9 @@
           mineBtn.disabled = true;
           mineBtn.className = "pet__mine-btn";
         }
-        if (mineBtnIcon) mineBtnIcon.textContent = "⛏️";
+        if (mineBtnIcon) mineBtnIcon.textContent = "";
         if (mineBtnText) mineBtnText.textContent = "Идёт добыча тугриков…";
-        if (mineBtnReward) mineBtnReward.textContent = "+" + reward + " 💰";
+        if (mineBtnReward) mineBtnReward.textContent = "+" + reward + " тугриков";
 
         function tick() {
           var nowSec = Math.floor(Date.now() / 1000);
@@ -5549,7 +5549,7 @@
             if (petData && petData.work) {
               petData.work.status = "ready";
               cheerPet();
-              spawnReaction("✨");
+              /* pulse reaction */
               haptic("success");
               renderPetWork(petData.work);
             }
@@ -5570,15 +5570,15 @@
         if (mineProgressBox) mineProgressBox.hidden = true;
         if (mineLimitHint) mineLimitHint.hidden = true;
         if (mineStatusBadge) mineStatusBadge.className = "pet__mine-status-badge is-ready";
-        if (mineStatusText) mineStatusText.textContent = "🎉 Добыча готова!";
+        if (mineStatusText) mineStatusText.textContent = "Добыча готова!";
 
         if (mineBtn) {
           mineBtn.disabled = false;
           mineBtn.className = "pet__mine-btn pet__mine-btn--claim";
         }
-        if (mineBtnIcon) mineBtnIcon.textContent = "🎁";
+        if (mineBtnIcon) mineBtnIcon.textContent = "";
         if (mineBtnText) mineBtnText.textContent = "Забрать добычу!";
-        if (mineBtnReward) mineBtnReward.textContent = "+" + reward + " 💰";
+        if (mineBtnReward) mineBtnReward.textContent = "+" + reward + " тугриков";
 
       } else {
         // Idle
@@ -5593,20 +5593,20 @@
             mineBtn.disabled = true;
             mineBtn.className = "pet__mine-btn";
           }
-          if (mineBtnIcon) mineBtnIcon.textContent = "🌙";
+          if (mineBtnIcon) mineBtnIcon.textContent = "";
           if (mineBtnText) mineBtnText.textContent = "Отдых до завтра (00:00 МСК)";
           if (mineBtnReward) mineBtnReward.textContent = "3/3";
         } else if (petData.health < 2 && !heartLostToday) {
           if (mineLimitHint) mineLimitHint.hidden = true;
           if (mineStatusBadge) mineStatusBadge.className = "pet__mine-status-badge";
-          if (mineStatusText) mineStatusText.textContent = "Мало ❤️ для работы";
+          if (mineStatusText) mineStatusText.textContent = "Мало здоровья для работы";
           if (mineBtn) {
             mineBtn.disabled = true;
             mineBtn.className = "pet__mine-btn";
           }
-          if (mineBtnIcon) mineBtnIcon.textContent = "❤️";
-          if (mineBtnText) mineBtnText.textContent = "Нужно минимум 2 ❤️ (покормите)";
-          if (mineBtnReward) mineBtnReward.textContent = "+" + reward + " 💰";
+          if (mineBtnIcon) mineBtnIcon.textContent = "";
+          if (mineBtnText) mineBtnText.textContent = "Нужно минимум 2 здоровья";
+          if (mineBtnReward) mineBtnReward.textContent = "+" + reward + " тугриков";
         } else {
           if (mineLimitHint) mineLimitHint.hidden = true;
           if (mineStatusBadge) mineStatusBadge.className = "pet__mine-status-badge is-idle";
@@ -5615,9 +5615,9 @@
             mineBtn.disabled = false;
             mineBtn.className = "pet__mine-btn";
           }
-          if (mineBtnIcon) mineBtnIcon.textContent = "⛏️";
+          if (mineBtnIcon) mineBtnIcon.textContent = "";
           if (mineBtnText) mineBtnText.textContent = "Отправить в шахту (1 ч)";
-          if (mineBtnReward) mineBtnReward.textContent = "+" + reward + " 💰";
+          if (mineBtnReward) mineBtnReward.textContent = "+" + reward + " тугриков";
         }
       }
     }
@@ -5649,9 +5649,9 @@
           }
           petData = res.pet;
           cheerPet();
-          spawnReaction("⛏️");
-          setTimeout(function () { spawnReaction("💪"); }, 150);
-          showToast(res.message || "⛏️ ЧЕЛИК отправился в шахту на 1 час!");
+          /* pulse reaction */
+          setTimeout(function () { /* pulse reaction */ }, 150);
+          showToast(res.message || "ЧЕЛИК отправился в шахту на 1 час");
           haptic("success");
           renderPet();
         })
@@ -5672,7 +5672,7 @@
         .then(function (res) {
           busy = false;
           if (res && typeof res.balance === "number") {
-            syncCasinoBalance(res.balance, false, "Зарплата питомца с работы ⛏️", "🐾", "pet");
+            syncCasinoBalance(res.balance, false, "Зарплата питомца с работы", "pet", "pet");
           }
           if (!res || !res.ok) {
             showToast((res && res.error) || "Не удалось забрать награду", true);
@@ -5682,20 +5682,20 @@
           }
           petData = res.pet;
           cheerPet();
-          spawnReaction("💰");
-          setTimeout(function () { spawnReaction("⛏️"); }, 120);
-          setTimeout(function () { spawnReaction("🎉"); }, 240);
+          /* pulse reaction */
+          setTimeout(function () { /* pulse reaction */ }, 120);
+          setTimeout(function () { /* pulse reaction */ }, 240);
 
           var drop = res.lucky_drop;
           if (drop && drop.type === "gem") {
-            setTimeout(function () { spawnReaction("💎"); }, 360);
-            showToast("💎 УДАЧА! В шахте найден " + drop.name + " (+" + drop.reward + " 💰)!");
+            setTimeout(function () { /* pulse reaction */ }, 360);
+            showToast("Удача! В шахте найден " + drop.name + " (+" + drop.reward + " тугриков)!");
           } else if (drop && drop.type === "apple") {
-            setTimeout(function () { spawnReaction("🍏"); }, 360);
-            setTimeout(function () { spawnReaction("❤️"); }, 450);
-            showToast("🍏 НАХОДКА! Шахтёрское яблоко восстановило здоровье (+1 ❤️)!");
+            setTimeout(function () { /* pulse reaction */ }, 360);
+            setTimeout(function () { /* pulse reaction */ }, 450);
+            showToast("Находка! Восстановлено здоровье (+1)!");
           } else {
-            showToast("💰 Смена завершена! Добыто " + res.reward + " тугриков!");
+            showToast("Смена завершена! Добыто " + res.reward + " тугриков!");
           }
 
           haptic("success");
@@ -5745,7 +5745,7 @@
 
         var emoji = document.createElement("div");
         emoji.className = "pet-card__emoji";
-        emoji.textContent = item.emoji || "✨";
+        emoji.textContent = "";
 
         var info = document.createElement("div");
         info.className = "pet-card__info";
@@ -5768,7 +5768,7 @@
 
         if (!isOwned) {
           btn.className = "pet-card__btn is-buy";
-          btn.textContent = "Купить (" + item.price + " 💰)";
+          btn.textContent = "Купить (" + item.price + " тугриков)";
           btn.addEventListener("click", function () {
             buyItem(item);
           });
@@ -5809,7 +5809,7 @@
         .then(function (res) {
           busy = false;
           if (res && typeof res.balance === "number") {
-            syncCasinoBalance(res.balance, true, "Магазин питомца: " + item.name, "🐾", "pet");
+            syncCasinoBalance(res.balance, true, "Магазин питомца: " + item.name, "pet", "pet");
           }
           if (!res || !res.ok) {
             showToast((res && res.error) || "Не удалось купить", true);
@@ -5819,8 +5819,8 @@
           }
           petData = res.pet;
           cheerPet();
-          spawnReaction("✨");
-          showToast("Куплено: " + item.name + " 🎉");
+          /* pulse reaction */
+          showToast("Куплено: " + item.name);
           haptic("success");
           renderPet();
         })
@@ -5848,7 +5848,7 @@
           }
           petData = res.pet;
           cheerPet();
-          spawnReaction("✨");
+          /* pulse reaction */
           haptic("selection");
           renderPet();
         })
@@ -5891,7 +5891,7 @@
         .then(function (res) {
           busy = false;
           if (res && typeof res.balance === "number") {
-            syncCasinoBalance(res.balance, true, "Создание питомца (" + cleanName + ")", "🐾", "pet");
+            syncCasinoBalance(res.balance, true, "Создание питомца (" + cleanName + ")", "pet", "pet");
           }
           if (!res || !res.ok) {
             var msg = (res && res.error) || "Не удалось завести питомца";
@@ -5905,9 +5905,9 @@
           }
           petData = res.pet;
           cheerPet();
-          spawnReaction("🎉");
-          spawnReaction("❤️");
-          showToast("🎉 Поздравляем с новым питомцем: " + res.pet.name + "!");
+          /* pulse reaction */
+          /* pulse reaction */
+          showToast("Поздравляем с новым питомцем: " + res.pet.name);
           haptic("success");
           renderPet();
         })
@@ -5926,7 +5926,7 @@
     function feedPet() {
       if (busy || !petData || petData.dead) return;
       if (petData.health >= 5) {
-        showToast("Питомец уже сыт и счастлив! (5/5 ❤️)");
+        showToast("Питомец уже сыт и здоров (5/5)");
         haptic("warning");
         return;
       }
@@ -5945,7 +5945,7 @@
         .then(function (res) {
           busy = false;
           if (res && typeof res.balance === "number") {
-            syncCasinoBalance(res.balance, true, "Кормление питомца 🍏", "🍏", "pet");
+            syncCasinoBalance(res.balance, true, "Кормление питомца", "pet", "pet");
           }
           if (!res || !res.ok) {
             showToast((res && res.error) || "Не удалось покормить", true);
@@ -5955,10 +5955,10 @@
           }
           petData = res.pet;
           cheerPet();
-          spawnReaction("🍏");
-          setTimeout(function () { spawnReaction("❤️"); }, 150);
-          setTimeout(function () { spawnReaction("🥰"); }, 300);
-          showToast("🍏 Хрум-хрум! " + petData.name + " подкрепился (+1 ❤️)");
+          /* pulse reaction */
+          setTimeout(function () { /* pulse reaction */ }, 150);
+          setTimeout(function () { /* pulse reaction */ }, 300);
+          showToast(petData.name + " подкрепился (+1 здоровье)");
           haptic("success");
           renderPet();
         })
@@ -5992,7 +5992,7 @@
         .then(function (res) {
           busy = false;
           if (res && typeof res.balance === "number") {
-            syncCasinoBalance(res.balance, true, "Эволюция питомца ⭐", "⚡", "pet");
+            syncCasinoBalance(res.balance, true, "Эволюция питомца", "pet", "pet");
           }
           if (!res || !res.ok) {
             showToast((res && res.error) || "Не удалось улучшить питомца", true);
@@ -6002,12 +6002,12 @@
           }
           petData = res.pet;
           cheerPet();
-          spawnReaction("⚡");
-          setTimeout(function () { spawnReaction("⭐"); }, 150);
-          setTimeout(function () { spawnReaction("✨"); }, 300);
-          setTimeout(function () { spawnReaction("🎉"); }, 450);
+          /* pulse reaction */
+          setTimeout(function () { /* pulse reaction */ }, 150);
+          setTimeout(function () { /* pulse reaction */ }, 300);
+          setTimeout(function () { /* pulse reaction */ }, 450);
           var lvlTitle = (petData && petData.level_title) || ("Уровень " + petData.level);
-          showToast("🎉 Питомец эволюционировал! Новая форма: " + lvlTitle + "!");
+          showToast("Питомец эволюционировал! Новая форма: " + lvlTitle);
           haptic("success");
           renderPet();
         })
@@ -6027,7 +6027,7 @@
       petChar.addEventListener("click", function () {
         if (!petData || petData.dead) return;
         cheerPet();
-        var emojis = ["❤️", "💖", "🥰", "✨", "🐾"];
+        var emojis = ["•"];
         spawnReaction(emojis[Math.floor(Math.random() * emojis.length)]);
         haptic("light");
       });

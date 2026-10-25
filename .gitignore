@@ -14,3 +14,7 @@ users.json
 
 # macOS
 .DS_Store
+
+# Skills CLI
+.agents/
+skills-lock.json

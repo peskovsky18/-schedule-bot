@@ -525,10 +525,10 @@
       function showComboBadge(comboCount, pointsEarned) {
         if (!els.comboPill || !els.comboText) return;
         var titles = [
-          "COMBO x" + comboCount + "! 🔥",
-          "GREAT x" + comboCount + "! ⚡",
-          "AMAZING x" + comboCount + "! 💥",
-          "UNBELIEVABLE! 👑"
+          "COMBO x" + comboCount,
+          "GREAT x" + comboCount,
+          "AMAZING x" + comboCount,
+          "UNBELIEVABLE!"
         ];
         var text = titles[Math.min(titles.length - 1, Math.max(0, comboCount - 2))];
         els.comboText.textContent = text + " (+" + pointsEarned + ")";
@@ -735,14 +735,14 @@
 
         var overBadge = els.overBadge || document.getElementById("bbOverBadge");
         if (overBadge) {
-          overBadge.textContent = wasRecord ? "🏆 Новый рекорд!" : "🎮 Игра окончена!";
+          overBadge.textContent = wasRecord ? "Новый рекорд!" : "Игра окончена";
         }
 
         if (els.overReward) {
           if (wasRecord) {
-            els.overReward.textContent = "+" + rewardCoins.toLocaleString() + " 💰 (новый рекорд!)";
+            els.overReward.textContent = "+" + rewardCoins.toLocaleString() + " тугриков (новый рекорд!)";
           } else {
-            els.overReward.textContent = "0 💰 (рекорд: " + (state.bestScore || state.initialBestScore).toLocaleString() + ")";
+            els.overReward.textContent = "0 тугриков (рекорд: " + (state.bestScore || state.initialBestScore).toLocaleString() + ")";
           }
         }
         if (els.overRewardRow) {
@@ -790,11 +790,11 @@
               var coins = typeof data.coins_awarded === "number" ? data.coins_awarded : rewardCoins;
               if (els.overReward) {
                 if (data.is_record || coins > 0) {
-                  els.overReward.textContent = "+" + coins.toLocaleString() + " 💰 (новый рекорд!)";
-                  if (overBadge) overBadge.textContent = "🏆 Новый рекорд!";
+                  els.overReward.textContent = "+" + coins.toLocaleString() + " тугриков (новый рекорд!)";
+                  if (overBadge) overBadge.textContent = "Новый рекорд!";
                 } else {
                   var dispBest = (typeof data.best_score === "number" ? data.best_score : state.bestScore) || 0;
-                  els.overReward.textContent = "0 💰 (рекорд: " + dispBest.toLocaleString() + ")";
+                  els.overReward.textContent = "0 тугриков (рекорд: " + dispBest.toLocaleString() + ")";
                 }
               }
               if (typeof data.balance === "number" && typeof opts.onReward === "function") {

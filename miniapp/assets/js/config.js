@@ -44,14 +44,14 @@ window.ROULETTE = {
 
   outcomes: [
     {
-      symbol: "🎓",
+      symbol: "✓",
       title: "Идти на пары",
       short: "Идти",
       tone: "go",
       color: "#2fb27c",
     },
     {
-      symbol: "🛋️",
+      symbol: "✕",
       title: "Не идти",
       short: "Не идти",
       tone: "skip",

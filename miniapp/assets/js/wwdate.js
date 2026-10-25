@@ -19,7 +19,7 @@
       occupation: "Музыкант",
       distance: "2 км от вас",
       bio: "Пишу треки, иногда стримлю. Если долго не отвечаю — на студии.",
-      tags: ["🎵 Музыка", "🎮 CS2", "🍕 Пицца", "🌃 Ночной город"],
+      tags: ["Музыка", "CS2", "Пицца", "Ночной город"],
       matchQuote: "Привет, взаимно)",
       chatDialog: {
         greeting: "Привет) Как дела?",
@@ -44,8 +44,8 @@
       occupation: "Блогер",
       distance: "4 км от вас",
       bio: "Блогер. Люблю хороший кофе, поездки и нормальное общение.",
-      tags: ["☕ Кофе", "✈️ Путешествия", "🛍️ Шоппинг", "🎬 Видео"],
-      matchQuote: "Привет! Классный мэтч ✨",
+      tags: ["Кофе", "Путешествия", "Шоппинг", "Видео"],
+      matchQuote: "Привет! Классный мэтч",
       chatDialog: {
         greeting: "Привет) Классные фотки в профиле!",
         replies: [
@@ -69,7 +69,7 @@
       occupation: "Начинающий рэп-исполнитель",
       distance: "200 м от вас",
       bio: "Начинающий рэп-исполнитель. Студент.",
-      tags: ["🎙️ Рэп", "🎧 Музыка", "👟 Сникеры"],
+      tags: ["Рэп", "Музыка", "Сникеры"],
       matchQuote: "Салют, взаимный лайк)",
       chatDialog: {
         greeting: "Салют! Как день проходит?",
@@ -172,11 +172,11 @@
         '<div class="wwdate-card__info">' +
           '<div class="wwdate-card__header">' +
             '<h3 class="wwdate-card__name">' + profile.name + ', <span class="wwdate-card__age">' + profile.age + '</span></h3>' +
-            (profile.verified ? '<span class="wwdate-card__verified" title="Верифицирован">✔️</span>' : '') +
+            (profile.verified ? '<span class="wwdate-card__verified" title="Верифицирован">✓</span>' : '') +
           '</div>' +
           '<div class="wwdate-card__sub">' +
-            '<div class="wwdate-card__occ">💼 ' + profile.occupation + '</div>' +
-            '<div class="wwdate-card__dist">📍 ' + profile.distance + '</div>' +
+            '<div class="wwdate-card__occ">' + profile.occupation + '</div>' +
+            '<div class="wwdate-card__dist">' + profile.distance + '</div>' +
           '</div>' +
           '<p class="wwdate-card__bio">' + profile.bio + '</p>' +
           '<div class="wwdate-card__tags">' + tagsHtml + '</div>' +
@@ -394,7 +394,7 @@
 
       var matchTitle = matchModal.querySelector(".wwdate-match__title");
       if (matchTitle) {
-        matchTitle.textContent = isSuper ? "IT'S A SUPER MATCH! ⭐" : "IT'S A MATCH! 🔥";
+        matchTitle.textContent = isSuper ? "IT'S A SUPER MATCH!" : "IT'S A MATCH!";
       }
 
       matchModal.hidden = false;

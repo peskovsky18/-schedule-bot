@@ -179,14 +179,14 @@
 
       var overBadge = domEls.overBadge;
       if (overBadge) {
-        overBadge.textContent = wasRecord ? "🏆 Новый рекорд!" : "🎮 Игра окончена!";
+        overBadge.textContent = wasRecord ? "Новый рекорд!" : "Игра окончена";
       }
 
       if (domEls.overReward) {
         if (wasRecord) {
-          domEls.overReward.textContent = "+" + rewardCoins.toLocaleString() + " 💰 (новый рекорд!)";
+          domEls.overReward.textContent = "+" + rewardCoins.toLocaleString() + " тугриков (новый рекорд!)";
         } else {
-          domEls.overReward.textContent = "0 💰 (рекорд: " + bestScore.toLocaleString() + ")";
+          domEls.overReward.textContent = "0 тугриков (рекорд: " + bestScore.toLocaleString() + ")";
         }
       }
 
@@ -221,10 +221,10 @@
             var coins = typeof data.coins_awarded === "number" ? data.coins_awarded : rewardCoins;
             if (domEls.overReward) {
               if (data.is_record || coins > 0) {
-                domEls.overReward.textContent = "+" + coins.toLocaleString() + " 💰 (новый рекорд!)";
-                if (overBadge) overBadge.textContent = "🏆 Новый рекорд!";
+                domEls.overReward.textContent = "+" + coins.toLocaleString() + " тугриков (новый рекорд!)";
+                if (overBadge) overBadge.textContent = "Новый рекорд!";
               } else {
-                domEls.overReward.textContent = "0 💰 (рекорд: " + (data.best_score || bestScore).toLocaleString() + ")";
+                domEls.overReward.textContent = "0 тугриков (рекорд: " + (data.best_score || bestScore).toLocaleString() + ")";
               }
             }
             if (typeof data.balance === "number" && typeof opts.onReward === "function") {
