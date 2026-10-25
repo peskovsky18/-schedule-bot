@@ -7640,14 +7640,17 @@ button:active,
 }
 
 /* ==========================================================================
-   Скрытие раздела с Челиком и всех связанных элементов (по запросу)
+   Скрытие разделов по запросу (Челик, Золотое яблоко / ППРСД shop)
    ========================================================================== */
 #menuPetNavBtn,
 #petMenuGroup,
 #petSection,
 #gameCardFlappy,
 #flappyModal,
-#whatsNewPetItem {
+#whatsNewPetItem,
+#shopSectionHeader,
+#shop,
+#whatsNewShopItem {
   display: none !important;
 }
 
